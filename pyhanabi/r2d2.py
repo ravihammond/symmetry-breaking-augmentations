@@ -162,6 +162,7 @@ class R2D2Agent(torch.jit.ScriptModule):
         priv_s = obs["priv_s"]
         publ_s = obs["publ_s"]
         legal_move = obs["legal_move"]
+
         if "eps" in obs:
             eps = obs["eps"].flatten(0, 1)
         else:
@@ -188,14 +189,27 @@ class R2D2Agent(torch.jit.ScriptModule):
             reply = {}
 
         random_action = legal_move.multinomial(1).squeeze(1)
-        rand = torch.rand(greedy_action.size(), device=greedy_action.device)
-        assert rand.size() == eps.size()
-        rand = (rand < eps).long()
+
+        while True:
+            legal_size = torch.prod(torch.tensor(legal_move.shape))
+            ascending = torch.arange(0, legal_size, legal_move.shape[1], device=random_action.device)
+            take_indices = random_action + ascending
+            take_result = torch.take(legal_move, take_indices)
+            
+            illegal_action_selected = torch.any(take_result == 0)
+            
+            if not illegal_action_selected:
+                break
+
+            random_action = legal_move.multinomial(1).squeeze(1)
+
+        rand = torch.rand(greedy_action.size(), device=greedy_action.device, dtype=torch.double)
 
         if self.greedy:
             action = greedy_action
         else:
-            action = (greedy_action * (1 - rand) + random_action * rand).detach().long()
+            assert rand.size() == eps.size()
+            action = torch.where(rand < eps, random_action, greedy_action).detach()
 
         if self.vdn:
             action = action.view(bsize, num_player)
@@ -205,6 +219,16 @@ class R2D2Agent(torch.jit.ScriptModule):
         reply["a"] = action.detach().cpu()
         reply["h0"] = new_hid["h0"].detach().cpu()
         reply["c0"] = new_hid["c0"].detach().cpu()
+
+        size = torch.prod(torch.tensor(legal_move.shape))
+        ascending = torch.arange(0, size, legal_move.shape[1])
+        take_indices = reply["a"] + ascending
+        selected_action = torch.take(legal_move.detach().cpu(), take_indices)
+
+        # Check for illegal action, and raise exception if found.
+        if torch.any(selected_action == 0) == 1:
+            raise Exception("Found illegal action")
+
         return reply
 
     @torch.jit.script_method

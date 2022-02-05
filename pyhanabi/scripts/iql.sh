@@ -7,7 +7,7 @@
 #!/bin/bash
 python selfplay.py \
        --save_dir exps/iql \
-       --num_thread 80 \
+       --num_thread 24 \
        --num_game_per_thread 80 \
        --method iql \
        --sad 0 \

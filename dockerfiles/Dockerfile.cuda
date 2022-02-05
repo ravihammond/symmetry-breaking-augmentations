@@ -1,0 +1,23 @@
+# FROM nvidia/cuda:11.0-cudnn8-devel-ubuntu18.04
+FROM nvidia/cuda:11.3.1-cudnn8-devel-ubuntu20.04
+
+ARG DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && apt-get -y upgrade && apt-get install -y apt-utils
+
+# Install some basic utilities
+RUN apt-get install -y \
+    net-tools iputils-ping \
+    build-essential cmake git \
+    curl wget \
+    vim \
+    zip p7zip-full p7zip-rar bzip2 \
+    ca-certificates \
+    imagemagick ffmpeg \
+    libopenmpi-dev libomp5\
+    sudo \
+    libx11-6 \
+    && rm -rf /var/lib/apt/lists/*
+
+CMD ["bash"]
+

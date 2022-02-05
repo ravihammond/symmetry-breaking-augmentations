@@ -17,3 +17,11 @@ pyhanabi/models/*
 pyhanabi/iclr_models/*
 pyhanabi/notebooks/*
 pyhanabi/extract_human_data.py
+.bash_history
+*.swp
+.python_history
+*.out
+models/*
+hanabi-learning-environment/*
+temp
+test.cpp

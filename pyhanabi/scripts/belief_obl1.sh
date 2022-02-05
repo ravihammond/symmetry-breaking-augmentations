@@ -7,8 +7,8 @@
 #!/bin/bash
 python train_belief.py \
        --save_dir exps/belief_obl1 \
-       --num_thread 40 \
-       --num_game_per_thread 40 \
+       --num_thread 24 \
+       --num_game_per_thread 80 \
        --batchsize 128 \
        --lr 6.25e-05 \
        --eps 1.5e-05 \
