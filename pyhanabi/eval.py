@@ -32,6 +32,9 @@ def evaluate(
     """
     evaluate agents as long as they have a "act" function
     """
+    num_thread = 1
+    num_game = 1
+
     if num_game < num_thread:
         num_thread = num_game
 
@@ -40,7 +43,14 @@ def evaluate(
         hide_action = [hide_action for _ in range(num_player)]
     if not isinstance(sad, list):
         sad = [sad for _ in range(num_player)]
-    runners = [rela.BatchRunner(agent, device, 1000, ["act"]) for agent in agents]
+
+    # Create Batch Runners only if agent is a learned r2d2 agent.
+    runners = [
+        rela.BatchRunner(agent[1], device, 1000, ["act"]) 
+        if agent[0] == "r2d2"
+        else "rulebot"
+        for agent in agents
+    ]
 
     context = rela.Context()
     games = create_envs(num_game, seed, num_player, bomb, max_len)
@@ -49,15 +59,19 @@ def evaluate(
     assert num_game % num_thread == 0
     game_per_thread = num_game // num_thread
     all_actors = []
+
     for t_idx in range(num_thread):
         thread_games = []
         thread_actors = []
         for g_idx in range(t_idx * game_per_thread, (t_idx + 1) * game_per_thread):
             actors = []
             for i in range(num_player):
-                actor = hanalearn.R2D2Actor(
-                    runners[i], num_player, i, False, sad[i], hide_action[i]
-                )
+                if agents[i][0] == "r2d2":
+                    actor = hanalearn.R2D2Actor(
+                        runners[i], num_player, i, False, sad[i], hide_action[i]
+                    )
+                else:
+                    actor = hanalearn.RulebotActor(i)
                 actors.append(actor)
                 all_actors.append(actor)
             thread_actors.append(actors)
@@ -67,7 +81,8 @@ def evaluate(
         context.push_thread_loop(thread)
 
     for runner in runners:
-        runner.start()
+        if not isinstance(runner, str):
+            runner.start()
 
     context.start()
     context.join()
@@ -100,15 +115,20 @@ def evaluate_saved_model(
     overwrite["boltzmann_act"] = False
 
     for weight_file in weight_files:
+        if "rulebot" in weight_file:
+            agents.append(["rulebot", weight_file])
+            sad.append(False)
+            hide_action.append(False)
+            continue
         state_dict = torch.load(weight_file)
         if "fc_v.weight" in state_dict.keys():
             agent, cfg = utils.load_agent(weight_file, overwrite)
-            agents.append(agent)
+            agents.append(["r2d2", agent])
             sad.append(cfg["sad"] if "sad" in cfg else cfg["greedy_extra"])
             hide_action.append(bool(cfg["hide_action"]))
         else:
             agent = utils.load_supervised_agent(weight_file, "cuda:0")
-            agents.append(agent)
+            agents.append(["r2d2", agent])
             sad.append(False)
             hide_action.append(False)
         agent.train(False)

@@ -14,6 +14,19 @@
 
 class R2D2Actor {
  public:
+     R2D2Actor(int playerIdx) 
+      : numPlayer_(0)
+      , playerIdx_(playerIdx)
+      , epsList_()
+      , tempList_()
+      , vdn_(0)
+      , sad_(0)
+      , shuffleColor_(0)
+      , hideAction_(0)
+      , trinary_(0)
+      , batchsize_(0)
+  {}
+
   R2D2Actor(
       std::shared_ptr<rela::BatchRunner> runner,
       int seed,
@@ -83,15 +96,15 @@ class R2D2Actor {
     assert(partners_[playerIdx_] == nullptr);
   }
 
-  void reset(const HanabiEnv& env);
+  virtual void reset(const HanabiEnv& env);
 
-  void observeBeforeAct(const HanabiEnv& env);
+  virtual void observeBeforeAct(const HanabiEnv& env);
 
-  void act(HanabiEnv& env, const int curPlayer);
+  virtual void act(HanabiEnv& env, const int curPlayer);
 
-  void fictAct(const HanabiEnv& env);
+  virtual void fictAct(const HanabiEnv& env);
 
-  void observeAfterAct(const HanabiEnv& env);
+  virtual void observeAfterAct(const HanabiEnv& env);
 
   void setBeliefRunner(std::shared_ptr<rela::BatchRunner>& beliefModel) {
     assert(!vdn_ && batchsize_ == 1);
@@ -112,7 +125,7 @@ class R2D2Actor {
     return {noneKnown_, colorKnown_, rankKnown_, bothKnown_};
   }
 
- private:
+ protected:
   rela::TensorDict getH0(int numPlayer, std::shared_ptr<rela::BatchRunner>& runner) {
     std::vector<torch::jit::IValue> input{numPlayer};
     auto model = runner->jitModel();
