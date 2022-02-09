@@ -3,7 +3,9 @@
 //
 // This source code is licensed under the license found in the
 // LICENSE file in the root directory of this source tree.
-//
+#include <stdio.h>
+#include <iostream>
+
 #include "rlcc/r2d2_actor.h"
 #include "rlcc/utils.h"
 
@@ -109,7 +111,7 @@ std::tuple<std::vector<hle::HanabiCardValue>, bool> filterSample(
   return {hand.CardValues(), false};
 }
 
-std::tuple<bool, bool> analyzeCardBelief(const std::vector<float>& b) {
+std::tuple<bool, bool> R2D2Actor::analyzeCardBelief(const std::vector<float>& b) {
   assert(b.size() == 25);
   std::set<int> colors;
   std::set<int> ranks;
@@ -262,6 +264,9 @@ void R2D2Actor::observeBeforeAct(const HanabiEnv& env) {
 }
 
 void R2D2Actor::act(HanabiEnv& env, const int curPlayer) {
+  //if (curPlayer == playerIdx_) {
+    //printf("\nrulebot act\n");
+  //}
   torch::NoGradGuard ng;
 
   auto& state = env.getHleState();
@@ -363,7 +368,26 @@ void R2D2Actor::act(HanabiEnv& env, const int curPlayer) {
       }
     }
   }
+  //hle::HanabiObservation obs = env.getObsShowCards();
+  //auto& all_hands = obs.Hands();
+  //auto partner_hand = all_hands[(playerIdx_ + 1) % 2];
+  //auto oldest_card = partner_hand.Cards()[0];
 
+  //if (state.CardPlayableOnFireworks(oldest_card)) {
+    //// If last action was a colour hint, play oldest card
+    //auto reveal_red_move = hle::HanabiMove(
+      //hle::HanabiMove::kRevealColor,
+      //-1, // Card index.
+      //1, // Hint target offset (which player).
+      //0, // Hint card colour.
+      //-1 // Hint card rank.
+    //);
+    //if (state.MoveIsLegal(reveal_red_move)) {
+      //move = reveal_red_move;
+    //}
+  //}
+
+  //std::cout << "Playing move: " << move.ToString() << std::endl;
   env.step(move);
 }
 

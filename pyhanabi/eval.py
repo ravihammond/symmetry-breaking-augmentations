@@ -32,8 +32,9 @@ def evaluate(
     """
     evaluate agents as long as they have a "act" function
     """
-    num_thread = 1
-    num_game = 1
+    # num_thread = 20
+    # num_game = 1
+    max_len = 200
 
     if num_game < num_thread:
         num_thread = num_game
@@ -70,8 +71,10 @@ def evaluate(
                     actor = hanalearn.R2D2Actor(
                         runners[i], num_player, i, False, sad[i], hide_action[i]
                     )
-                else:
+                elif agents[i][1] == "rulebot":
                     actor = hanalearn.RulebotActor(i)
+                elif agents[i][1] == "rulebot2":
+                    actor = hanalearn.Rulebot2Actor(i)
                 actors.append(actor)
                 all_actors.append(actor)
             thread_actors.append(actors)
@@ -88,7 +91,8 @@ def evaluate(
     context.join()
 
     for runner in runners:
-        runner.stop()
+        if not isinstance(runner, str):
+            runner.stop()
 
     scores = [g.last_episode_score() for g in games]
     num_perfect = np.sum([1 for s in scores if s == 25])

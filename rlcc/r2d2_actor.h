@@ -126,6 +126,7 @@ class R2D2Actor {
   }
 
  protected:
+  std::tuple<bool, bool> analyzeCardBelief(const std::vector<float>& b);
   rela::TensorDict getH0(int numPlayer, std::shared_ptr<rela::BatchRunner>& runner) {
     std::vector<torch::jit::IValue> input{numPlayer};
     auto model = runner->jitModel();

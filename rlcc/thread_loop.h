@@ -7,6 +7,7 @@
 #pragma once
 
 #include <stdio.h>
+#include <iostream>
 
 #include "rela/thread_loop.h"
 #include "rlcc/r2d2_actor.h"
@@ -25,22 +26,17 @@ class HanabiThreadLoop : public rela::ThreadLoop {
               }
 
         virtual void mainLoop() override {
-            printf("main loop runnng\n");
             while (!terminated()) {
                 // go over each envs in sequential order
                 // call in seperate for-loops to maximize parallization
-                printf("=====================================\n");
-                printf("Next Environment Step\n");
                 for (size_t i = 0; i < envs_.size(); ++i) {
                     if (done_[i] == 1) {
-                        printf("This episode is finished, continuing\n");
                         continue;
                     }
 
                     auto& actors = actors_[i];
 
                     if (envs_[i]->terminated()) {
-                        printf("Current episode terminated\n");
                         // we only run 1 game for evaluation
                         if (eval_) {
                             ++done_[i];
@@ -53,10 +49,7 @@ class HanabiThreadLoop : public rela::ThreadLoop {
                         }
 
                         envs_[i]->reset();
-                        printf("is the current episode terminated now?: %d\n", 
-                                envs_[i]->terminated());
                         for (size_t j = 0; j < actors.size(); ++j) {
-                            printf("agent: %ld\n", j);
                             actors[j]->reset(*envs_[i]);
                         }
                     }
@@ -66,16 +59,23 @@ class HanabiThreadLoop : public rela::ThreadLoop {
                     }
                 }
 
-                printf("Current Player: %d\n", envs_[0]->getCurrentPlayer());
-                printf("Score: %d\n", envs_[0]->getScore());
-                printf("Life Tokens: %d\n", envs_[0]->getLife());
-                printf("Information Tokens: %d\n", envs_[0]->getInfo());
-                printf("Fireworks: {");
-                for (int i = 0; i < 5; i++) {
-                    printf("%d", envs_[0]->getFireworks()[i]);
-                    if (i != 4) printf(", ");
-                }
-                printf("}\n");
+                //printf("Current Player: %d\n", envs_[0]->getCurrentPlayer());
+                //printf("Score: %d\n", envs_[0]->getScore());
+                //printf("Life Tokens: %d\n", envs_[0]->getLife());
+                //printf("Information Tokens: %d\n", envs_[0]->getInfo());
+                //printf("Fireworks: {");
+                //for (int i = 0; i < 5; i++) {
+                    //printf("%d", envs_[0]->getFireworks()[i]);
+                    //if (i != 4) printf(", ");
+                //}
+                //printf("}\n");
+                //printf("Player Observations:\n");
+                //// Display cards and knowedge of all players.
+                //hle::HanabiObservation obs = envs_[0]->getObsShowCards();
+                //auto& all_hands = obs.Hands();
+                //for (auto hand: all_hands) {
+                    //std::cout << hand.ToString() << std::endl;
+                //}
 
                 for (size_t i = 0; i < envs_.size(); ++i) {
                     if (done_[i] == 1) {

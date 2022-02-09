@@ -59,8 +59,12 @@ _, _, _, scores, actors = evaluate_saved_model(
     args.bomb,
     num_run=args.num_run,
 )
+# print("all actors")
+# print(actors)
+
 non_zero_scores = [s for s in scores if s > 0]
-print(f"non zero mean: {np.mean(non_zero_scores):.3f}")
+print(f"non zero mean: %.3f" % (
+    0 if len(non_zero_scores) == 0 else np.mean(non_zero_scores)))
 print(f"bomb out rate: {100 * (1 - len(non_zero_scores) / len(scores)):.2f}%")
 
 # 4 numbers represent: [none, color, rank, both] respectively
@@ -68,7 +72,10 @@ card_stats = []
 for g in actors:
     card_stats.append(g.get_played_card_info())
 card_stats = np.array(card_stats).sum(0)
+total_played = sum(card_stats)
 
 print("knowledge of cards played:")
 for i, ck in enumerate(["none", "color", "rank", "both"]):
-    print(f"{ck}: {card_stats[i]}")
+    percentage = (card_stats[i] / total_played) * 100
+    print(f"{ck}: {card_stats[i]} ({percentage:.1f}%)")
+

@@ -17,6 +17,7 @@
 #include "rlcc/hanabi_env.h"
 #include "rlcc/thread_loop.h"
 #include "rlcc/rulebot_actor.h"
+#include "rlcc/rulebot_2_actor.h"
 
 namespace py = pybind11;
 using namespace hanabi_learning_env;
@@ -291,9 +292,11 @@ PYBIND11_MODULE(hanalearn, m) {
       .def("shape", &CanonicalObservationEncoder::Shape)
       .def("encode", &CanonicalObservationEncoder::Encode);
 
-
-  // Bind Rulebot Actor class
   py::class_<RulebotActor, R2D2Actor, std::shared_ptr<RulebotActor>>(
           m, "RulebotActor")
+      .def(py::init<int>());
+
+  py::class_<Rulebot2Actor, R2D2Actor, std::shared_ptr<Rulebot2Actor>>(
+          m, "Rulebot2Actor")
       .def(py::init<int>());
 }
