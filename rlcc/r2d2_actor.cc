@@ -368,24 +368,47 @@ void R2D2Actor::act(HanabiEnv& env, const int curPlayer) {
       }
     }
   }
-  //hle::HanabiObservation obs = env.getObsShowCards();
-  //auto& all_hands = obs.Hands();
-  //auto partner_hand = all_hands[(playerIdx_ + 1) % 2];
-  //auto oldest_card = partner_hand.Cards()[0];
 
-  //if (state.CardPlayableOnFireworks(oldest_card)) {
-    //// If last action was a colour hint, play oldest card
-    //auto reveal_red_move = hle::HanabiMove(
-      //hle::HanabiMove::kRevealColor,
-      //-1, // Card index.
-      //1, // Hint target offset (which player).
-      //0, // Hint card colour.
-      //-1 // Hint card rank.
-    //);
-    //if (state.MoveIsLegal(reveal_red_move)) {
-      //move = reveal_red_move;
-    //}
-  //}
+  hle::HanabiObservation obs = env.getObsShowCards();
+  auto& all_hands = obs.Hands();
+  auto partner_hand = all_hands[(playerIdx_ + 1) % 2];
+  auto oldest_card = partner_hand.Cards()[0];
+
+  if (state.CardPlayableOnFireworks(oldest_card)) {
+    // If last action was a colour hint, play oldest card
+    auto reveal_red_move = hle::HanabiMove(
+      hle::HanabiMove::kRevealColor,
+      -1, // Card index.
+      1, // Hint target offset (which player).
+      0, // Hint card colour.
+      -1 // Hint card rank.
+    );
+    if (state.MoveIsLegal(reveal_red_move)) {
+      move = reveal_red_move;
+    }
+  } else if (move.MoveType() == hle::HanabiMove::kRevealColor &&
+        move.Color() == 0) {
+    int card_rank = 1;
+    do {
+      move = hle::HanabiMove(
+        hle::HanabiMove::kRevealRank,
+        -1, // Card index.
+        1, // Hint target offset (which player).
+        -1, // Hint card colour.
+        card_rank // Hint card rank.
+      );
+      card_rank++;
+    } while (not state.MoveIsLegal(move));
+    if (not state.MoveIsLegal(move)) {
+      move = hle::HanabiMove(
+        hle::HanabiMove::kDiscard,
+        0, // Card index.
+        -1, // Hint target offset (which player).
+        -1, // Hint card colour.
+        -1 // Hint card rank.
+      );
+    }
+  }
 
   //std::cout << "Playing move: " << move.ToString() << std::endl;
   env.step(move);

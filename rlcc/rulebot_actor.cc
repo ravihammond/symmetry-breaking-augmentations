@@ -1,5 +1,9 @@
 #include <stdlib.h>
 #include <iostream>
+#include <array>
+#include <algorithm>
+#include <random>
+#include <chrono>
 
 #include "rulebot_actor.h"
 
@@ -24,9 +28,11 @@ void RulebotActor::act(HanabiEnv& env, const int curPlayer) {
     int last_action = env.getLastAction();
     const auto& state = env.getHleState();
     if (last_action == -1 || env.getInfo() == 8) {
-        int colour = 0;
+        std::array<int,5> colours {0,1,2,3,4};
+        unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
+        shuffle (colours.begin(), colours.end(), std::default_random_engine(seed));
 
-        do {
+        for (int colour: colours) {
             move = hle::HanabiMove(
                 hle::HanabiMove::kRevealColor,
                 -1, // Card index.
@@ -34,9 +40,10 @@ void RulebotActor::act(HanabiEnv& env, const int curPlayer) {
                 colour, // Hint card colour.
                 -1 // Hint card rank.
             );
-            colour++;
-        } while (not state.MoveIsLegal(move));
-
+            if (state.MoveIsLegal(move)) {
+                break;
+            }
+        } 
     }
 
     auto last_move = env.getMove(env.getLastAction());

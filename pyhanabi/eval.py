@@ -34,7 +34,7 @@ def evaluate(
     """
     # num_thread = 20
     # num_game = 1
-    max_len = 200
+    # max_len = 200
 
     if num_game < num_thread:
         num_thread = num_game
@@ -44,6 +44,13 @@ def evaluate(
         hide_action = [hide_action for _ in range(num_player)]
     if not isinstance(sad, list):
         sad = [sad for _ in range(num_player)]
+
+    agents = [
+        ["r2d2", agent] 
+        if isinstance(agent, r2d2.R2D2Agent) 
+        else agent
+        for agent in agents
+    ]
 
     # Create Batch Runners only if agent is a learned r2d2 agent.
     runners = [
