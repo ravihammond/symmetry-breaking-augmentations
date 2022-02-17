@@ -32,7 +32,7 @@ def evaluate(
     """
     evaluate agents as long as they have a "act" function
     """
-    # num_thread = 20
+    # num_thread = 1
     # num_game = 1
     # max_len = 200
 

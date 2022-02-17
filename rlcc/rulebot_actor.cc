@@ -28,22 +28,38 @@ void RulebotActor::act(HanabiEnv& env, const int curPlayer) {
     int last_action = env.getLastAction();
     const auto& state = env.getHleState();
     if (last_action == -1 || env.getInfo() == 8) {
-        std::array<int,5> colours {0,1,2,3,4};
+        std::array<int,5> vals {0,1,2,3,4};
         unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
-        shuffle (colours.begin(), colours.end(), std::default_random_engine(seed));
+        shuffle (vals.begin(), vals.end(), std::default_random_engine(seed));
 
-        for (int colour: colours) {
-            move = hle::HanabiMove(
-                hle::HanabiMove::kRevealColor,
-                -1, // Card index.
-                1, // Hint target offset (which player).
-                colour, // Hint card colour.
-                -1 // Hint card rank.
-            );
-            if (state.MoveIsLegal(move)) {
-                break;
-            }
-        } 
+        if (rand() % 2 == 0) {
+            for (int colour: vals) {
+                move = hle::HanabiMove(
+                    hle::HanabiMove::kRevealColor,
+                    -1, // Card index.
+                    1, // Hint target offset (which player).
+                    colour, // Hint card colour.
+                    -1 // Hint card rank.
+                );
+                if (state.MoveIsLegal(move)) {
+                    break;
+                }
+            } 
+        } else {
+            for (int cardrank: vals) {
+                move = hle::HanabiMove(
+                    hle::HanabiMove::kRevealRank,
+                    -1, // Card index.
+                    1, // Hint target offset (which player).
+                    -1, // Hint card colour.
+                    cardrank // Hint card rank.
+                );
+                if (state.MoveIsLegal(move)) {
+                    break;
+                }
+            } 
+        }
+
     }
 
     auto last_move = env.getMove(env.getLastAction());

@@ -75,7 +75,33 @@ card_stats = np.array(card_stats).sum(0)
 total_played = sum(card_stats)
 
 print("knowledge of cards played:")
+print("total cards played: ", total_played)
 for i, ck in enumerate(["none", "color", "rank", "both"]):
     percentage = (card_stats[i] / total_played) * 100
     print(f"{ck}: {card_stats[i]} ({percentage:.1f}%)")
 
+card_stats = []
+for i, g in enumerate(actors):
+    if i % 2 == 0:
+        card_stats.append(g.get_played_card_info())
+card_stats = np.array(card_stats).sum(0)
+total_played = sum(card_stats)
+
+print("actor1: knowledge of cards played:")
+print("total cards played: ", total_played)
+for i, ck in enumerate(["none", "color", "rank", "both"]):
+    percentage = (card_stats[i] / total_played) * 100
+    print(f"{ck}: {card_stats[i]} ({percentage:.1f}%)")
+
+card_stats = []
+for i, g in enumerate(actors):
+    if i % 2 != 0:
+        card_stats.append(g.get_played_card_info())
+card_stats = np.array(card_stats).sum(0)
+total_played = sum(card_stats)
+
+print("actor2: knowledge of cards played:")
+print("total cards played: ", total_played)
+for i, ck in enumerate(["none", "color", "rank", "both"]):
+    percentage = (card_stats[i] / total_played) * 100
+    print(f"{ck}: {card_stats[i]} ({percentage:.1f}%)")

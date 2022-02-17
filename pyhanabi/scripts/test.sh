@@ -1,8 +1,8 @@
 #!/bin/bash
 python selfplay.py \
        --save_dir exps/experimental1 \
-       --num_thread 24 \
-       --num_game_per_thread 80 \
+       --num_thread 1 \
+       --num_game_per_thread 1 \
        --sad 0 \
        --act_base_eps 0.1 \
        --act_eps_alpha 7 \
@@ -11,11 +11,11 @@ python selfplay.py \
        --grad_clip 5 \
        --gamma 0.999 \
        --seed 2254257 \
-       --batchsize 128 \
-       --burn_in_frames 10000 \
+       --batchsize 1 \
+       --burn_in_frames 1 \
        --replay_buffer_size 100000 \
-       --epoch_len 1000 \
-       --num_epoch 1500 \
+       --epoch_len 1 \
+       --num_epoch 1 \
        --num_player 2 \
        --rnn_hid_dim 512 \
        --multi_step 1 \
