@@ -27,6 +27,8 @@ class HanabiThreadLoop : public rela::ThreadLoop {
 
         virtual void mainLoop() override {
             while (!terminated()) {
+                printf("==========================================\n");
+                printf("Next Action\n");
                 // go over each envs in sequential order
                 // call in seperate for-loops to maximize parallization
                 for (size_t i = 0; i < envs_.size(); ++i) {
@@ -59,23 +61,23 @@ class HanabiThreadLoop : public rela::ThreadLoop {
                     }
                 }
 
-                //printf("Current Player: %d\n", envs_[0]->getCurrentPlayer());
-                //printf("Score: %d\n", envs_[0]->getScore());
-                //printf("Life Tokens: %d\n", envs_[0]->getLife());
-                //printf("Information Tokens: %d\n", envs_[0]->getInfo());
-                //printf("Fireworks: {");
-                //for (int i = 0; i < 5; i++) {
-                    //printf("%d", envs_[0]->getFireworks()[i]);
-                    //if (i != 4) printf(", ");
-                //}
-                //printf("}\n");
-                //printf("Player Observations:\n");
-                //// Display cards and knowedge of all players.
-                //hle::HanabiObservation obs = envs_[0]->getObsShowCards();
-                //auto& all_hands = obs.Hands();
-                //for (auto hand: all_hands) {
-                    //std::cout << hand.ToString() << std::endl;
-                //}
+                printf("Current Player: %d\n", envs_[0]->getCurrentPlayer());
+                printf("Score: %d\n", envs_[0]->getScore());
+                printf("Life Tokens: %d\n", envs_[0]->getLife());
+                printf("Information Tokens: %d\n", envs_[0]->getInfo());
+                printf("Fireworks: {");
+                for (int i = 0; i < 5; i++) {
+                    printf("%d", envs_[0]->getFireworks()[i]);
+                    if (i != 4) printf(", ");
+                }
+                printf("}\n");
+                printf("Player Observations:\n");
+                // Display cards and knowedge of all players.
+                hle::HanabiObservation obs = envs_[0]->getObsShowCards();
+                auto& all_hands = obs.Hands();
+                for (auto hand: all_hands) {
+                    std::cout << hand.ToString() << std::endl;
+                }
 
                 for (size_t i = 0; i < envs_.size(); ++i) {
                     if (done_[i] == 1) {
@@ -85,6 +87,7 @@ class HanabiThreadLoop : public rela::ThreadLoop {
                     auto& actors = actors_[i];
                     int curPlayer = envs_[i]->getCurrentPlayer();
                     for (size_t j = 0; j < actors.size(); ++j) {
+                        printf("player %ld acting\n", j);
                         actors[j]->act(*envs_[i], curPlayer);
                     }
                 }

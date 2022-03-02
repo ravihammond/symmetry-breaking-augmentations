@@ -20,14 +20,14 @@ python selfplay.py \
        --rnn_hid_dim 512 \
        --multi_step 1 \
        --train_device cuda:0 \
-       --act_device cuda:1,cuda:2 \
+       --act_device cuda:1 \
        --num_lstm_layer 2 \
        --boltzmann_act 0 \
        --min_t 0.01 \
        --max_t 0.1 \
        --off_belief 1 \
        --num_fict_sample 10 \
-       --belief_device cuda:3 \
+       --belief_device cuda:1 \
        --belief_model exps/belief_obl0/model0.pthw \
        --load_model None \
        --net publ-lstm \

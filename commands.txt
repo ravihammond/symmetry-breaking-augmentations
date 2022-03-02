@@ -1,6 +1,8 @@
-python pyhanabi/tools/eval_model.py --weight1 rulebot --weight2 pyhanabi/exps/obl1/model_epoch1400.pthw --num_game 10000
+python pyhanabi/tools/eval_model.py --weight1 rulebot --weight2 pyhanabi/exps/obl1/model_epoch1400.pthw --num_game 1
 
-python pyhanabi/tools/eval_model.py --weight1 pyhanabi/exps/obl1/model_epoch1400.pthw
+python pyhanabi/tools/eval_model.py --weight1 pyhanabi/exps/obl1/model_epoch1400.pthw --weight2 rulebot --num_game 1
+
+python pyhanabi/tools/eval_model.py --weight1 pyhanabi/exps/obl1/model_epoch1400.pthw --num_game 1
 
 python pyhanabi/tools/eval_model.py --weight1 rulebot --weight2 rulebot2
 

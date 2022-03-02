@@ -9,6 +9,8 @@
 #include "rlcc/r2d2_actor.h"
 #include "rlcc/utils.h"
 
+using namespace std;
+
 void addHid(rela::TensorDict& to, rela::TensorDict& hid) {
     for (auto& kv : hid) {
         // hid: [num_layer, batch/num_player, dim]
@@ -80,16 +82,22 @@ std::tuple<std::vector<hle::HanabiCardValue>, bool> filterSample(
         const std::vector<int>& invColorPermute,
         const hle::HanabiGame& game,
         const hle::HanabiHand& hand) {
+    printf("samples\n");
+    std::cout << samples << std::endl;
     auto sampleAcc = samples.accessor<int64_t, 2>();
     int numSample = sampleAcc.size(0);
     int handSize = hand.Cards().size();
 
+    printf("numSample: %d\n", numSample);
+
     for (int i = 0; i < numSample; ++i) {
         auto cardRemain = privCardCount;
         std::vector<hle::HanabiCardValue> cards;
+        printf("trying hand: ");
         for (int j = 0; j < handSize; ++j) {
             // sampling & v0 belief is done in the color shuffled space
             int idx = sampleAcc[i][j];
+            printf("%d ", idx);
             auto card = indexToCard(idx, game.NumRanks());
             // this sample violate card count
             if (cardRemain[idx] == 0) {
@@ -104,7 +112,11 @@ std::tuple<std::vector<hle::HanabiCardValue>, bool> filterSample(
                 cards.push_back(card);
             }
         }
+        printf("\n");
         if ((int)cards.size() == handSize && hand.CanSetCards(cards)) {
+            printf("legal hand found\n");
+            for (auto &cardval: cards)
+                std::cout << cardval.ToString() << std::endl;
             return {cards, true};
         }
     }
@@ -295,6 +307,8 @@ void R2D2Actor::act(HanabiEnv& env, const int curPlayer) {
 
     if (offBelief_) {
         const auto& hand = fictState_->Hands()[playerIdx_];
+        printf("Fictitious Hand before\n");
+        printf("%s\n", hand.ToString().c_str());
         bool success = true;
         if (beliefRunner_ != nullptr) {
             auto sample = beliefReply.at("sample");
@@ -314,6 +328,8 @@ void R2D2Actor::act(HanabiEnv& env, const int curPlayer) {
         }
         validFict_ = success;
         ++totalFict_;
+        printf("Fictitious Hand after\n");
+        printf("%s\n", hand.ToString().c_str());
     }
 
     if (!vdn_ && curPlayer != playerIdx_) {
