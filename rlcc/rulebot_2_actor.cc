@@ -58,6 +58,8 @@ void Rulebot2Actor::act(HanabiEnv& env, const int curPlayer) {
         }
     }
 
+    incrementPlayedCardKnowledgeCount(env, move);
+
     //cout << "Playing move: " << move.ToString() << endl;
     env.step(move);
 }

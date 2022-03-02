@@ -16,6 +16,8 @@
 #include "rlcc/clone_data_generator.h"
 #include "rlcc/hanabi_env.h"
 #include "rlcc/thread_loop.h"
+#include "rlcc/actor.h"
+#include "rlcc/r2d2_actor.h"
 #include "rlcc/rulebot_actor.h"
 #include "rlcc/rulebot_2_actor.h"
 
@@ -63,7 +65,11 @@ PYBIND11_MODULE(hanalearn, m) {
       .def("start_data_generation", &CloneDataGenerator::startDataGeneration)
       .def("terminate", &CloneDataGenerator::terminate);
 
-  py::class_<R2D2Actor, std::shared_ptr<R2D2Actor>>(m, "R2D2Actor")
+  py::class_<Actor, std::shared_ptr<Actor>>(m, "Actor")
+      .def(py::init<int>())
+      .def("get_played_card_info", &R2D2Actor::getPlayedCardInfo);
+
+  py::class_<R2D2Actor, Actor, std::shared_ptr<R2D2Actor>>(m, "R2D2Actor")
       .def(py::init<
            std::shared_ptr<rela::BatchRunner>, // runner,
            int,  // seed,
@@ -90,8 +96,15 @@ PYBIND11_MODULE(hanalearn, m) {
            bool>())  // hideAction
       .def("set_partners", &R2D2Actor::setPartners)
       .def("set_belief_runner", &R2D2Actor::setBeliefRunner)
-      .def("get_success_fict_rate", &R2D2Actor::getSuccessFictRate)
-      .def("get_played_card_info", &R2D2Actor::getPlayedCardInfo);
+      .def("get_success_fict_rate", &R2D2Actor::getSuccessFictRate);
+
+  py::class_<RulebotActor, Actor, std::shared_ptr<RulebotActor>>(
+          m, "RulebotActor")
+      .def(py::init<int>());
+
+  py::class_<Rulebot2Actor, Actor, std::shared_ptr<Rulebot2Actor>>(
+          m, "Rulebot2Actor")
+      .def(py::init<int>());
 
   m.def("observe", py::overload_cast<const hle::HanabiState&, int, bool>(&observe));
 
@@ -113,7 +126,7 @@ PYBIND11_MODULE(hanalearn, m) {
       m, "HanabiThreadLoop")
       .def(py::init<
            std::vector<std::shared_ptr<HanabiEnv>>,
-           std::vector<std::vector<std::shared_ptr<R2D2Actor>>>,
+           std::vector<std::vector<std::shared_ptr<Actor>>>,
            bool>());
 
   // bind some hanabi util classes
@@ -291,12 +304,4 @@ PYBIND11_MODULE(hanalearn, m) {
       .def(py::init<const HanabiGame*>())
       .def("shape", &CanonicalObservationEncoder::Shape)
       .def("encode", &CanonicalObservationEncoder::Encode);
-
-  py::class_<RulebotActor, R2D2Actor, std::shared_ptr<RulebotActor>>(
-          m, "RulebotActor")
-      .def(py::init<int>());
-
-  py::class_<Rulebot2Actor, R2D2Actor, std::shared_ptr<Rulebot2Actor>>(
-          m, "Rulebot2Actor")
-      .def(py::init<int>());
 }

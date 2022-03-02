@@ -32,9 +32,6 @@ def evaluate(
     """
     evaluate agents as long as they have a "act" function
     """
-    # num_thread = 1
-    # num_game = 1
-    # max_len = 200
 
     if num_game < num_thread:
         num_thread = num_game
@@ -45,18 +42,11 @@ def evaluate(
     if not isinstance(sad, list):
         sad = [sad for _ in range(num_player)]
 
-    agents = [
-        ["r2d2", agent] 
-        if isinstance(agent, r2d2.R2D2Agent) 
-        else agent
-        for agent in agents
-    ]
-
     # Create Batch Runners only if agent is a learned r2d2 agent.
     runners = [
-        rela.BatchRunner(agent[1], device, 1000, ["act"]) 
-        if agent[0] == "r2d2"
-        else "rulebot"
+        rela.BatchRunner(agent, device, 1000, ["act"]) 
+        if isinstance(agent, r2d2.R2D2Agent)
+        else None
         for agent in agents
     ]
 
@@ -74,14 +64,14 @@ def evaluate(
         for g_idx in range(t_idx * game_per_thread, (t_idx + 1) * game_per_thread):
             actors = []
             for i in range(num_player):
-                if agents[i][0] == "r2d2":
+                if agents[i] == "rulebot":
+                    actor = hanalearn.RulebotActor(i)
+                elif agents[i] == "rulebot2":
+                    actor = hanalearn.Rulebot2Actor(i)
+                else:
                     actor = hanalearn.R2D2Actor(
                         runners[i], num_player, i, False, sad[i], hide_action[i]
                     )
-                elif agents[i][1] == "rulebot":
-                    actor = hanalearn.RulebotActor(i)
-                elif agents[i][1] == "rulebot2":
-                    actor = hanalearn.Rulebot2Actor(i)
                 actors.append(actor)
                 all_actors.append(actor)
             thread_actors.append(actors)
@@ -91,14 +81,14 @@ def evaluate(
         context.push_thread_loop(thread)
 
     for runner in runners:
-        if not isinstance(runner, str):
+        if isinstance(runner, rela.BatchRunner):
             runner.start()
 
     context.start()
     context.join()
 
     for runner in runners:
-        if not isinstance(runner, str):
+        if isinstance(runner, rela.BatchRunner):
             runner.stop()
 
     scores = [g.last_episode_score() for g in games]
@@ -126,15 +116,16 @@ def evaluate_saved_model(
     overwrite["boltzmann_act"] = False
 
     for weight_file in weight_files:
-        if "rulebot" in weight_file:
-            agents.append(["rulebot", weight_file])
+        try: 
+            state_dict = torch.load(weight_file)
+        except:
+            agents.append(weight_file)
             sad.append(False)
             hide_action.append(False)
             continue
-        state_dict = torch.load(weight_file)
         if "fc_v.weight" in state_dict.keys():
             agent, cfg = utils.load_agent(weight_file, overwrite)
-            agents.append(["r2d2", agent])
+            agents.append(agent)
             sad.append(cfg["sad"] if "sad" in cfg else cfg["greedy_extra"])
             hide_action.append(bool(cfg["hide_action"]))
         else:

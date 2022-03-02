@@ -80,29 +80,3 @@ void RulebotActor::act(HanabiEnv& env, const int curPlayer) {
     //cout << "Playing move: " << move.ToString() << endl;
     env.step(move);
 }
-
-void RulebotActor::incrementPlayedCardKnowledgeCount(const HanabiEnv& env, hle::HanabiMove move) {
-    const auto& state = env.getHleState();
-    const auto& game = env.getHleGame();
-    auto obs = hle::HanabiObservation(state, state.CurPlayer(), true);
-    auto encoder = hle::CanonicalObservationEncoder(&game);
-    auto [privV0, cardCount] =
-        encoder.EncodePrivateV0Belief(obs, std::vector<int>(), false, std::vector<int>());
-    perCardPrivV0_ =
-        extractPerCardBelief(privV0, env.getHleGame(), obs.Hands()[0].Cards().size());
-
-    if (move.MoveType() == hle::HanabiMove::kPlay) {
-        auto cardBelief = perCardPrivV0_[move.CardIndex()];
-        auto [colorKnown, rankKnown] = analyzeCardBelief(cardBelief);
-
-        if (colorKnown && rankKnown) {
-            ++bothKnown_;
-        } else if (colorKnown) {
-            ++colorKnown_;
-        } else if (rankKnown) {
-            ++rankKnown_;
-        } else {
-            ++noneKnown_;
-        }
-    }
-}

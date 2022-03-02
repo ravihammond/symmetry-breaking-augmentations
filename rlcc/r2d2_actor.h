@@ -11,22 +11,10 @@
 #include "rela/r2d2.h"
 
 #include "rlcc/hanabi_env.h"
+#include "actor.h"
 
-class R2D2Actor {
+class R2D2Actor: public Actor {
  public:
-     R2D2Actor(int playerIdx) 
-      : numPlayer_(0)
-      , playerIdx_(playerIdx)
-      , epsList_()
-      , tempList_()
-      , vdn_(0)
-      , sad_(0)
-      , shuffleColor_(0)
-      , hideAction_(0)
-      , trinary_(0)
-      , batchsize_(0)
-  {}
-
   R2D2Actor(
       std::shared_ptr<rela::BatchRunner> runner,
       int seed,
@@ -44,10 +32,10 @@ class R2D2Actor {
       int multiStep,
       int seqLen,
       float gamma)
-      : runner_(std::move(runner))
+      : Actor(playerIdx)
+      , runner_(std::move(runner))
       , rng_(seed)
       , numPlayer_(numPlayer)
-      , playerIdx_(playerIdx)
       , epsList_(epsList)
       , tempList_(tempList)
       , vdn_(vdn)
@@ -72,10 +60,10 @@ class R2D2Actor {
       bool vdn,
       bool sad,
       bool hideAction)
-      : runner_(std::move(runner))
+      : Actor(playerIdx)
+      , runner_(std::move(runner))
       , rng_(1)  // not used in eval mode
       , numPlayer_(numPlayer)
-      , playerIdx_(playerIdx)
       , epsList_({0})
       , vdn_(vdn)
       , sad_(sad)
@@ -121,10 +109,6 @@ class R2D2Actor {
     return rate;
   }
 
-  std::tuple<int, int, int, int> getPlayedCardInfo() const {
-    return {noneKnown_, colorKnown_, rankKnown_, bothKnown_};
-  }
-
  protected:
   std::tuple<bool, bool> analyzeCardBelief(const std::vector<float>& b);
   rela::TensorDict getH0(int numPlayer, std::shared_ptr<rela::BatchRunner>& runner) {
@@ -139,7 +123,6 @@ class R2D2Actor {
   std::shared_ptr<rela::BatchRunner> classifier_;
   std::mt19937 rng_;
   const int numPlayer_;
-  const int playerIdx_;
   const std::vector<float> epsList_;
   const std::vector<float> tempList_;
   const bool vdn_;
@@ -180,12 +163,4 @@ class R2D2Actor {
   bool validFict_ = false;
   std::unique_ptr<hle::HanabiState> fictState_ = nullptr;
   std::vector<std::shared_ptr<R2D2Actor>> partners_;
-
-  // information on cards played
-  // only computed during eval mode (replayBuffer==nullptr)
-  std::vector<std::vector<float>> perCardPrivV0_;
-  int noneKnown_ = 0;
-  int colorKnown_ = 0;
-  int rankKnown_ = 0;
-  int bothKnown_ = 0;
 };

@@ -123,20 +123,20 @@ std::tuple<std::vector<hle::HanabiCardValue>, bool> filterSample(
     return {hand.CardValues(), false};
 }
 
-std::tuple<bool, bool> R2D2Actor::analyzeCardBelief(const std::vector<float>& b) {
-    assert(b.size() == 25);
-    std::set<int> colors;
-    std::set<int> ranks;
-    for (int c = 0; c < 5; ++c) {
-        for (int r = 0; r < 5; ++r) {
-            if (b[c * 5 + r] > 0) {
-                colors.insert(c);
-                ranks.insert(r);
-            }
-        }
-    }
-    return {colors.size() == 1, ranks.size() == 1};
-}
+//std::tuple<bool, bool> R2D2Actor::analyzeCardBelief(const std::vector<float>& b) {
+    //assert(b.size() == 25);
+    //std::set<int> colors;
+    //std::set<int> ranks;
+    //for (int c = 0; c < 5; ++c) {
+        //for (int r = 0; r < 5; ++r) {
+            //if (b[c * 5 + r] > 0) {
+                //colors.insert(c);
+                //ranks.insert(r);
+            //}
+        //}
+    //}
+    //return {colors.size() == 1, ranks.size() == 1};
+//}
 
 void R2D2Actor::reset(const HanabiEnv& env) {
     hidden_ = getH0(batchsize_, runner_);
@@ -413,22 +413,7 @@ void R2D2Actor::act(HanabiEnv& env, const int curPlayer) {
         move.SetColor(realColor);
     }
 
-    if (replayBuffer_ == nullptr) {
-        if (move.MoveType() == hle::HanabiMove::kPlay) {
-            auto cardBelief = perCardPrivV0_[move.CardIndex()];
-            auto [colorKnown, rankKnown] = analyzeCardBelief(cardBelief);
-
-            if (colorKnown && rankKnown) {
-                ++bothKnown_;
-            } else if (colorKnown) {
-                ++colorKnown_;
-            } else if (rankKnown) {
-                ++rankKnown_;
-            } else {
-                ++noneKnown_;
-            }
-        }
-    }
+    incrementPlayedCardKnowledgeCount(env, move);
 
     //std::cout << "Playing move: " << move.ToString() << std::endl;
     env.step(move);

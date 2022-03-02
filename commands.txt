@@ -4,6 +4,6 @@ python pyhanabi/tools/eval_model.py --weight1 pyhanabi/exps/obl1/model_epoch1400
 
 python pyhanabi/tools/eval_model.py --weight1 pyhanabi/exps/obl1/model_epoch1400.pthw --num_game 1
 
-python pyhanabi/tools/eval_model.py --weight1 rulebot --weight2 rulebot2
+python pyhanabi/tools/eval_model.py --weight1 rulebot --weight2 rulebot2 --num_game 1
 
 cd pyhanabi/scripts; bash pyhanabi/scripts/test.sh
