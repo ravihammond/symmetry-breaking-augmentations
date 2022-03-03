@@ -18,6 +18,7 @@
 #include "rlcc/thread_loop.h"
 #include "rlcc/actors/actor.h"
 #include "rlcc/actors/r2d2_actor.h"
+#include "rlcc/actors/r2d2_convention_actor.h"
 #include "rlcc/actors/rulebot_actor.h"
 #include "rlcc/actors/rulebot_2_actor.h"
 
@@ -97,6 +98,12 @@ PYBIND11_MODULE(hanalearn, m) {
       .def("set_partners", &R2D2Actor::setPartners)
       .def("set_belief_runner", &R2D2Actor::setBeliefRunner)
       .def("get_success_fict_rate", &R2D2Actor::getSuccessFictRate);
+
+  py::class_<
+      R2D2ConventionActor, 
+      R2D2Actor, 
+      std::shared_ptr<R2D2ConventionActor>>(
+          m, "R2D2ConventionActor");
 
   py::class_<RulebotActor, Actor, std::shared_ptr<RulebotActor>>(
           m, "RulebotActor")

@@ -16,8 +16,8 @@ class ConventionBelief(torch.jit.ScriptModule):
 
     @torch.jit.script_method
     def sample(self, obs: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
-        for key, value in obs.item():
-            print(key)
+        # for key, value in obs.item():
+            # print(key)
         bsize, num_lstm_layer, num_player, dim = obs["h0"].size()
         # h0 = obs["h0"].transpose(0, 1).flatten(1, 2).contiguous()
         # c0 = obs["c0"].transpose(0, 1).flatten(1, 2).contiguous()
