@@ -16,10 +16,10 @@
 #include "rlcc/clone_data_generator.h"
 #include "rlcc/hanabi_env.h"
 #include "rlcc/thread_loop.h"
-#include "rlcc/actor.h"
-#include "rlcc/r2d2_actor.h"
-#include "rlcc/rulebot_actor.h"
-#include "rlcc/rulebot_2_actor.h"
+#include "rlcc/actors/actor.h"
+#include "rlcc/actors/r2d2_actor.h"
+#include "rlcc/actors/rulebot_actor.h"
+#include "rlcc/actors/rulebot_2_actor.h"
 
 namespace py = pybind11;
 using namespace hanabi_learning_env;

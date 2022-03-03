@@ -15,10 +15,10 @@ pybind11_add_module(
   hanalearn
   ${CMAKE_CURRENT_SOURCE_DIR}/rlcc/utils.cc
   ${CMAKE_CURRENT_SOURCE_DIR}/rlcc/clone_data_generator.cc
-  ${CMAKE_CURRENT_SOURCE_DIR}/rlcc/actor.cc
-  ${CMAKE_CURRENT_SOURCE_DIR}/rlcc/r2d2_actor.cc
-  ${CMAKE_CURRENT_SOURCE_DIR}/rlcc/rulebot_actor.cc
-  ${CMAKE_CURRENT_SOURCE_DIR}/rlcc/rulebot_2_actor.cc
+  ${CMAKE_CURRENT_SOURCE_DIR}/rlcc/actors/actor.cc
+  ${CMAKE_CURRENT_SOURCE_DIR}/rlcc/actors/r2d2_actor.cc
+  ${CMAKE_CURRENT_SOURCE_DIR}/rlcc/actors/rulebot_actor.cc
+  ${CMAKE_CURRENT_SOURCE_DIR}/rlcc/actors/rulebot_2_actor.cc
   ${CMAKE_CURRENT_SOURCE_DIR}/rlcc/pybind.cc
 )
 target_link_libraries(hanalearn PUBLIC hanabi)

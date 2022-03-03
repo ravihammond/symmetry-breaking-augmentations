@@ -10,7 +10,7 @@
 #include <iostream>
 
 #include "rela/thread_loop.h"
-#include "rlcc/actor.h"
+#include "rlcc/actors/actor.h"
 
 class HanabiThreadLoop : public rela::ThreadLoop {
     public:
@@ -27,8 +27,8 @@ class HanabiThreadLoop : public rela::ThreadLoop {
 
         virtual void mainLoop() override {
             while (!terminated()) {
-                printf("==========================================\n");
-                printf("Next Action\n");
+                //printf("==========================================\n");
+                //printf("Next Action\n");
                 // go over each envs in sequential order
                 // call in seperate for-loops to maximize parallization
                 for (size_t i = 0; i < envs_.size(); ++i) {

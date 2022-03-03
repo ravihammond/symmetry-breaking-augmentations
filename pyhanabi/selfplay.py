@@ -22,6 +22,8 @@ import rela
 import r2d2
 import utils
 
+from convention_belief import ConventionBelief
+
 
 def parse_args():
     parser = argparse.ArgumentParser(description="train dqn on hanabi")
@@ -205,15 +207,22 @@ if __name__ == "__main__":
         belief_config = utils.get_train_config(args.belief_model)
         belief_model = []
         for device in belief_devices:
-            belief_model.append(
-                ARBeliefModel.load(
+            if belief_config is None:
+                if args.belief_model == "ConventionBelief":
+                    beliel_model_object = ConventionBelief(
+                        device,
+                        5,
+                        args.num_fict_sample
+                    )
+            else:
+                beliel_model_object = ARBeliefModel.load(
                     args.belief_model,
                     device,
                     5,
                     args.num_fict_sample,
                     belief_config["fc_only"],
                 )
-            )
+            belief_model.append(beliel_model_object)
 
     act_group = ActGroup(
         args.act_device,

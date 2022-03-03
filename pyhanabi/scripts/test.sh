@@ -1,4 +1,10 @@
 #!/bin/bash
+
+
+
+
+
+
 python selfplay.py \
        --save_dir exps/experimental1 \
        --num_thread 1 \
@@ -28,6 +34,7 @@ python selfplay.py \
        --off_belief 1 \
        --num_fict_sample 10 \
        --belief_device cuda:1 \
-       --belief_model exps/belief_obl0/model0.pthw \
        --load_model None \
        --net publ-lstm \
+       --belief_model ConventionBelief \
+       #--belief_model exps/belief_obl0/model0.pthw \

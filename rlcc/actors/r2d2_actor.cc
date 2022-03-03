@@ -6,7 +6,7 @@
 #include <stdio.h>
 #include <iostream>
 
-#include "rlcc/r2d2_actor.h"
+#include "rlcc/actors/r2d2_actor.h"
 #include "rlcc/utils.h"
 
 using namespace std;
@@ -120,23 +120,11 @@ std::tuple<std::vector<hle::HanabiCardValue>, bool> filterSample(
             return {cards, true};
         }
     }
+    printf("legal not found\n");
+    for (auto &cardval: hand.CardValues())
+        std::cout << cardval.ToString() << std::endl;
     return {hand.CardValues(), false};
 }
-
-//std::tuple<bool, bool> R2D2Actor::analyzeCardBelief(const std::vector<float>& b) {
-    //assert(b.size() == 25);
-    //std::set<int> colors;
-    //std::set<int> ranks;
-    //for (int c = 0; c < 5; ++c) {
-        //for (int r = 0; r < 5; ++r) {
-            //if (b[c * 5 + r] > 0) {
-                //colors.insert(c);
-                //ranks.insert(r);
-            //}
-        //}
-    //}
-    //return {colors.size() == 1, ranks.size() == 1};
-//}
 
 void R2D2Actor::reset(const HanabiEnv& env) {
     hidden_ = getH0(batchsize_, runner_);
@@ -276,8 +264,6 @@ void R2D2Actor::observeBeforeAct(const HanabiEnv& env) {
 }
 
 void R2D2Actor::act(HanabiEnv& env, const int curPlayer) {
-        //if (curPlayer == playerIdx_) {
-        //}
     torch::NoGradGuard ng;
 
     auto& state = env.getHleState();
@@ -307,8 +293,8 @@ void R2D2Actor::act(HanabiEnv& env, const int curPlayer) {
 
     if (offBelief_) {
         const auto& hand = fictState_->Hands()[playerIdx_];
-        printf("Fictitious Hand before\n");
-        printf("%s\n", hand.ToString().c_str());
+        //printf("Fictitious Hand before\n");
+        //printf("%s\n", hand.ToString().c_str());
         bool success = true;
         if (beliefRunner_ != nullptr) {
             auto sample = beliefReply.at("sample");
@@ -328,8 +314,8 @@ void R2D2Actor::act(HanabiEnv& env, const int curPlayer) {
         }
         validFict_ = success;
         ++totalFict_;
-        printf("Fictitious Hand after\n");
-        printf("%s\n", hand.ToString().c_str());
+        //printf("Fictitious Hand after\n");
+        //printf("%s\n", hand.ToString().c_str());
     }
 
     if (!vdn_ && curPlayer != playerIdx_) {
