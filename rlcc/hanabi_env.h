@@ -37,6 +37,9 @@ class HanabiEnv {
     }
   }
 
+
+  //HanabiEnv(const HanabiEnv& state) = default;
+
   std::tuple<int, int, int> featureSize(bool sad) const {
     auto encoder = hle::CanonicalObservationEncoder(&game_);
     int size = encoder.Shape()[0];

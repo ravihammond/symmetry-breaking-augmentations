@@ -7,7 +7,7 @@ public:
     Actor(int playerIdx) : playerIdx_(playerIdx) {}
 
     virtual void reset(const HanabiEnv& env) { (void)env; }
-    virtual void observeBeforeAct(const HanabiEnv& env) { (void)env; }
+    virtual void observeBeforeAct(HanabiEnv& env) { (void)env; }
     virtual void act(HanabiEnv& env, const int curPlayer) { 
         (void)env; (void)curPlayer;}
     virtual void fictAct(const HanabiEnv& env) { (void)env; }

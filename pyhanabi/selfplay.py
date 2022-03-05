@@ -96,6 +96,7 @@ def parse_args():
     parser.add_argument("--act_eps_alpha", type=float, default=7)
     parser.add_argument("--act_device", type=str, default="cuda:1")
     parser.add_argument("--actor_sync_freq", type=int, default=10)
+    parser.add_argument("--actor_type", type=str, default="r2d2")
 
     args = parser.parse_args()
     if args.off_belief == 1:
@@ -244,6 +245,7 @@ if __name__ == "__main__":
         args.gamma,
         args.off_belief,
         belief_model,
+        args.actor_type,
     )
 
     context, threads = create_threads(

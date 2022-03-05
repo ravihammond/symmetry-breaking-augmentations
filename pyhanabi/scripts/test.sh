@@ -31,5 +31,5 @@ python selfplay.py \
        --belief_device cuda:1 \
        --load_model None \
        --net publ-lstm \
-       --belief_model ConventionBelief \
-       --actor r2d2\
+       --belief_model exps/belief_obl0/model0.pthw \
+       --actor_type r2d2_convention\

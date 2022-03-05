@@ -37,6 +37,7 @@ class ActGroup:
         gamma,
         off_belief,
         belief_model,
+        actor_type,
     ):
         self.devices = devices.split(",")
 
@@ -61,12 +62,20 @@ class ActGroup:
                     rela.BatchRunner(bm, bm.device, 5000, ["sample"])
                 )
 
+
+        Actor = None
+        if actor_type == "r2d2":
+            Actor = hanalearn.R2D2Actor;
+        if actor_type == "r2d2_convention":
+            Actor = hanalearn.R2D2ConventionActor;
+        assert Actor is not None
+
         self.actors = []
         if method == "vdn":
             for i in range(num_thread):
                 thread_actors = []
                 for j in range(num_game_per_thread):
-                    actor = hanalearn.R2D2Actor(
+                    actor = Actor(
                         self.model_runners[i % self.num_runners],
                         seed,
                         num_player,
@@ -92,7 +101,7 @@ class ActGroup:
                 for j in range(num_game_per_thread):
                     game_actors = []
                     for k in range(num_player):
-                        actor = hanalearn.R2D2Actor(
+                        actor = Actor(
                             self.model_runners[i % self.num_runners],
                             seed,
                             num_player,

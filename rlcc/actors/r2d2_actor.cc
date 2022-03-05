@@ -82,22 +82,17 @@ std::tuple<std::vector<hle::HanabiCardValue>, bool> filterSample(
         const std::vector<int>& invColorPermute,
         const hle::HanabiGame& game,
         const hle::HanabiHand& hand) {
-    printf("samples\n");
-    std::cout << samples << std::endl;
+    //std::cout << samples << std::endl;
     auto sampleAcc = samples.accessor<int64_t, 2>();
     int numSample = sampleAcc.size(0);
     int handSize = hand.Cards().size();
 
-    printf("numSample: %d\n", numSample);
-
     for (int i = 0; i < numSample; ++i) {
         auto cardRemain = privCardCount;
         std::vector<hle::HanabiCardValue> cards;
-        printf("trying hand: ");
         for (int j = 0; j < handSize; ++j) {
             // sampling & v0 belief is done in the color shuffled space
             int idx = sampleAcc[i][j];
-            printf("%d ", idx);
             auto card = indexToCard(idx, game.NumRanks());
             // this sample violate card count
             if (cardRemain[idx] == 0) {
@@ -112,17 +107,11 @@ std::tuple<std::vector<hle::HanabiCardValue>, bool> filterSample(
                 cards.push_back(card);
             }
         }
-        printf("\n");
-        if ((int)cards.size() == handSize && hand.CanSetCards(cards)) {
-            printf("legal hand found\n");
-            for (auto &cardval: cards)
-                std::cout << cardval.ToString() << std::endl;
+        if ((int)cards.size() == handSize &
+                & hand.CanSetCards(cards)) {
             return {cards, true};
         }
     }
-    printf("legal not found\n");
-    for (auto &cardval: hand.CardValues())
-        std::cout << cardval.ToString() << std::endl;
     return {hand.CardValues(), false};
 }
 
@@ -174,7 +163,7 @@ void R2D2Actor::reset(const HanabiEnv& env) {
     }
 }
 
-void R2D2Actor::observeBeforeAct(const HanabiEnv& env) {
+void R2D2Actor::observeBeforeAct(HanabiEnv& env) {
     torch::NoGradGuard ng;
     prevHidden_ = hidden_;
 
@@ -238,6 +227,15 @@ void R2D2Actor::observeBeforeAct(const HanabiEnv& env) {
 
     // forward belief model
     assert(!vdn_);
+
+    auto state_constrained = make_unique<hle::HanabiState>(state);
+    changeStateForBeliefSampler(*state_constrained);
+
+    printf("\n* Original State *\n");
+    cout << state.ToString() << endl;
+    printf("\n* Copied State *\n");
+    cout << state_constrained->ToString() << endl;
+
     auto [beliefInput, privCardCount, v0] = beliefModelObserve(
             state,
             playerIdx_,
@@ -248,6 +246,7 @@ void R2D2Actor::observeBeforeAct(const HanabiEnv& env) {
     privCardCount_ = privCardCount;
 
     if (beliefRunner_ == nullptr) {
+        printf("BELIEF RUNNER NOT CALLED ====================\n");
         sampledCards_ = sampleCards(
                 v0,
                 privCardCount_,
@@ -259,7 +258,7 @@ void R2D2Actor::observeBeforeAct(const HanabiEnv& env) {
         addHid(beliefInput, beliefHidden_);
         futBelief_ = beliefRunner_->call("sample", beliefInput);
     }
-
+    
     fictState_ = std::make_unique<hle::HanabiState>(state);
 }
 

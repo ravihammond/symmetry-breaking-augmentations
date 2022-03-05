@@ -86,7 +86,7 @@ public:
 
     virtual void reset(const HanabiEnv& env);
 
-    virtual void observeBeforeAct(const HanabiEnv& env);
+    virtual void observeBeforeAct(HanabiEnv& env);
 
     virtual void act(HanabiEnv& env, const int curPlayer);
 
@@ -117,6 +117,8 @@ protected:
         auto h0 = rela::tensor_dict::fromIValue(output, torch::kCPU, true);
         return h0;
     }
+
+    virtual void changeStateForBeliefSampler(hle::HanabiState& state) {(void)state;}
 
     std::shared_ptr<rela::BatchRunner> runner_;
     std::shared_ptr<rela::BatchRunner> classifier_;
