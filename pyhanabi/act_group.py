@@ -38,8 +38,24 @@ class ActGroup:
         off_belief,
         belief_model,
         actor_type,
+        convention,
     ):
         self.devices = devices.split(",")
+        self.method = method
+        self.seed = seed
+        self.num_thread = num_thread
+        self.num_player = num_player
+        self.num_game_per_thread = num_game_per_thread
+        self.explore_eps = explore_eps
+        self.boltzmann_t = boltzmann_t
+        self.sad = sad
+        self.shuffle_color = shuffle_color
+        self.hide_action = hide_action
+        self.trinary = trinary
+        self.replay_buffer = replay_buffer
+        self.multi_step = multi_step
+        self.max_len = max_len
+        self.gamma = gamma
 
         self.model_runners = []
         for dev in self.devices:
@@ -61,62 +77,64 @@ class ActGroup:
                 self.belief_runner.append(
                     rela.BatchRunner(bm, bm.device, 5000, ["sample"])
                 )
-
-
-        Actor = None
-        if actor_type == "r2d2":
-            Actor = hanalearn.R2D2Actor;
-        if actor_type == "r2d2_convention":
-            Actor = hanalearn.R2D2ConventionActor;
-        assert Actor is not None
+        self.convention = convention
 
         self.actors = []
-        if method == "vdn":
-            for i in range(num_thread):
+        if actor_type == "r2d2":
+            self.actors = self.create_r2d2_actors()
+        elif actor_type == "r2d2_convention":
+            self.actors = self.create_r2d2_convention_actors()
+        assert len(self.actors) != 0
+        print("ActGroup created")
+
+    def create_r2d2_actors(self):
+        actors = []
+        if self.method == "vdn":
+            for i in range(self.num_thread):
                 thread_actors = []
-                for j in range(num_game_per_thread):
-                    actor = Actor(
+                for j in range(self.num_game_per_thread):
+                    actor = hanalearn.R2D2Actor(
                         self.model_runners[i % self.num_runners],
-                        seed,
-                        num_player,
+                        self.seed,
+                        self.num_player,
                         0,
-                        explore_eps,
-                        boltzmann_t,
+                        self.explore_eps,
+                        self.boltzmann_t,
                         True,
-                        sad,
-                        shuffle_color,
-                        hide_action,
-                        trinary,
-                        replay_buffer,
-                        multi_step,
-                        max_len,
-                        gamma,
+                        self.sad,
+                        self.shuffle_color,
+                        self.hide_action,
+                        self.trinary,
+                        self.replay_buffer,
+                        self.multi_step,
+                        self.max_len,
+                        self.gamma,
                     )
-                    seed += 1
+                    self.seed += 1
                     thread_actors.append([actor])
-                self.actors.append(thread_actors)
-        elif method == "iql":
-            for i in range(num_thread):
+                actors.append(thread_actors)
+        elif self.method == "iql":
+            for i in range(self.num_thread):
                 thread_actors = []
-                for j in range(num_game_per_thread):
+                for j in range(self.num_game_per_thread):
                     game_actors = []
-                    for k in range(num_player):
-                        actor = Actor(
+                    for k in range(self.num_player):
+                        actor = hanalearn.R2D2Actor(
                             self.model_runners[i % self.num_runners],
-                            seed,
-                            num_player,
+                            self.seed,
+                            self.num_player,
                             k,
-                            explore_eps,
-                            boltzmann_t,
+                            self.explore_eps,
+                            self.boltzmann_t,
                             False,
-                            sad,
-                            shuffle_color,
-                            hide_action,
-                            trinary,
-                            replay_buffer,
-                            multi_step,
-                            max_len,
-                            gamma,
+                            self.sad,
+                            self.shuffle_color,
+                            self.hide_action,
+                            self.trinary,
+                            self.replay_buffer,
+                            self.multi_step,
+                            self.max_len,
+                            self.gamma,
                         )
                         if self.off_belief:
                             if self.belief_runner is None:
@@ -125,15 +143,57 @@ class ActGroup:
                                 actor.set_belief_runner(
                                     self.belief_runner[i % len(self.belief_runner)]
                                 )
-                        seed += 1
+                        self.seed += 1
                         game_actors.append(actor)
-                    for k in range(num_player):
+                    for k in range(self.num_player):
                         partners = game_actors[:]
                         partners[k] = None
                         game_actors[k].set_partners(partners)
                     thread_actors.append(game_actors)
-                self.actors.append(thread_actors)
-        print("ActGroup created")
+                actors.append(thread_actors)
+        return actors
+
+    def create_r2d2_convention_actors(self):
+        actors = []
+        for i in range(self.num_thread):
+            thread_actors = []
+            for j in range(self.num_game_per_thread):
+                game_actors = []
+                for k in range(self.num_player):
+                    actor = hanalearn.R2D2ConventionActor(
+                        self.model_runners[i % self.num_runners],
+                        self.seed,
+                        self.num_player,
+                        k,
+                        self.explore_eps,
+                        self.boltzmann_t,
+                        False,
+                        self.sad,
+                        self.shuffle_color,
+                        self.hide_action,
+                        self.trinary,
+                        self.replay_buffer,
+                        self.multi_step,
+                        self.max_len,
+                        self.gamma,
+                        self.convention,
+                    )
+                    if self.off_belief:
+                        if self.belief_runner is None:
+                            actor.set_belief_runner(None)
+                        else:
+                            actor.set_belief_runner(
+                                self.belief_runner[i % len(self.belief_runner)]
+                            )
+                    self.seed += 1
+                    game_actors.append(actor)
+                for k in range(self.num_player):
+                    partners = game_actors[:]
+                    partners[k] = None
+                    game_actors[k].set_partners(partners)
+                thread_actors.append(game_actors)
+            actors.append(thread_actors)
+        return actors
 
     def start(self):
         for runner in self.model_runners:

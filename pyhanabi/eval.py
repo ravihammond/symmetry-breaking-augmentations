@@ -15,6 +15,11 @@ import rela
 import r2d2
 import utils
 
+def load_convention(convention_path):
+    if convention_path == "None":
+        return []
+    convention_file = open(convention_path)
+    return json.load(convention_file)
 
 def evaluate(
     agents,
@@ -32,6 +37,8 @@ def evaluate(
     """
     evaluate agents as long as they have a "act" function
     """
+    convention = load_convention( \
+            "/app/pyhanabi/conventions/red_hinted_play_oldest.json")
 
     if num_game < num_thread:
         num_thread = num_game
@@ -69,9 +76,22 @@ def evaluate(
                 elif agents[i] == "rulebot2":
                     actor = hanalearn.Rulebot2Actor(i)
                 else:
+                    # if isinstance(agents[i], r2d2.R2D2Agent):
+                        # print("is r2d2 agent")
+                    # if isinstance(agents[i], r2d2.R2D2Agent):
+                        # print("is r2d2 agent")
                     actor = hanalearn.R2D2Actor(
                         runners[i], num_player, i, False, sad[i], hide_action[i]
                     )
+                    # actor = hanalearn.R2D2ConventionActor(
+                        # runners[i], 
+                        # num_player, 
+                        # i, 
+                        # False, 
+                        # sad[i], 
+                        # hide_action[i],
+                        # convention
+                    # )
                 actors.append(actor)
                 all_actors.append(actor)
             thread_actors.append(actors)

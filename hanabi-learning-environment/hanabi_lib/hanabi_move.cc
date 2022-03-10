@@ -39,6 +39,10 @@ bool HanabiMove::operator==(const HanabiMove& other_move) const {
   }
 }
 
+bool HanabiMove::operator!=(const HanabiMove& other_move) const {
+    return !operator==(other_move);
+}
+
 std::string HanabiMove::ToString() const {
   switch (MoveType()) {
     case kPlay:

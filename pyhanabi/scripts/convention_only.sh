@@ -1,9 +1,9 @@
 #!/bin/bash
 
 python selfplay.py \
-       --save_dir exps/test \
-       --num_thread 1 \
-       --num_game_per_thread 1 \
+       --save_dir exps/convention_only \
+       --num_thread 24 \
+       --num_game_per_thread 80 \
        --sad 0 \
        --act_base_eps 0.1 \
        --act_eps_alpha 7 \
@@ -12,11 +12,11 @@ python selfplay.py \
        --grad_clip 5 \
        --gamma 0.999 \
        --seed 2254257 \
-       --batchsize 1 \
-       --burn_in_frames 1 \
+       --batchsize 128 \
+       --burn_in_frames 10000 \
        --replay_buffer_size 100000 \
-       --epoch_len 1 \
-       --num_epoch 1 \
+       --epoch_len 1000 \
+       --num_epoch 1500 \
        --num_player 2 \
        --rnn_hid_dim 512 \
        --multi_step 1 \
@@ -32,5 +32,5 @@ python selfplay.py \
        --belief_model exps/belief_obl0/model0.pthw \
        --load_model None \
        --net publ-lstm \
-       --actor_type r2d2_convention \
+       --actor_type r2d2_convention\
        --convention conventions/red_hinted_play_oldest.json \

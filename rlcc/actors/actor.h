@@ -17,6 +17,10 @@ public:
         return {noneKnown_, colorKnown_, rankKnown_, bothKnown_};
     }
 
+    //virtual std::unordered_map<std::string, float> getStats() { 
+        //return stats_;
+    //}
+
 protected:
     std::tuple<bool, bool> analyzeCardBelief(const std::vector<float>& b);
     void incrementPlayedCardKnowledgeCount(
@@ -24,8 +28,10 @@ protected:
 
     const int playerIdx_;
     std::vector<std::vector<float>> perCardPrivV0_;
+    std::unordered_map<std::string,float> stats_;
     int noneKnown_ = 0;
     int colorKnown_ = 0;
     int rankKnown_ = 0;
     int bothKnown_ = 0;
 };
+

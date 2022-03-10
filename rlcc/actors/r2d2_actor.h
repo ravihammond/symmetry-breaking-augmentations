@@ -78,21 +78,18 @@ public:
           , r2d2Buffer_(nullptr) {
           }
 
+    virtual void addHid(rela::TensorDict& to, rela::TensorDict& hid);
+    void reset(const HanabiEnv& env) override;
+    void observeBeforeAct(HanabiEnv& env) override;
+    void act(HanabiEnv& env, const int curPlayer) override;
+    void fictAct(const HanabiEnv& env) override;
+    void observeAfterAct(const HanabiEnv& env) override;
+
     void setPartners(std::vector<std::shared_ptr<R2D2Actor>> partners) {
         partners_ = std::move(partners);
         assert((int)partners_.size() == numPlayer_);
         assert(partners_[playerIdx_] == nullptr);
     }
-
-    virtual void reset(const HanabiEnv& env);
-
-    virtual void observeBeforeAct(HanabiEnv& env);
-
-    virtual void act(HanabiEnv& env, const int curPlayer);
-
-    virtual void fictAct(const HanabiEnv& env);
-
-    virtual void observeAfterAct(const HanabiEnv& env);
 
     void setBeliefRunner(std::shared_ptr<rela::BatchRunner>& beliefModel) {
         assert(!vdn_ && batchsize_ == 1);
@@ -118,7 +115,12 @@ protected:
         return h0;
     }
 
-    virtual void changeStateForBeliefSampler(hle::HanabiState& state) {(void)state;}
+    virtual hle::HanabiMove getFicticiousTeammateMove(
+        const HanabiEnv& env, hle::HanabiState& fictState);
+
+    virtual void updateStats(const HanabiEnv& env, hle::HanabiMove move) {
+        (void)env; (void)move;
+    }
 
     std::shared_ptr<rela::BatchRunner> runner_;
     std::shared_ptr<rela::BatchRunner> classifier_;

@@ -1,3 +1,5 @@
+#include <stdio.h>
+
 #include "actor.h"
 
 std::tuple<bool, bool> Actor::analyzeCardBelief(const std::vector<float>& b) {
@@ -40,3 +42,4 @@ void Actor::incrementPlayedCardKnowledgeCount(const HanabiEnv& env, hle::HanabiM
         }
     }
 }
+

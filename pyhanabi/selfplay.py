@@ -9,6 +9,7 @@ import os
 import sys
 import argparse
 import pprint
+import json
 
 import numpy as np
 import torch
@@ -96,7 +97,10 @@ def parse_args():
     parser.add_argument("--act_eps_alpha", type=float, default=7)
     parser.add_argument("--act_device", type=str, default="cuda:1")
     parser.add_argument("--actor_sync_freq", type=int, default=10)
+
+    # Conventions
     parser.add_argument("--actor_type", type=str, default="r2d2")
+    parser.add_argument("--convention", type=str, default="None")
 
     args = parser.parse_args()
     if args.off_belief == 1:
@@ -107,7 +111,12 @@ def parse_args():
     assert args.method in ["vdn", "iql"]
     return args
 
-
+def load_convention(convention_path):
+    if convention_path == "None":
+        return []
+    convention_file = open(convention_path)
+    return json.load(convention_file)
+    
 if __name__ == "__main__":
     torch.backends.cudnn.benchmark = True
     args = parse_args()
@@ -225,6 +234,8 @@ if __name__ == "__main__":
                 )
             belief_model.append(beliel_model_object)
 
+    convention = load_convention(args.convention)
+
     act_group = ActGroup(
         args.act_device,
         agent,
@@ -246,6 +257,7 @@ if __name__ == "__main__":
         args.off_belief,
         belief_model,
         args.actor_type,
+        convention,
     )
 
     context, threads = create_threads(
@@ -369,3 +381,4 @@ if __name__ == "__main__":
                 % (epoch, 100 * np.mean(success_fict))
             )
         print("==========")
+

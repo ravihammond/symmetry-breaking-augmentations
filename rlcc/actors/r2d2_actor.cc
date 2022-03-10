@@ -9,9 +9,11 @@
 #include "rlcc/actors/r2d2_actor.h"
 #include "rlcc/utils.h"
 
+#define PR false
+
 using namespace std;
 
-void addHid(rela::TensorDict& to, rela::TensorDict& hid) {
+void R2D2Actor::addHid(rela::TensorDict& to, rela::TensorDict& hid) {
     for (auto& kv : hid) {
         // hid: [num_layer, batch/num_player, dim]
         // -> batched hid: [batchsize, num_layer, batch/num_player, dim]
@@ -107,8 +109,7 @@ std::tuple<std::vector<hle::HanabiCardValue>, bool> filterSample(
                 cards.push_back(card);
             }
         }
-        if ((int)cards.size() == handSize &
-                & hand.CanSetCards(cards)) {
+        if ((int)cards.size() == handSize && hand.CanSetCards(cards)) {
             return {cards, true};
         }
     }
@@ -228,13 +229,13 @@ void R2D2Actor::observeBeforeAct(HanabiEnv& env) {
     // forward belief model
     assert(!vdn_);
 
-    auto state_constrained = make_unique<hle::HanabiState>(state);
-    changeStateForBeliefSampler(*state_constrained);
+    //auto state_constrained = make_unique<hle::HanabiState>(state);
+    //changeStateForBeliefSampler(*state_constrained);
 
-    printf("\n* Original State *\n");
-    cout << state.ToString() << endl;
-    printf("\n* Copied State *\n");
-    cout << state_constrained->ToString() << endl;
+    //printf("\n* Original State *\n");
+    //cout << state.ToString() << endl;
+    //printf("\n* Copied State *\n");
+    //cout << state_constrained->ToString() << endl;
 
     auto [beliefInput, privCardCount, v0] = beliefModelObserve(
             state,
@@ -246,7 +247,6 @@ void R2D2Actor::observeBeforeAct(HanabiEnv& env) {
     privCardCount_ = privCardCount;
 
     if (beliefRunner_ == nullptr) {
-        printf("BELIEF RUNNER NOT CALLED ====================\n");
         sampledCards_ = sampleCards(
                 v0,
                 privCardCount_,
@@ -348,59 +348,15 @@ void R2D2Actor::act(HanabiEnv& env, const int curPlayer) {
 
     auto move = state.ParentGame()->GetMove(action);
 
-    //hle::HanabiObservation obs = env.getObsShowCards();
-    //auto& all_hands = obs.Hands();
-    //auto partner_hand = all_hands[(playerIdx_ + 1) % 2];
-    //auto oldest_card = partner_hand.Cards()[0];
-
-    //if (state.CardPlayableOnFireworks(oldest_card)) {
-        //// If last action was a colour hint, play oldest card
-        //auto reveal_red_move = hle::HanabiMove(
-            //hle::HanabiMove::kRevealColor,
-            //-1, // Card index.
-            //1, // Hint target offset (which player).
-            //0, // Hint card colour.
-            //-1 // Hint card rank.
-        //);
-
-        //if (state.MoveIsLegal(reveal_red_move)) {
-            //move = reveal_red_move;
-        //}
-
-    //} else if (move.MoveType() == hle::HanabiMove::kRevealColor &&
-            //move.Color() == 0) {
-        //int card_rank = 1;
-
-        //do {
-            //move = hle::HanabiMove(
-                //hle::HanabiMove::kRevealRank,
-                //-1, // Card index.
-                //1, // Hint target offset (which player).
-                //-1, // Hint card colour.
-                //card_rank // Hint card rank.
-            //);
-            //card_rank++;
-        //} while (not state.MoveIsLegal(move));
-
-        //if (not state.MoveIsLegal(move)) {
-            //move = hle::HanabiMove(
-            //hle::HanabiMove::kDiscard,
-            //0, // Card index.
-            //-1, // Hint target offset (which player).
-            //-1, // Hint card colour.
-            //-1 // Hint card rank.
-            //);
-        //}
-    //}
-
     if (shuffleColor_ && move.MoveType() == hle::HanabiMove::Type::kRevealColor) {
         int realColor = (*invColorPermute)[move.Color()];
         move.SetColor(realColor);
     }
 
     incrementPlayedCardKnowledgeCount(env, move);
+    updateStats(env, move);
 
-    //std::cout << "Playing move: " << move.ToString() << std::endl;
+    if(PR)printf("Playing move: %s\n", move.ToString().c_str());
     env.step(move);
 }
 
@@ -410,12 +366,11 @@ void R2D2Actor::fictAct(const HanabiEnv& env) {
     }
     torch::NoGradGuard ng;
 
+
     hle::HanabiMove move = env.lastMove();
     if (env.lastActivePlayer() != playerIdx_) {
         // it was not our turn, we have computed our partner's fict move
-        auto fictReply = fictReply_.get();
-        auto action = fictReply.at("a").item<int64_t>();
-        move = env.getMove(action);
+        move = getFicticiousTeammateMove(env, *fictState_);
     }
     auto [fictR, fictTerm] = applyMove(*fictState_, move, false);
 
@@ -438,6 +393,14 @@ void R2D2Actor::fictAct(const HanabiEnv& env) {
         fictInput["temperature"] = torch::tensor(playerTemp_);
     }
     futTarget_ = runner_->call("compute_target", fictInput);
+}
+
+hle::HanabiMove R2D2Actor::getFicticiousTeammateMove(
+        const HanabiEnv& env, hle::HanabiState& fictState) {
+    (void)fictState;
+    auto fictReply = fictReply_.get();
+    auto action = fictReply.at("a").item<int64_t>();
+    return env.getMove(action);
 }
 
 void R2D2Actor::observeAfterAct(const HanabiEnv& env) {

@@ -42,6 +42,7 @@ class HanabiMove {
         rank_(rank) {}
   // Tests whether two moves are functionally equivalent.
   bool operator==(const HanabiMove& other_move) const;
+  bool operator!=(const HanabiMove& other_move) const;
   std::string ToString() const;
 
   Type MoveType() const { return move_type_; }
@@ -51,10 +52,11 @@ class HanabiMove {
   int8_t Color() const { return color_; }
   int8_t Rank() const { return rank_; }
 
-  void SetColor(int8_t color) {
-    // assert(color_ != -1 && color != -1);
-    color_ = color;
-  }
+  void SetMoveType(Type move_type) {move_type_ = move_type;}
+  void SetCardIndex(int8_t card_index) {card_index_ = card_index;}
+  void SetTargetOffset(int8_t target_offset) {target_offset_ = target_offset;}
+  void SetColor(int8_t color) {color_ = color;}
+  void SetRank(int8_t rank) {rank_ = rank;}
 
  private:
   Type move_type_ = kInvalid;
