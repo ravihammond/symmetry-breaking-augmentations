@@ -65,3 +65,12 @@ class TopkSaver:
         self.worse_perf = worse_perf
         self.worse_perf_idx = worse_perf_idx
         return True
+
+    def save_no_evalulation(self, model, state_dict, save_name):
+        model_name = "%s.pthm" % save_name
+        weight_name = "%s.pthw" % save_name
+        if model is not None:
+            model.save(os.path.join(self.save_dir, model_name))
+        if state_dict is not None:
+            torch.save(state_dict, os.path.join(self.save_dir, weight_name))
+

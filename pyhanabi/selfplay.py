@@ -98,9 +98,10 @@ def parse_args():
     parser.add_argument("--act_device", type=str, default="cuda:1")
     parser.add_argument("--actor_sync_freq", type=int, default=10)
 
-    # Conventions
     parser.add_argument("--actor_type", type=str, default="r2d2")
     parser.add_argument("--convention", type=str, default="None")
+    parser.add_argument("--no_evaluation", type=int, default=0)
+    parser.add_argument("--save_checkpoints", type=int, default=100)
 
     args = parser.parse_args()
     if args.off_belief == 1:
@@ -338,6 +339,15 @@ if __name__ == "__main__":
         stopwatch.summary()
         stat.summary(epoch)
 
+        if args.no_evaluation:
+            if epoch > 0 and epoch % args.save_checkpoints == 0:
+                save_name = "model_epoch%d" % epoch
+                saver.save_no_evalulation(
+                    None, agent.online_net.state_dict(), save_name
+                )
+            print("==========")
+            continue
+
         eval_seed = (9917 + epoch * 999999) % 7777777
         eval_agent.load_state_dict(agent.state_dict())
         score, perfect, *_ = evaluate(
@@ -351,7 +361,7 @@ if __name__ == "__main__":
         )
 
         force_save_name = None
-        if epoch > 0 and epoch % 100 == 0:
+        if epoch > 0 and epoch % args.save_checkpoints == 0:
             force_save_name = "model_epoch%d" % epoch
         model_saved = saver.save(
             None, agent.online_net.state_dict(), score, force_save_name=force_save_name

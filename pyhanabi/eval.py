@@ -9,17 +9,12 @@ import time
 import json
 import numpy as np
 import torch
+import sys
 
 from create import *
 import rela
-import r2d2
+import r2d2 
 import utils
-
-def load_convention(convention_path):
-    if convention_path == "None":
-        return []
-    convention_file = open(convention_path)
-    return json.load(convention_file)
 
 def evaluate(
     agents,
@@ -33,17 +28,17 @@ def evaluate(
     num_thread=10,
     max_len=80,
     device="cuda:0",
+    convention=[],
+    convention_sender=0,
+    override=[0, 0],
 ):
     """
     evaluate agents as long as they have a "act" function
     """
-    convention = load_convention( \
-            "/app/pyhanabi/conventions/red_hinted_play_oldest.json")
-
     if num_game < num_thread:
         num_thread = num_game
 
-    num_player = len(agents)
+    num_player = len(agents) 
     if not isinstance(hide_action, list):
         hide_action = [hide_action for _ in range(num_player)]
     if not isinstance(sad, list):
@@ -56,6 +51,11 @@ def evaluate(
         else None
         for agent in agents
     ]
+
+    # Which actor is the sender and responder of the convention
+    convention_role = [1, 0]
+    if convention_sender == 1:
+        convention_role = [0, 1]
 
     context = rela.Context()
     games = create_envs(num_game, seed, num_player, bomb, max_len)
@@ -72,25 +72,30 @@ def evaluate(
             actors = []
             for i in range(num_player):
                 if agents[i] == "rulebot":
-                    actor = hanalearn.RulebotActor(i)
+                    actor = hanalearn.RulebotActor(
+                        i, 
+                        convention, 
+                        convention_role[i], 
+                        override[i])
                 elif agents[i] == "rulebot2":
-                    actor = hanalearn.Rulebot2Actor(i)
+                    actor = hanalearn.Rulebot2Actor(
+                        i, 
+                        convention, 
+                        convention_role[i], 
+                        override[i])
                 else:
-                    # if isinstance(agents[i], r2d2.R2D2Agent):
-                        # print("is r2d2 agent")
-                    # if isinstance(agents[i], r2d2.R2D2Agent):
-                        # print("is r2d2 agent")
-                    actor = hanalearn.R2D2Actor(
-                        runners[i], num_player, i, False, sad[i], hide_action[i]
-                    )
-                    # actor = hanalearn.R2D2ConventionActor(
-                        # runners[i], 
-                        # num_player, 
-                        # i, 
-                        # False, 
-                        # sad[i], 
-                        # hide_action[i],
-                        # convention
+                    actor = hanalearn.R2D2ConventionActor(
+                        runners[i], 
+                        num_player, 
+                        i, 
+                        False, 
+                        sad[i], 
+                        hide_action[i],
+                        convention, 
+                        convention_role[i], 
+                        override[i])
+                    # actor = hanalearn.R2D2Actor(
+                        # runners[i], num_player, i, False, sad[i], hide_action[i]
                     # )
                 actors.append(actor)
                 all_actors.append(actor)
@@ -125,6 +130,9 @@ def evaluate_saved_model(
     overwrite=None,
     num_run=1,
     verbose=True,
+    convention="None",
+    convention_sender=0,
+    override=[0, 0],
 ):
     agents = []
     sad = []
@@ -135,14 +143,18 @@ def evaluate_saved_model(
     overwrite["device"] = "cuda:0"
     overwrite["boltzmann_act"] = False
 
+    # Load models from weight files
     for weight_file in weight_files:
-        try: 
-            state_dict = torch.load(weight_file)
-        except:
+        if "rulebot" in weight_file:
             agents.append(weight_file)
             sad.append(False)
             hide_action.append(False)
-            continue
+
+        try: 
+            state_dict = torch.load(weight_file)
+        except:
+            sys.exit(f"weight_file {weight_file} can't be loaded")
+
         if "fc_v.weight" in state_dict.keys():
             agent, cfg = utils.load_agent(weight_file, overwrite)
             agents.append(agent)
@@ -166,6 +178,9 @@ def evaluate_saved_model(
             0,  # eps
             sad,
             hide_action,
+            convention=load_convention(convention),
+            convention_sender=convention_sender,
+            override=override,
         )
         scores.extend(score)
         perfect += p
@@ -179,3 +194,9 @@ def evaluate_saved_model(
             "; perfect: %.2f%%" % (100 * perfect_rate),
         )
     return mean, sem, perfect_rate, scores, games
+
+def load_convention(convention_path):
+    if convention_path == "None":
+        return []
+    convention_file = open(convention_path)
+    return json.load(convention_file)

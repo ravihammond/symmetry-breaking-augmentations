@@ -1,7 +1,7 @@
 #!/bin/bash
 
 python selfplay.py \
-       --save_dir exps/convention_only \
+       --save_dir exps/oblb \
        --num_thread 24 \
        --num_game_per_thread 80 \
        --sad 0 \
@@ -16,7 +16,7 @@ python selfplay.py \
        --burn_in_frames 10000 \
        --replay_buffer_size 100000 \
        --epoch_len 1000 \
-       --num_epoch 1500 \
+       --num_epoch 1501 \
        --num_player 2 \
        --rnn_hid_dim 512 \
        --multi_step 1 \
@@ -33,4 +33,5 @@ python selfplay.py \
        --load_model None \
        --net publ-lstm \
        --actor_type r2d2_convention\
-       --convention conventions/red_hinted_play_oldest.json \
+       --convention conventions/hint_red_play_0.json \
+       --save_checkpoints 10 \

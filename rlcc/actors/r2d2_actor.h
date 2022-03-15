@@ -31,8 +31,11 @@ public:
             // if replay buffer is None, then all params below are not used
             int multiStep,
             int seqLen,
-            float gamma)
-        : Actor(playerIdx)
+            float gamma,
+            std::vector<std::vector<std::string>> convention,
+            bool conventionSender,
+            bool conventionOverride)
+        : Actor(playerIdx, convention, conventionSender, conventionOverride)
           , runner_(std::move(runner))
           , rng_(seed)
           , numPlayer_(numPlayer)
@@ -59,8 +62,11 @@ public:
             int playerIdx,
             bool vdn,
             bool sad,
-            bool hideAction)
-        : Actor(playerIdx)
+            bool hideAction,
+            std::vector<std::vector<std::string>> convention,
+            bool conventionSender,
+            bool conventionOverride)
+        : Actor(playerIdx, convention, conventionSender, conventionOverride)
           , runner_(std::move(runner))
           , rng_(1)  // not used in eval mode
           , numPlayer_(numPlayer)
@@ -117,10 +123,6 @@ protected:
 
     virtual hle::HanabiMove getFicticiousTeammateMove(
         const HanabiEnv& env, hle::HanabiState& fictState);
-
-    virtual void updateStats(const HanabiEnv& env, hle::HanabiMove move) {
-        (void)env; (void)move;
-    }
 
     std::shared_ptr<rela::BatchRunner> runner_;
     std::shared_ptr<rela::BatchRunner> classifier_;

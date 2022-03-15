@@ -79,15 +79,17 @@ class ActGroup:
                 )
         self.convention = convention
 
-        self.actors = []
+        Actor = None
         if actor_type == "r2d2":
-            self.actors = self.create_r2d2_actors()
+            Actor = hanalearn.R2D2Actor
         elif actor_type == "r2d2_convention":
-            self.actors = self.create_r2d2_convention_actors()
-        assert len(self.actors) != 0
+            Actor = hanalearn.R2D2ConventionActor
+        assert Actor is not None
+
+        self.create_r2d2_actors(hanalearn.R2D2ConventionActor)
         print("ActGroup created")
 
-    def create_r2d2_actors(self):
+    def create_r2d2_actors(self, Actor):
         actors = []
         if self.method == "vdn":
             for i in range(self.num_thread):
@@ -109,6 +111,9 @@ class ActGroup:
                         self.multi_step,
                         self.max_len,
                         self.gamma,
+                        self.convention,
+                        0,
+                        0,
                     )
                     self.seed += 1
                     thread_actors.append([actor])
@@ -135,6 +140,9 @@ class ActGroup:
                             self.multi_step,
                             self.max_len,
                             self.gamma,
+                            self.convention,
+                            0,
+                            0,
                         )
                         if self.off_belief:
                             if self.belief_runner is None:
@@ -151,49 +159,7 @@ class ActGroup:
                         game_actors[k].set_partners(partners)
                     thread_actors.append(game_actors)
                 actors.append(thread_actors)
-        return actors
-
-    def create_r2d2_convention_actors(self):
-        actors = []
-        for i in range(self.num_thread):
-            thread_actors = []
-            for j in range(self.num_game_per_thread):
-                game_actors = []
-                for k in range(self.num_player):
-                    actor = hanalearn.R2D2ConventionActor(
-                        self.model_runners[i % self.num_runners],
-                        self.seed,
-                        self.num_player,
-                        k,
-                        self.explore_eps,
-                        self.boltzmann_t,
-                        False,
-                        self.sad,
-                        self.shuffle_color,
-                        self.hide_action,
-                        self.trinary,
-                        self.replay_buffer,
-                        self.multi_step,
-                        self.max_len,
-                        self.gamma,
-                        self.convention,
-                    )
-                    if self.off_belief:
-                        if self.belief_runner is None:
-                            actor.set_belief_runner(None)
-                        else:
-                            actor.set_belief_runner(
-                                self.belief_runner[i % len(self.belief_runner)]
-                            )
-                    self.seed += 1
-                    game_actors.append(actor)
-                for k in range(self.num_player):
-                    partners = game_actors[:]
-                    partners[k] = None
-                    game_actors[k].set_partners(partners)
-                thread_actors.append(game_actors)
-            actors.append(thread_actors)
-        return actors
+        self.actors = actors
 
     def start(self):
         for runner in self.model_runners:

@@ -68,9 +68,13 @@ PYBIND11_MODULE(hanalearn, m) {
         .def("terminate", &CloneDataGenerator::terminate);
 
     py::class_<Actor, std::shared_ptr<Actor>>(m, "Actor")
-        .def(py::init<int>())
-        .def("get_played_card_info", &Actor::getPlayedCardInfo);
-        //.def("get_stats", &Actor::getStats);
+        .def(py::init<
+                int, //playerIdx
+                std::vector<std::vector<std::string>>, // convention
+                bool, // conventionSender
+                bool>()) // conventionOverride
+        .def("get_played_card_info", &Actor::getPlayedCardInfo)
+        .def("get_stats", &Actor::getStats);
 
     py::class_<R2D2Actor, Actor, std::shared_ptr<R2D2Actor>>(m, "R2D2Actor")
         .def(py::init<
@@ -89,14 +93,20 @@ PYBIND11_MODULE(hanalearn, m) {
                 // if replay buffer is None, then all params below are not used
                 int, // multiStep,
                 int, // seqLen,
-                float>())  // gamma
+                float,  // gamma
+                std::vector<std::vector<std::string>>, // convention
+                bool, // conventionSender
+                bool>()) // conventionOverride
         .def(py::init<
                 std::shared_ptr<rela::BatchRunner>,
                 int,  // numPlayer
                 int,  // playerIdx
                 bool,  // vdn
                 bool,  // sad
-                bool>())  // hideAction
+                bool,  // hideAction
+                std::vector<std::vector<std::string>>, // convention
+                bool, // conventionSender
+                bool>()) // conventionOverride
         .def("set_partners", &R2D2Actor::setPartners)
         .def("set_belief_runner", &R2D2Actor::setBeliefRunner)
         .def("get_success_fict_rate", &R2D2Actor::getSuccessFictRate);
@@ -119,24 +129,36 @@ PYBIND11_MODULE(hanalearn, m) {
                 // if replay buffer is None, then all params below are not used
                 int, // multiStep,
                 int, // seqLen,
-                float, //gamma
-                std::vector<std::vector<std::string>>>()) // conventions
+                float,  // gamma
+                std::vector<std::vector<std::string>>, // convention
+                bool, // conventionSender
+                bool>()) // conventionOverride
         .def(py::init<
                 std::shared_ptr<rela::BatchRunner>,
                 int,  // numPlayer
                 int,  // playerIdx
                 bool,  // vdn
                 bool,  // sad
-                bool, // hideAction
-                std::vector<std::vector<std::string>>>()); // conventions
+                bool,  // hideAction
+                std::vector<std::vector<std::string>>, // convention
+                bool, // conventionSender
+                bool>()); // conventionOverride
 
         py::class_<RulebotActor, Actor, std::shared_ptr<RulebotActor>>(
                 m, "RulebotActor")
-        .def(py::init<int>());
+        .def(py::init<
+                int, //playerIdx
+                std::vector<std::vector<std::string>>, // convention
+                bool, // conventionSender
+                bool>()); // conventionOverride
 
     py::class_<Rulebot2Actor, Actor, std::shared_ptr<Rulebot2Actor>>(
             m, "Rulebot2Actor")
-        .def(py::init<int>());
+        .def(py::init<
+                int, //playerIdx
+                std::vector<std::vector<std::string>>, // convention
+                bool, // conventionSender
+                bool>()); // conventionOverride
 
     m.def("observe", py::overload_cast<const hle::HanabiState&, int, bool>(&observe));
 

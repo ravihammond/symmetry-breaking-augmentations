@@ -45,7 +45,9 @@ RUN /opt/conda/bin/conda install -yc conda-forge \
     xgboost lightgbm catboost \
     mlxtend \
     shap \
-    uvicorn starlette aiohttp
+    uvicorn starlette aiohttp \
+    easydict
+
 
 CMD [ "/bin/bash" ]
 

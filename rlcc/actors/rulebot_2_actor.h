@@ -4,8 +4,7 @@
 #include <stdio.h>
 
 class Rulebot2Actor: public Actor {
-public:
-    Rulebot2Actor(int playerIdx): Actor(playerIdx) {}
-    void act(HanabiEnv& env, const int curPlayer);
+    using Actor::Actor;
+    void act(HanabiEnv& env, const int curPlayer) override;
 };
 
