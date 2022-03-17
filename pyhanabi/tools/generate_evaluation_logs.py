@@ -19,11 +19,7 @@ def run_evaluations(args):
 
     for weight_file in weights:
         eval_args.weight1 = weight_file
-
-        regex_search = re.search("([0-9]+)", weight_file)
-        print(f"epoch: {regex_search.group(0)}")
         evaluate_model(eval_args)
-        print("==========")
 
 
 def extract_weight_names(folder_path):
@@ -31,7 +27,7 @@ def extract_weight_names(folder_path):
 
     weights = []
     for file_name in os.listdir(folder_path):
-        if ".pthw" in file_name:
+        if re.match("model_epoch([0-9]+).pthw", file_name):
             weights.append(os.path.join(folder_path, file_name))
 
     assert len(weights) > 0
@@ -52,6 +48,7 @@ def create_eval_model_args(args):
     eval_args = EasyDict()
     eval_args.weight2 = args.partner
     eval_args.weight3 = None
+    eval_args.output = os.path.join(args.folder, "verbose.log")
     eval_args.num_player = 2
     eval_args.seed = 1
     eval_args.bomb = 0

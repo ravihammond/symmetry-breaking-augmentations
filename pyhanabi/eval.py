@@ -149,6 +149,7 @@ def evaluate_saved_model(
             agents.append(weight_file)
             sad.append(False)
             hide_action.append(False)
+            continue
 
         try: 
             state_dict = torch.load(weight_file)

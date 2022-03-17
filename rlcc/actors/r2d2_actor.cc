@@ -367,7 +367,6 @@ void R2D2Actor::fictAct(const HanabiEnv& env) {
     }
     torch::NoGradGuard ng;
 
-
     hle::HanabiMove move = env.lastMove();
     if (env.lastActivePlayer() != playerIdx_) {
         // it was not our turn, we have computed our partner's fict move

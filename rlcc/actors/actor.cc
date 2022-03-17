@@ -1,4 +1,7 @@
 #include <stdio.h>
+#include <algorithm>
+#include <random>
+#include <cstdlib>
 
 #include "actor.h"
 
@@ -55,27 +58,25 @@ hle::HanabiMove Actor::overrideMove(
     if (not conventionOverride_ || convention_.size() == 0) {
         return move;
     }
-    if(PR)printf("move before override: %s\n", move.ToString().c_str());
-
     auto last_move = env.getMove(env.getLastAction());
     auto senderMove = strToMove(convention_[conventionIdx_][0]);
     auto responseMove = strToMove(convention_[conventionIdx_][1]);
     auto& state = env.getHleState();
 
     if (conventionSender_) {
-        if(PR)printf("sender\n");
         if (partnerCardPlayableOnFireworks(env) &&
                 state.MoveIsLegal(senderMove)) {
-            if(PR)printf("should play convention\n");
             return senderMove;
-        } else {
-            return randomMove(env, senderMove, move);
+        } else if (move == senderMove) {
+            vector<hle::HanabiMove> exclude = {senderMove};
+            return randomMove(env, exclude, move);
         }
     } else {
-        if(PR)printf("responder\n");
         if (last_move == senderMove){
-            if(PR)printf("should play convention\n");
             return responseMove;
+        } else if (move == responseMove) {
+            vector<hle::HanabiMove> exclude = {responseMove};
+            return randomMove(env, exclude, move);
         }
     }
 
@@ -95,6 +96,42 @@ bool Actor::partnerCardPlayableOnFireworks(const HanabiEnv& env) {
         return true;
 
     return false;
+}
+
+hle::HanabiMove Actor::randomMove(const HanabiEnv& env, 
+        vector<hle::HanabiMove> exclude, hle::HanabiMove originalMove) {
+    auto game = env.getHleGame();
+
+    // Get possible discard and hint moves, and shuffle them.
+    vector<int> discard_moves = {0, 1, 2, 3, 4};
+    vector<int> hint_moves = {10, 11, 12, 13, 14, 15, 16, 17, 18, 19};
+    auto rd = random_device {};
+    auto rng = default_random_engine { rd() };
+    shuffle(begin(discard_moves), end(discard_moves), rng);
+    shuffle(begin(hint_moves), end(hint_moves), rng);
+
+    // Concatenate possible moves into single list, random order.
+    auto moveList = discard_moves;
+    auto appendList = hint_moves;
+    if (rand() % 2 == 0) {
+        moveList = hint_moves;
+        appendList = discard_moves;
+    }
+    moveList.insert(moveList.end(), appendList.begin(), appendList.end());
+
+    // Loop through all possible moves.
+    auto& state = env.getHleState();
+    for (auto moveUid: moveList) {
+        auto move = game.GetMove(moveUid);
+        // If current move should be excluded, skip it.
+        if (find(exclude.begin(), exclude.end(), move) != exclude.end())
+            continue;
+        // If random move is legal, choose it.
+        if (state.MoveIsLegal(move))
+            return move;
+    }
+
+    return originalMove;
 }
 
 hle::HanabiMove Actor::strToMove(string key) {
@@ -205,7 +242,6 @@ void Actor::incrementStatsConvention(
 
     if (shouldHavePlayedConvention) {
         incrementStat("convention_available");
-        if(PR)printf("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$\n");
     }
 
 
@@ -218,4 +254,3 @@ void Actor::incrementStatsConvention(
         }
     }
 }
-

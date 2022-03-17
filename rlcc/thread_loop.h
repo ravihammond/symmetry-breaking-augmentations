@@ -63,9 +63,9 @@ class HanabiThreadLoop : public rela::ThreadLoop {
                     }
                 }
                 if(PR)printf("\n");
-                auto hands = envs_[0]->getHleState().Hands();
-                for(auto hand: hands)
-                    if(PR)printf("%s\n", hand.ToString().c_str());
+                //auto hands = envs_[0]->getHleState().Hands();
+                //for(auto hand: hands)
+                    //if(PR)printf("%s\n", hand.ToString().c_str());
 
                 for (size_t i = 0; i < envs_.size(); ++i) {
                     if (done_[i] == 1) {

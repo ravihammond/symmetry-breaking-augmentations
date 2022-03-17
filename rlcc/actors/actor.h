@@ -43,6 +43,8 @@ protected:
     virtual void incrementStats(const HanabiEnv& env, hle::HanabiMove move);
     void incrementStatsConvention(const HanabiEnv& env, hle::HanabiMove move);
     hle::HanabiMove overrideMove(const HanabiEnv& env, hle::HanabiMove move);
+    hle::HanabiMove randomMove(const HanabiEnv& env, 
+            std::vector<hle::HanabiMove> exclude, hle::HanabiMove originalMove);
     bool partnerCardPlayableOnFireworks(const HanabiEnv& env);
     hle::HanabiMove strToMove(std::string key);
 

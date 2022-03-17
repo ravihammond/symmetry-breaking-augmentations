@@ -2,19 +2,42 @@ import argparse
 import os
 import sys
 import numpy as np
+import re
 
 lib_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(lib_path)
 from eval import evaluate_saved_model
 from model_zoo import model_zoo
 
+class Logger(object):
+    def __init__(self, filename):
+        self.terminal = sys.stdout
+        self.logfile = open(filename, "a")
+
+    def write(self, message):
+        self.terminal.write(message)
+        self.logfile.write(message)
+
+    def flush(self):
+        pass
+
 
 def evaluate_model(args):
+    sys.stdout = Logger(args.output)
+
     weight_files = load_weights(args)
+    regex_search = re.search("model_epoch([0-9]+).pthw", args.weight1)
+    print(f"epoch: {regex_search.group(1)}")
     scores, actors = run_evaluation(args, weight_files)
+
     print_scores(scores)
     print_actor_stats(actors, 0)
     print_actor_stats(actors, 1)
+
+    print("==========")
+
+    sys.stdout.logfile.close()
+    sys.stdout = sys.stdout.terminal
 
 
 def load_weights(args):
@@ -54,9 +77,9 @@ def run_evaluation(args, weight_files):
 
 def print_scores(scores):
     non_zero_scores = [s for s in scores if s > 0]
-    print(f"non zero mean: %.3f" % (
+    print(f"non_zero_mean: %.3f" % (
         0 if len(non_zero_scores) == 0 else np.mean(non_zero_scores)))
-    print(f"bomb out rate: {100 * (1 - len(non_zero_scores) / len(scores)):.2f}%")
+    print(f"bomb_out_rate: {100 * (1 - len(non_zero_scores) / len(scores)):.2f}%")
 
 
 def print_actor_stats(actors, player):
@@ -73,11 +96,12 @@ def print_played_card_knowledge(actors, player):
     card_stats = np.array(card_stats).sum(0)
     total_played = sum(card_stats)
 
-    print(f"actor{player}_total_cards_played: ", total_played)
+    print(f"actor{player}_total_cards_played: {total_played}")
     for i, ck in enumerate(["none", "color", "rank", "both"]):
         percentage = (card_stats[i] / total_played) * 100
-        print(f"actor{player}_card_played_knowledge_{ck}:",
-              f"{card_stats[i]} ({percentage:.1f}%)")
+        percentage = percent(card_stats[i], total_played)
+        print(f"actor{player}_card_played_knowledge_{ck}: {card_stats[i]}",
+              f"({percentage:.1f}%)")
 
 
 def print_move_stats(actors, player):
@@ -87,15 +111,17 @@ def print_move_stats(actors, player):
     print_move_type_stat(actors, player, "play")
     print_move_type_stat(actors, player, "discard")
     print_move_type_stat(actors, player, "hint_colour")
-    print_move_type_stats(actors, player, "hint", colour_move_map)
+    print_move_type_stats(actors, player, "hint", colour_move_map, "hint_colour")
     print_move_type_stat(actors, player, "hint_rank")
-    print_move_type_stats(actors, player, "hint", rank_move_map)
+    print_move_type_stats(actors, player, "hint", rank_move_map, "hint_rank")
 
 
-def print_move_type_stats(actors, player, move_type, move_map):
+def print_move_type_stats(actors, player, move_type, move_map, move_total):
+    total = sum_stats(move_total, actors, player)
     for move in move_map:
         move_total = sum_stats(move_type + "_" + move, actors, player)
-        print(f"actor{player}_{move_type}_{move}: {move_total}")
+        print(f"actor{player}_{move_type}_{move}: {move_total}", 
+                f"({percent(move_total, total):.1f}%)")
 
 
 def print_convention_stats(actors, player):
@@ -103,10 +129,14 @@ def print_convention_stats(actors, player):
     played = sum_stats("convention_played", actors, player)
     played_correct = sum_stats("convention_played_correct", actors, player)
     played_incorrect = sum_stats("convention_played_incorrect", actors, player)
+    played_correct_available_percent = percent(played_correct, available)
+    played_correct_played_percent = percent(played_correct, played)
 
     print(f"actor{player}_convention_available: {int(available)}")
     print(f"actor{player}_convention_played: {played}")
-    print(f"actor{player}_convention_played_correct: {played_correct}")
+    print(f"actor{player}_convention_played_correct: {played_correct}", 
+            f"({played_correct_available_percent:.1f}%",
+            f"{played_correct_played_percent:.1f}%)")
     print(f"actor{player}_convention_played_incorrect: {played_incorrect}")
 
     for i in range(5):
@@ -127,12 +157,18 @@ def sum_stats(key, actors, player):
                 stats.append(g.get_stats()[key])
     return int(sum(stats))
 
+def percent(n, total):
+    if total == 0:
+        return 0
+    return (n / total) * 100
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--weight1", default=None, type=str, required=True)
     parser.add_argument("--weight2", default=None, type=str)
     parser.add_argument("--weight3", default=None, type=str)
+    parser.add_argument("--output", type=str, required=True)
     parser.add_argument("--num_player", default=2, type=int)
     parser.add_argument("--seed", default=1, type=int)
     parser.add_argument("--bomb", default=0, type=int)
@@ -148,5 +184,6 @@ if __name__ == "__main__":
     parser.add_argument("--override1", default=0, type=int)
     parser.add_argument("--override2", default=0, type=int)
     args = parser.parse_args()
+
     evaluate_model(args)
 

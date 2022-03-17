@@ -12,9 +12,10 @@ using namespace std;
 
 hle::HanabiMove R2D2ConventionActor::getFicticiousTeammateMove(
         const HanabiEnv& env, hle::HanabiState& fictState) {
-    (void)env;
+    auto hands = fictState_->Hands();
+
     auto originalMove = R2D2Actor::getFicticiousTeammateMove(env, fictState);
-    auto signalMove = strToMove(convention_[conventionIdx_][0]);
+    auto senderMove = strToMove(convention_[conventionIdx_][0]);
     auto responseMove = strToMove(convention_[conventionIdx_][1]);
 
     auto moveHistory = fictState.MoveHistory();
@@ -26,8 +27,14 @@ hle::HanabiMove R2D2ConventionActor::getFicticiousTeammateMove(
         }
     }
 
-    if (lastMove == signalMove && fictState.MoveIsLegal(signalMove)) {
-        if(PR)printf("previous move: %s\n", lastMove.ToString().c_str());
+    for(auto hand: hands)
+        if(PR)printf("%s\n", hand.ToString().c_str());
+
+    if(PR)printf("previous move: %s\n", lastMove.ToString().c_str());
+    if(PR)printf("senderMove move: %s\n", senderMove.ToString().c_str());
+    if(PR)printf("legal: %d\n", fictState.MoveIsLegal(senderMove));
+
+    if (lastMove == senderMove && fictState.MoveIsLegal(responseMove)) {
         if(PR)printf("convention move: %s\n", responseMove.ToString().c_str());
         return responseMove;
     }

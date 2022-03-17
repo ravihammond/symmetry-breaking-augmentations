@@ -95,7 +95,7 @@ class ActGroup:
             for i in range(self.num_thread):
                 thread_actors = []
                 for j in range(self.num_game_per_thread):
-                    actor = hanalearn.R2D2Actor(
+                    actor = Actor(
                         self.model_runners[i % self.num_runners],
                         self.seed,
                         self.num_player,
@@ -124,7 +124,7 @@ class ActGroup:
                 for j in range(self.num_game_per_thread):
                     game_actors = []
                     for k in range(self.num_player):
-                        actor = hanalearn.R2D2Actor(
+                        actor = Actor(
                             self.model_runners[i % self.num_runners],
                             self.seed,
                             self.num_player,
