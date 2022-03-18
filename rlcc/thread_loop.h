@@ -12,7 +12,8 @@
 #include "rela/thread_loop.h"
 #include "rlcc/actors/actor.h"
 
-#define PR false
+#define PR true
+#define ST true
 
 class HanabiThreadLoop : public rela::ThreadLoop {
     public:
@@ -30,6 +31,7 @@ class HanabiThreadLoop : public rela::ThreadLoop {
         virtual void mainLoop() override {
             while (!terminated()) {
                 if(PR)printf("\n=======================================\n\n");
+
                 // go over each envs in sequential order
                 // call in seperate for-loops to maximize parallization
                 for (size_t i = 0; i < envs_.size(); ++i) {
@@ -53,19 +55,43 @@ class HanabiThreadLoop : public rela::ThreadLoop {
 
                         envs_[i]->reset();
                         for (size_t j = 0; j < actors.size(); ++j) {
+                            if(PR)printf("[player %ld resetting]\n", j);
                             actors[j]->reset(*envs_[i]);
                         }
                     }
+                }
 
+                if(ST)printf("Score: %d\n", envs_[0]->getScore());
+                if(ST)printf("Lives: %d\n", envs_[0]->getLife());
+                if(ST)printf("Information: %d\n", envs_[0]->getInfo());
+                auto deck = envs_[0]->getHleState().Deck();
+                if(ST)printf("Deck: %d\n", deck.Size());
+                std::string colours = "RYGWB";
+                auto fireworks = envs_[0]->getFireworks();
+                if(ST)printf("Fireworks: ");
+                for (unsigned long i = 0; i < colours.size(); i++)
+                    if(ST)printf("%c%d ", colours[i], fireworks[i]);
+                if(ST)printf("\n");
+                auto hands = envs_[0]->getHleState().Hands();
+                for(unsigned long i = 0; i < hands.size(); i++) {
+                    if(ST)printf("Actor %ld hand:\n", i);
+                    if(ST)printf("%s\n", hands[i].ToString().c_str());
+                }
+
+                // go over each envs in sequential order
+                // call in seperate for-loops to maximize parallization
+                for (size_t i = 0; i < envs_.size(); ++i) {
+                    if (done_[i] == 1) {
+                        continue;
+                    }
+
+                    auto& actors = actors_[i];
                     for (size_t j = 0; j < actors.size(); ++j) {
                         if(PR)printf("[player %ld observe before acting]\n", j);
                         actors[j]->observeBeforeAct(*envs_[i]);
                     }
                 }
                 if(PR)printf("\n");
-                //auto hands = envs_[0]->getHleState().Hands();
-                //for(auto hand: hands)
-                    //if(PR)printf("%s\n", hand.ToString().c_str());
 
                 for (size_t i = 0; i < envs_.size(); ++i) {
                     if (done_[i] == 1) {
