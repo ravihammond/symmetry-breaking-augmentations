@@ -23,7 +23,8 @@ class Logger(object):
 
 
 def evaluate_model(args):
-    sys.stdout = Logger(args.output)
+    if args.output is not None:
+        sys.stdout = Logger(args.output)
 
     weight_files = load_weights(args)
     regex_search = re.search("model_epoch([0-9]+).pthw", args.weight1)
@@ -33,11 +34,11 @@ def evaluate_model(args):
     print_scores(scores)
     print_actor_stats(actors, 0)
     print_actor_stats(actors, 1)
-
     print("==========")
 
-    sys.stdout.logfile.close()
-    sys.stdout = sys.stdout.terminal
+    if args.output is not None:
+        sys.stdout.logfile.close()
+        sys.stdout = sys.stdout.terminal
 
 
 def load_weights(args):
@@ -168,7 +169,7 @@ if __name__ == "__main__":
     parser.add_argument("--weight1", default=None, type=str, required=True)
     parser.add_argument("--weight2", default=None, type=str)
     parser.add_argument("--weight3", default=None, type=str)
-    parser.add_argument("--output", type=str, required=True)
+    parser.add_argument("--output", default=None, type=str)
     parser.add_argument("--num_player", default=2, type=int)
     parser.add_argument("--seed", default=1, type=int)
     parser.add_argument("--bomb", default=0, type=int)

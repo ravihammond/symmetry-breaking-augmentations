@@ -55,9 +55,6 @@ def parse_logs(filename, max_epochs):
         parse_actor_stat(stats, l, i, 0)
         parse_actor_stat(stats, l, i, 1)
 
-    for key, value in stats.items():
-        print(f"{key}: {len(value)}")
-
     return stats
 
     

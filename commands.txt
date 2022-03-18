@@ -20,5 +20,7 @@ python pyhanabi/tools/generate_evaluation_logs.py --folder pyhanabi/exps/obl_CR_
 
 python pyhanabi/tools/parse_verbose_logs.py --filename pyhanabi/exps/obl_CR_P0/verbose.log
 
+python pyhanabi/tools/plot_verbose_logs.py --filename pyhanabi/exps/obl_CR_P0/verbose.log
+
 == OVERRIDE ==
 python pyhanabi/tools/eval_model_verbose.py --weight1 pyhanabi/exps/obl1/model_epoch1400.pthw --convention pyhanabi/conventions/hint_red_play_0.json --override1 1 --override2 1 --num_game 1

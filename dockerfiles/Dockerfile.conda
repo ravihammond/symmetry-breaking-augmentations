@@ -48,7 +48,4 @@ RUN /opt/conda/bin/conda install -yc conda-forge \
     uvicorn starlette aiohttp \
     easydict
 
-
 CMD [ "/bin/bash" ]
-
-

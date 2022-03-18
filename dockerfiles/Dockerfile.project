@@ -1,17 +1,10 @@
 FROM ravihammond/conda
 
-# Create the environment
-#RUN sudo /opt/conda/bin/conda create -n hanabi python=3.7
-
-# Make RUN commands use the new environment:
-#SHELL ["/opt/conda/bin/conda", "run", "-n", "hanabi", "/bin/bash", "-c"]
-
-#RUN pip install torch==1.7.0+cu110 torchvision==0.8.0+cu110 torchaudio==0.7.0 -f https://download.pytorch.org/whl/torch_stable.html
-#RUN pip install torch==1.7.1+cu110 torchvision==0.8.2+cu110 torchaudio==0.7.2 -f https://download.pytorch.org/whl/torch_stable.html
 RUN pip install torch==1.10.2+cu113 torchvision==0.11.3+cu113 torchaudio==0.10.2+cu113 -f https://download.pytorch.org/whl/cu113/torch_stable.html
 
 RUN pip install \
-    psutil
+    psutil \ 
+    wandb 
 
 RUN echo "source setup_conda.bash" >> ~/.bashrc 
 
