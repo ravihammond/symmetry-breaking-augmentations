@@ -19,7 +19,6 @@
 #include "rlcc/thread_loop.h"
 #include "rlcc/actors/actor.h"
 #include "rlcc/actors/r2d2_actor.h"
-#include "rlcc/actors/r2d2_convention_actor.h"
 #include "rlcc/actors/rulebot_actor.h"
 #include "rlcc/actors/rulebot_2_actor.h"
 
@@ -96,7 +95,9 @@ PYBIND11_MODULE(hanalearn, m) {
                 float,  // gamma
                 std::vector<std::vector<std::string>>, // convention
                 bool, // conventionSender
-                bool>()) // conventionOverride
+                bool, // conventionOverride
+                bool, // conventionFictitiousOverride
+                bool>()) // useConvention
         .def(py::init<
                 std::shared_ptr<rela::BatchRunner>,
                 int,  // numPlayer
@@ -111,40 +112,7 @@ PYBIND11_MODULE(hanalearn, m) {
         .def("set_belief_runner", &R2D2Actor::setBeliefRunner)
         .def("get_success_fict_rate", &R2D2Actor::getSuccessFictRate);
 
-    py::class_<R2D2ConventionActor,R2D2Actor, 
-        std::shared_ptr<R2D2ConventionActor>>(m, "R2D2ConventionActor")
-        .def(py::init<
-                std::shared_ptr<rela::BatchRunner>, // runner,
-                int,  // seed,
-                int,  // numPlayer, total number os players
-                int,  // playerIdx, player idx for this player
-                const std::vector<float>&,  // epsList, list of eps to sample from
-                const std::vector<float>&,  // tempList, list of temp to sample from
-                bool,  // vdn,
-                bool,  // sad,
-                bool,  // shuffleColor,
-                bool,  //  hideAction,
-                bool,  // trinary, trinary aux task or full aux
-                std::shared_ptr<rela::RNNPrioritizedReplay>,  //  replayBuffer,
-                // if replay buffer is None, then all params below are not used
-                int, // multiStep,
-                int, // seqLen,
-                float,  // gamma
-                std::vector<std::vector<std::string>>, // convention
-                bool, // conventionSender
-                bool>()) // conventionOverride
-        .def(py::init<
-                std::shared_ptr<rela::BatchRunner>,
-                int,  // numPlayer
-                int,  // playerIdx
-                bool,  // vdn
-                bool,  // sad
-                bool,  // hideAction
-                std::vector<std::vector<std::string>>, // convention
-                bool, // conventionSender
-                bool>()); // conventionOverride
-
-        py::class_<RulebotActor, Actor, std::shared_ptr<RulebotActor>>(
+    py::class_<RulebotActor, Actor, std::shared_ptr<RulebotActor>>(
                 m, "RulebotActor")
         .def(py::init<
                 int, //playerIdx

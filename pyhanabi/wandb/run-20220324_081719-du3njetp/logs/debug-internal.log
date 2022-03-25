@@ -1,0 +1,42 @@
+2022-03-24 08:17:20,444 INFO    MainThread:535 [internal.py:wandb_internal():95] W&B internal server running at pid: 535, started at: 2022-03-24 08:17:20.444263
+2022-03-24 08:17:20,447 INFO    WriterThread:535 [datastore.py:open_for_write():77] open: /app/pyhanabi/wandb/run-20220324_081719-du3njetp/run-du3njetp.wandb
+2022-03-24 08:17:20,449 DEBUG   SenderThread:535 [sender.py:send():235] send: header
+2022-03-24 08:17:20,449 DEBUG   SenderThread:535 [sender.py:send():235] send: run
+2022-03-24 08:17:20,766 INFO    SenderThread:535 [dir_watcher.py:__init__():169] watching files in: /app/pyhanabi/wandb/run-20220324_081719-du3njetp/files
+2022-03-24 08:17:20,766 INFO    SenderThread:535 [sender.py:_start_run_threads():815] run started: du3njetp with start time 1648109839
+2022-03-24 08:17:20,766 DEBUG   SenderThread:535 [sender.py:send():235] send: summary
+2022-03-24 08:17:20,767 INFO    SenderThread:535 [sender.py:_save_file():947] saving file wandb-summary.json with policy end
+2022-03-24 08:17:20,770 DEBUG   HandlerThread:535 [handler.py:handle_request():141] handle_request: check_version
+2022-03-24 08:17:20,770 DEBUG   SenderThread:535 [sender.py:send_request():249] send_request: check_version
+2022-03-24 08:17:20,843 DEBUG   HandlerThread:535 [handler.py:handle_request():141] handle_request: run_start
+2022-03-24 08:17:20,847 DEBUG   HandlerThread:535 [meta.py:__init__():37] meta init
+2022-03-24 08:17:20,847 DEBUG   HandlerThread:535 [meta.py:__init__():51] meta init done
+2022-03-24 08:17:20,847 DEBUG   HandlerThread:535 [meta.py:probe():211] probe
+2022-03-24 08:17:20,854 DEBUG   HandlerThread:535 [meta.py:_setup_git():201] setup git
+2022-03-24 08:17:20,874 DEBUG   HandlerThread:535 [meta.py:_setup_git():208] setup git done
+2022-03-24 08:17:20,874 DEBUG   HandlerThread:535 [meta.py:_save_pip():55] save pip
+2022-03-24 08:17:20,874 DEBUG   HandlerThread:535 [meta.py:_save_pip():69] save pip done
+2022-03-24 08:17:20,874 DEBUG   HandlerThread:535 [meta.py:_save_conda():76] save conda
+2022-03-24 08:17:21,769 INFO    Thread-7  :535 [dir_watcher.py:_on_file_created():217] file/dir created: /app/pyhanabi/wandb/run-20220324_081719-du3njetp/files/conda-environment.yaml
+2022-03-24 08:17:21,769 INFO    Thread-7  :535 [dir_watcher.py:_on_file_created():217] file/dir created: /app/pyhanabi/wandb/run-20220324_081719-du3njetp/files/requirements.txt
+2022-03-24 08:17:21,769 INFO    Thread-7  :535 [dir_watcher.py:_on_file_created():217] file/dir created: /app/pyhanabi/wandb/run-20220324_081719-du3njetp/files/wandb-summary.json
+2022-03-24 08:17:23,979 DEBUG   HandlerThread:535 [meta.py:_save_conda():86] save conda done
+2022-03-24 08:17:23,979 DEBUG   HandlerThread:535 [meta.py:probe():249] probe done
+2022-03-24 08:17:23,983 DEBUG   SenderThread:535 [sender.py:send():235] send: files
+2022-03-24 08:17:23,983 INFO    SenderThread:535 [sender.py:_save_file():947] saving file wandb-metadata.json with policy now
+2022-03-24 08:17:23,989 DEBUG   HandlerThread:535 [handler.py:handle_request():141] handle_request: stop_status
+2022-03-24 08:17:23,990 DEBUG   SenderThread:535 [sender.py:send_request():249] send_request: stop_status
+2022-03-24 08:17:24,269 DEBUG   SenderThread:535 [sender.py:send():235] send: telemetry
+2022-03-24 08:17:24,768 INFO    Thread-7  :535 [dir_watcher.py:_on_file_modified():230] file/dir modified: /app/pyhanabi/wandb/run-20220324_081719-du3njetp/files/conda-environment.yaml
+2022-03-24 08:17:24,768 INFO    Thread-7  :535 [dir_watcher.py:_on_file_created():217] file/dir created: /app/pyhanabi/wandb/run-20220324_081719-du3njetp/files/wandb-metadata.json
+2022-03-24 08:17:24,768 INFO    Thread-7  :535 [dir_watcher.py:_on_file_created():217] file/dir created: /app/pyhanabi/wandb/run-20220324_081719-du3njetp/files/output.log
+2022-03-24 08:17:25,205 INFO    Thread-11 :535 [upload_job.py:push():137] Uploaded file /tmp/tmpd8b__mnmwandb/rl7yewae-wandb-metadata.json
+2022-03-24 08:17:26,768 INFO    Thread-7  :535 [dir_watcher.py:_on_file_modified():230] file/dir modified: /app/pyhanabi/wandb/run-20220324_081719-du3njetp/files/output.log
+2022-03-24 08:17:30,770 INFO    Thread-7  :535 [dir_watcher.py:_on_file_modified():230] file/dir modified: /app/pyhanabi/wandb/run-20220324_081719-du3njetp/files/output.log
+2022-03-24 08:17:34,771 INFO    Thread-7  :535 [dir_watcher.py:_on_file_modified():230] file/dir modified: /app/pyhanabi/wandb/run-20220324_081719-du3njetp/files/output.log
+2022-03-24 08:17:35,214 WARNING MainThread:535 [internal.py:wandb_internal():155] Internal process interrupt: 1
+2022-03-24 08:17:35,252 DEBUG   SenderThread:535 [sender.py:send():235] send: telemetry
+2022-03-24 08:17:35,253 DEBUG   HandlerThread:535 [handler.py:handle_request():141] handle_request: partial_history
+2022-03-24 08:17:35,338 WARNING MainThread:535 [internal.py:wandb_internal():155] Internal process interrupt: 2
+2022-03-24 08:17:35,338 ERROR   MainThread:535 [internal.py:wandb_internal():158] Internal process interrupted.
+2022-03-24 08:17:35,587 INFO    MainThread:535 [internal.py:handle_exit():82] Internal process exited

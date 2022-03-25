@@ -27,18 +27,9 @@ hle::HanabiMove R2D2ConventionActor::getFicticiousTeammateMove(
         }
     }
 
-    for(auto hand: hands)
-        if(PR)printf("%s\n", hand.ToString().c_str());
-
-    if(PR)printf("previous move: %s\n", lastMove.ToString().c_str());
-    if(PR)printf("senderMove move: %s\n", senderMove.ToString().c_str());
-    if(PR)printf("legal: %d\n", fictState.MoveIsLegal(senderMove));
-
     if (lastMove == senderMove && fictState.MoveIsLegal(responseMove)) {
-        if(PR)printf("convention move: %s\n", responseMove.ToString().c_str());
         return responseMove;
     }
-    if(PR)printf("original move: %s\n", originalMove.ToString().c_str());
 
     return originalMove;
 }

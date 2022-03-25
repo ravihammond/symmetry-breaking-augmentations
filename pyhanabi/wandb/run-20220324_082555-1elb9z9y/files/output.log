@@ -1,0 +1,150 @@
+{'act_base_eps': 0.1,
+ 'act_device': 'cuda:1',
+ 'act_eps_alpha': 7,
+ 'actor_sync_freq': 10,
+ 'aux_weight': 0,
+ 'batchsize': 128,
+ 'belief_device': 'cuda:1',
+ 'belief_model': 'None',
+ 'boltzmann_act': 0,
+ 'burn_in_frames': 10000,
+ 'clone_bot': '',
+ 'clone_t': 0.02,
+ 'clone_weight': 0.0,
+ 'convention': 'conventions/hint_red_play_0.json',
+ 'convention_act_override': 1,
+ 'convention_fict_act_override': 0,
+ 'epoch_len': 1000,
+ 'eps': 1.5e-05,
+ 'eta': 0.9,
+ 'eval_bomb': 0,
+ 'gamma': 0.999,
+ 'grad_clip': 5,
+ 'hide_action': 0,
+ 'load_model': '',
+ 'lr': 6.25e-05,
+ 'max_len': 80,
+ 'max_t': 0.1,
+ 'method': 'iql',
+ 'min_t': 0.001,
+ 'multi_step': 3,
+ 'net': 'lstm',
+ 'no_evaluation': 0,
+ 'num_epoch': 2000,
+ 'num_fict_sample': 10,
+ 'num_game_per_thread': 80,
+ 'num_lstm_layer': 2,
+ 'num_player': 2,
+ 'num_t': 80,
+ 'num_thread': 24,
+ 'num_update_between_sync': 2500,
+ 'off_belief': 0,
+ 'partner_model': 'exps/obl1/model_epoch1400.pthw',
+ 'prefetch': 3,
+ 'priority_exponent': 0.9,
+ 'priority_weight': 0.6,
+ 'replay_buffer_size': 100000,
+ 'rnn_hid_dim': 512,
+ 'sad': 0,
+ 'save_checkpoints': 100,
+ 'save_dir': 'exps/test',
+ 'seed': 2254257,
+ 'shuffle_color': 0,
+ 'static_partner': 1,
+ 'train_bomb': 0,
+ 'train_device': 'cuda:0'}
+explore eps: [0.1, 0.08154407395185162, 0.06649435996665046, 0.05422221006501587, 0.04421499907374487, 0.03605471154250502, 0.02940048064334708, 0.023974349678010775, 0.019549661430912607, 0.01594159037455999, 0.012999422244132457, 0.010600258488068826, 0.008643882620598262, 0.007048574036451904, 0.005747694424835353, 0.004686904192314193, 0.0038218926206331195, 0.003116526944929431, 0.0025413430367026368, 0.0020723146452190297, 0.0016898497868124572, 0.0013779723598335584, 0.0011236548001387517, 0.0009162739011886733, 0.0007471670675868075, 0.0006092704661368676, 0.0004968239594734388, 0.0004051304969235383, 0.00033035991201283403, 0.0002693889309590173, 0.00021967070907932357, 0.00017912844546220044, 0.00014606863203649891, 0.0001191103133283007, 9.712740198471169e-05, 7.920164050192559e-05, 6.45842443019698e-05, 5.266462393484282e-05, 4.294487988789273e-05, 3.5019004614317064e-05, 2.8555923019901068e-05, 2.3285662984981972e-05, 1.8988078244652658e-05, 1.5483652565854994e-05, 1.2626001098748582e-05, 1.029575567312513e-05, 8.395578619995106e-06, 6.8460968385746595e-06, 5.582586268862691e-06, 4.552268275507311e-06, 3.712105009066358e-06, 3.0270016537634625e-06, 2.4683404670686517e-06, 2.012785375849939e-06, 1.6413071953751306e-06, 1.3383887531737569e-06, 1.0913767146512742e-06, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+avg explore eps: 0.006772832055818007
+no boltzmann
+R2D2Agent(
+  (online_net): LSTMNet(
+    (net): RecursiveScriptModule(
+      original_name=Sequential
+      (0): RecursiveScriptModule(original_name=Linear)
+      (1): RecursiveScriptModule(original_name=ReLU)
+    )
+    (lstm): RecursiveScriptModule(original_name=LSTM)
+    (fc_v): RecursiveScriptModule(original_name=Linear)
+    (fc_a): RecursiveScriptModule(original_name=Linear)
+    (pred_1st): RecursiveScriptModule(original_name=Linear)
+  )
+  (target_net): LSTMNet(
+    (net): RecursiveScriptModule(
+      original_name=Sequential
+      (0): RecursiveScriptModule(original_name=Linear)
+      (1): RecursiveScriptModule(original_name=ReLU)
+    )
+    (lstm): RecursiveScriptModule(original_name=LSTM)
+    (fc_v): RecursiveScriptModule(original_name=Linear)
+    (fc_a): RecursiveScriptModule(original_name=Linear)
+    (pred_1st): RecursiveScriptModule(original_name=Linear)
+  )
+)
+loading file from:  exps/obl1/model_epoch1400.pthw
+partner_runners
+[<rela.BatchRunner object at 0x7f9d41766a70>]
+ActGroup created
+Finished creating 24 threads with 1920 games and 24 actors
+warming up replay buffer: 0
+warming up replay buffer: 0
+warming up replay buffer: 0
+warming up replay buffer: 0
+warming up replay buffer: 0
+warming up replay buffer: 0
+warming up replay buffer: 0
+warming up replay buffer: 0
+warming up replay buffer: 0
+warming up replay buffer: 0
+warming up replay buffer: 0
+warming up replay buffer: 116
+warming up replay buffer: 218
+warming up replay buffer: 218
+warming up replay buffer: 245
+warming up replay buffer: 251
+warming up replay buffer: 251
+warming up replay buffer: 317
+warming up replay buffer: 423
+warming up replay buffer: 474
+warming up replay buffer: 634
+warming up replay buffer: 896
+warming up replay buffer: 971
+warming up replay buffer: 971
+warming up replay buffer: 1194
+warming up replay buffer: 1399
+warming up replay buffer: 1541
+warming up replay buffer: 1666
+warming up replay buffer: 1835
+warming up replay buffer: 2049
+warming up replay buffer: 2177
+warming up replay buffer: 2250
+warming up replay buffer: 2357
+warming up replay buffer: 3357
+warming up replay buffer: 4981
+warming up replay buffer: 6623
+warming up replay buffer: 8354
+Success, Done
+=======================
+beginning of epoch:  0
+available: 100.299 GB, used: 22.001 GB, free: 60.113 GB
+epoch: 0
+Speed: train: 3294.9, buffer_add: 893.1, buffer_size: 34697
+Total Time: 0H 00M 38S, 38s
+Total Sample: train: 128K, buffer: 34.697K
+@@@Time
+	sync and updating : 2 MS, 5.48%
+	sample data       : 0 MS, 1.77%
+	forward & backward: 31 MS, 80.34%
+	update model      : 4 MS, 12.31%
+	updating priority : 0 MS, 0.10%
+@@@total time per iter: 38.80 ms
+[0] Time spent = 38.85 s
+0:boltzmann_t  [1000]: avg:   0.0000, min:   0.0000[   0], max:   0.0000[   0]
+0:grad_norm    [1000]: avg:   1.6097, min:   0.1404[  13], max:  11.1115[ 859]
+0:loss         [1000]: avg:   1.0027, min:   0.6156[ 127], max:   4.9187[  23]
+0:rl_loss      [1000]: avg:   0.2529, min:   0.1346[ 972], max:   0.6794[   7]
+Traceback (most recent call last):
+  File "selfplay.py", line 475, in <module>
+    selfplay(args)
+  File "selfplay.py", line 296, in selfplay
+    args.hide_action,
+TypeError: evaluate() missing 1 required positional argument: 'hide_action'

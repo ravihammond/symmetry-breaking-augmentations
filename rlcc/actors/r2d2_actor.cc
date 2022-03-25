@@ -197,6 +197,10 @@ void R2D2Actor::observeBeforeAct(HanabiEnv& env) {
                 sad_);
     }
 
+    //for (auto const &pair: input) {
+        //std::cout << "{" << pair.first << "}\n";
+    //}
+
     // add features such as eps and temperature
     input["eps"] = torch::tensor(playerEps_);
     if (playerTemp_.size() > 0) {
@@ -228,14 +232,6 @@ void R2D2Actor::observeBeforeAct(HanabiEnv& env) {
 
     // forward belief model
     assert(!vdn_);
-
-    //auto state_constrained = make_unique<hle::HanabiState>(state);
-    //changeStateForBeliefSampler(*state_constrained);
-
-    //printf("\n* Original State *\n");
-    //cout << state.ToString() << endl;
-    //printf("\n* Copied State *\n");
-    //cout << state_constrained->ToString() << endl;
 
     auto [beliefInput, privCardCount, v0] = beliefModelObserve(
             state,
@@ -292,8 +288,6 @@ void R2D2Actor::act(HanabiEnv& env, const int curPlayer) {
 
     if (offBelief_) {
         const auto& hand = fictState_->Hands()[playerIdx_];
-        //printf("Fictitious Hand before\n");
-        //printf("%s\n", hand.ToString().c_str());
         bool success = true;
         if (beliefRunner_ != nullptr) {
             auto sample = beliefReply.at("sample");
@@ -313,8 +307,6 @@ void R2D2Actor::act(HanabiEnv& env, const int curPlayer) {
         }
         validFict_ = success;
         ++totalFict_;
-        //printf("Fictitious Hand after\n");
-        //printf("%s\n", hand.ToString().c_str());
     }
 
     if (!vdn_ && curPlayer != playerIdx_) {
@@ -347,13 +339,13 @@ void R2D2Actor::act(HanabiEnv& env, const int curPlayer) {
     }
 
     auto move = state.ParentGame()->GetMove(action);
+    move = overrideMove(env, move);
 
     if (shuffleColor_ && move.MoveType() == hle::HanabiMove::Type::kRevealColor) {
         int realColor = (*invColorPermute)[move.Color()];
         move.SetColor(realColor);
     }
 
-    move = overrideMove(env, move);
     incrementPlayedCardKnowledgeCount(env, move);
     incrementStats(env, move);
 
@@ -370,7 +362,28 @@ void R2D2Actor::fictAct(const HanabiEnv& env) {
     hle::HanabiMove move = env.lastMove();
     if (env.lastActivePlayer() != playerIdx_) {
         // it was not our turn, we have computed our partner's fict move
-        move = getFicticiousTeammateMove(env, *fictState_);
+        auto fictReply = fictReply_.get();
+        auto action = fictReply.at("a").item<int64_t>();
+        auto learned_move =  env.getMove(action);
+
+        if (conventionFictitiousOverride_) {
+            auto senderMove = strToMove(convention_[conventionIdx_][0]);
+            auto responseMove = strToMove(convention_[conventionIdx_][1]);
+
+            auto moveHistory = fictState_->MoveHistory();
+            auto lastMove = moveHistory[moveHistory.size() - 1].move;
+            if (lastMove.MoveType() == hle::HanabiMove::kDeal) {
+                lastMove = moveHistory[moveHistory.size() - 2].move;
+            }
+
+            if (lastMove.MoveType() != hle::HanabiMove::kDeal &&
+                lastMove == senderMove && 
+                fictState_->MoveIsLegal(responseMove)) {
+                move = responseMove;
+            } else {
+                move = learned_move;
+            }
+        }
     }
     auto [fictR, fictTerm] = applyMove(*fictState_, move, false);
 
@@ -395,14 +408,6 @@ void R2D2Actor::fictAct(const HanabiEnv& env) {
     futTarget_ = runner_->call("compute_target", fictInput);
 }
 
-hle::HanabiMove R2D2Actor::getFicticiousTeammateMove(
-        const HanabiEnv& env, hle::HanabiState& fictState) {
-    (void)fictState;
-    auto fictReply = fictReply_.get();
-    auto action = fictReply.at("a").item<int64_t>();
-    return env.getMove(action);
-}
-
 void R2D2Actor::observeAfterAct(const HanabiEnv& env) {
     torch::NoGradGuard ng;
     if (replayBuffer_ == nullptr) {
@@ -411,7 +416,9 @@ void R2D2Actor::observeAfterAct(const HanabiEnv& env) {
 
     if (!futPriority_.isNull()) {
         auto priority = futPriority_.get()["priority"].item<float>();
-        replayBuffer_->add(std::move(lastEpisode_), priority);
+        if (useExperience_) {
+            replayBuffer_->add(std::move(lastEpisode_), priority);
+        }
     }
 
     float reward = env.stepReward();

@@ -1,0 +1,26 @@
+2022-03-24 08:19:15,426 INFO    MainThread:605 [wandb_setup.py:_flush():75] Loading settings from /root/.config/wandb/settings
+2022-03-24 08:19:15,426 INFO    MainThread:605 [wandb_setup.py:_flush():75] Loading settings from /app/pyhanabi/wandb/settings
+2022-03-24 08:19:15,426 INFO    MainThread:605 [wandb_setup.py:_flush():75] Loading settings from environment variables: {}
+2022-03-24 08:19:15,426 INFO    MainThread:605 [wandb_setup.py:_flush():75] Inferring run settings from compute environment: {'program_relpath': 'pyhanabi/selfplay.py', 'program': 'selfplay.py'}
+2022-03-24 08:19:15,427 INFO    MainThread:605 [wandb_init.py:_log_setup():405] Logging user logs to /app/pyhanabi/wandb/run-20220324_081915-2krte16i/logs/debug.log
+2022-03-24 08:19:15,427 INFO    MainThread:605 [wandb_init.py:_log_setup():406] Logging internal logs to /app/pyhanabi/wandb/run-20220324_081915-2krte16i/logs/debug-internal.log
+2022-03-24 08:19:15,427 INFO    MainThread:605 [wandb_init.py:init():439] calling init triggers
+2022-03-24 08:19:15,427 INFO    MainThread:605 [wandb_init.py:init():443] wandb.init called with sweep_config: {}
+config: {}
+2022-03-24 08:19:15,427 INFO    MainThread:605 [wandb_init.py:init():492] starting backend
+2022-03-24 08:19:15,427 INFO    MainThread:605 [backend.py:_multiprocessing_setup():101] multiprocessing start_methods=fork,spawn,forkserver, using: spawn
+2022-03-24 08:19:15,439 INFO    MainThread:605 [backend.py:ensure_launched():219] starting backend process...
+2022-03-24 08:19:15,446 INFO    MainThread:605 [backend.py:ensure_launched():225] started backend process with pid: 614
+2022-03-24 08:19:15,447 INFO    MainThread:605 [wandb_init.py:init():501] backend started and connected
+2022-03-24 08:19:15,452 INFO    MainThread:605 [wandb_init.py:init():565] updated telemetry
+2022-03-24 08:19:15,471 INFO    MainThread:605 [wandb_init.py:init():596] communicating run to backend with 30 second timeout
+2022-03-24 08:19:16,721 INFO    MainThread:605 [wandb_run.py:_on_init():1759] communicating current version
+2022-03-24 08:19:16,798 INFO    MainThread:605 [wandb_run.py:_on_init():1763] got version response 
+2022-03-24 08:19:16,798 INFO    MainThread:605 [wandb_init.py:init():625] starting run threads in backend
+2022-03-24 08:19:19,978 INFO    MainThread:605 [wandb_run.py:_console_start():1733] atexit reg
+2022-03-24 08:19:19,979 INFO    MainThread:605 [wandb_run.py:_redirect():1606] redirect: SettingsConsole.REDIRECT
+2022-03-24 08:19:19,979 INFO    MainThread:605 [wandb_run.py:_redirect():1611] Redirecting console.
+2022-03-24 08:19:19,980 INFO    MainThread:605 [wandb_run.py:_redirect():1667] Redirects installed.
+2022-03-24 08:19:19,980 INFO    MainThread:605 [wandb_init.py:init():664] run started, returning control to user process
+2022-03-24 08:19:47,122 INFO    MainThread:605 [wandb_run.py:_atexit_cleanup():1702] got exitcode: 255
+2022-03-24 08:19:47,123 INFO    MainThread:605 [wandb_run.py:_restore():1674] restore

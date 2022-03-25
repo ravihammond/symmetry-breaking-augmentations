@@ -7,7 +7,7 @@
 
 using namespace std;
 
-#define PR false
+#define PR true
 
 tuple<bool, bool> Actor::analyzeCardBelief(const vector<float>& b) {
     assert(b.size() == 25);
@@ -58,6 +58,7 @@ hle::HanabiMove Actor::overrideMove(
     if (not conventionOverride_ || convention_.size() == 0) {
         return move;
     }
+
     auto last_move = env.getMove(env.getLastAction());
     auto senderMove = strToMove(convention_[conventionIdx_][0]);
     auto responseMove = strToMove(convention_[conventionIdx_][1]);

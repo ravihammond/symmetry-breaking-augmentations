@@ -46,6 +46,7 @@ RUN /opt/conda/bin/conda install -yc conda-forge \
     mlxtend \
     shap \
     uvicorn starlette aiohttp \
-    easydict
+    easydict \ 
+    wandb
 
 CMD [ "/bin/bash" ]

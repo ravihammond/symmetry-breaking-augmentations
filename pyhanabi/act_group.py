@@ -37,8 +37,12 @@ class ActGroup:
         gamma,
         off_belief,
         belief_model,
-        actor_type,
         convention,
+        convention_act_override,
+        convention_fict_act_override,
+        partner_agent,
+        partner_cfg,
+        static_partner,
     ):
         self.devices = devices.split(",")
         self.method = method
@@ -58,7 +62,7 @@ class ActGroup:
         self.gamma = gamma
 
         self.model_runners = []
-        for dev in self.devices:
+        for i, dev in enumerate(self.devices):
             runner = rela.BatchRunner(agent.clone(dev), dev)
             runner.add_method("act", 5000)
             runner.add_method("compute_priority", 100)
@@ -66,6 +70,17 @@ class ActGroup:
                 runner.add_method("compute_target", 5000)
             self.model_runners.append(runner)
         self.num_runners = len(self.model_runners)
+
+        self.partner_runners = []
+        if static_partner:
+            for i, dev in enumerate(self.devices):
+                runner = rela.BatchRunner(partner_agent.clone(dev), dev)
+                # runner = rela.BatchRunner(agent, dev, 5000, ["act"]) 
+                runner.add_method("act", 5000)
+                # runner.add_method("compute_priority", 100)
+                # if off_belief:
+                    # runner.add_method("compute_target", 5000)
+                self.partner_runners.append(runner)
 
         self.off_belief = off_belief
         self.belief_model = belief_model
@@ -78,24 +93,27 @@ class ActGroup:
                     rela.BatchRunner(bm, bm.device, 5000, ["sample"])
                 )
         self.convention = convention
+        self.convention_act_override = convention_act_override
+        self.convention_fict_act_override = convention_fict_act_override
+        self.partner_agent = partner_agent
+        self.partner_cfg = partner_cfg
+        self.static_partner = static_partner
 
-        Actor = None
-        if actor_type == "r2d2":
-            Actor = hanalearn.R2D2Actor
-        elif actor_type == "r2d2_convention":
-            Actor = hanalearn.R2D2ConventionActor
-        assert Actor is not None
+        self.create_r2d2_actors()
 
-        self.create_r2d2_actors(hanalearn.R2D2ConventionActor)
-        print("ActGroup created")
+    def create_r2d2_actors(self):
+        convention_act_override = [0, 0]
+        convention_sender = [1, 1]
+        if self.convention_act_override:
+            convention_act_override = [0, 1]
+            convention_sender = [1, 0]
 
-    def create_r2d2_actors(self, Actor):
         actors = []
         if self.method == "vdn":
             for i in range(self.num_thread):
                 thread_actors = []
                 for j in range(self.num_game_per_thread):
-                    actor = Actor(
+                    actor = hanalearn.R2D2Actor(
                         self.model_runners[i % self.num_runners],
                         self.seed,
                         self.num_player,
@@ -114,6 +132,8 @@ class ActGroup:
                         self.convention,
                         0,
                         0,
+                        0,
+                        1,
                     )
                     self.seed += 1
                     thread_actors.append([actor])
@@ -124,26 +144,42 @@ class ActGroup:
                 for j in range(self.num_game_per_thread):
                     game_actors = []
                     for k in range(self.num_player):
-                        actor = Actor(
-                            self.model_runners[i % self.num_runners],
-                            self.seed,
-                            self.num_player,
-                            k,
-                            self.explore_eps,
-                            self.boltzmann_t,
-                            False,
-                            self.sad,
-                            self.shuffle_color,
-                            self.hide_action,
-                            self.trinary,
-                            self.replay_buffer,
-                            self.multi_step,
-                            self.max_len,
-                            self.gamma,
-                            self.convention,
-                            0,
-                            0,
-                        )
+                        if k > 0 and self.static_partner:
+                            actor = hanalearn.R2D2Actor(
+                                self.partner_runners[i % self.num_runners],
+                                # self.model_runners[i % self.num_runners],
+                                self.num_player, 
+                                k, # playerIdx
+                                False, # vdn
+                                self.partner_cfg["sad"], # sad
+                                self.partner_cfg["hide_action"], # hideAction
+                                self.convention, # convention
+                                0, # conventionSender
+                                1) # conventionOverride
+                        else: 
+                            actor = hanalearn.R2D2Actor(
+                                self.model_runners[i % self.num_runners],
+                                self.seed,
+                                self.num_player,
+                                k,
+                                self.explore_eps,
+                                self.boltzmann_t,
+                                False,
+                                self.sad,
+                                self.shuffle_color,
+                                self.hide_action,
+                                self.trinary,
+                                self.replay_buffer,
+                                self.multi_step,
+                                self.max_len,
+                                self.gamma,
+                                self.convention,
+                                1,
+                                0,
+                                self.convention_fict_act_override,
+                                1,
+                            )
+
                         if self.off_belief:
                             if self.belief_runner is None:
                                 actor.set_belief_runner(None)
@@ -160,9 +196,13 @@ class ActGroup:
                     thread_actors.append(game_actors)
                 actors.append(thread_actors)
         self.actors = actors
+        print("ActGroup created")
 
     def start(self):
         for runner in self.model_runners:
+            runner.start()
+
+        for runner in self.partner_runners:
             runner.start()
 
         if self.belief_runner is not None:

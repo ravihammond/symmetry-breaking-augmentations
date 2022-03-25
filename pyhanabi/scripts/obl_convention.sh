@@ -1,7 +1,7 @@
 #!/bin/bash
 
 python selfplay.py \
-       --save_dir exps/obl_CR_P0 \
+       --save_dir exps/obl_CR_P0_test \
        --num_thread 24 \
        --num_game_per_thread 80 \
        --sad 0 \
@@ -32,6 +32,7 @@ python selfplay.py \
        --belief_model exps/belief_obl0/model0.pthw \
        --load_model None \
        --net publ-lstm \
-       --actor_type r2d2_convention\
-       --convention conventions/hint_red_play_0.json \
        --save_checkpoints 10 \
+       --convention conventions/hint_red_play_0.json \
+       --convention_act_override 1 \
+       --convention_fict_act_override 1

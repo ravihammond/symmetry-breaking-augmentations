@@ -17,7 +17,6 @@ pybind11_add_module(
   ${CMAKE_CURRENT_SOURCE_DIR}/rlcc/clone_data_generator.cc
   ${CMAKE_CURRENT_SOURCE_DIR}/rlcc/actors/actor.cc
   ${CMAKE_CURRENT_SOURCE_DIR}/rlcc/actors/r2d2_actor.cc
-  ${CMAKE_CURRENT_SOURCE_DIR}/rlcc/actors/r2d2_convention_actor.cc
   ${CMAKE_CURRENT_SOURCE_DIR}/rlcc/actors/rulebot_actor.cc
   ${CMAKE_CURRENT_SOURCE_DIR}/rlcc/actors/rulebot_2_actor.cc
   ${CMAKE_CURRENT_SOURCE_DIR}/rlcc/pybind.cc

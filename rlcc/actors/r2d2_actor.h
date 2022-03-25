@@ -34,7 +34,9 @@ public:
             float gamma,
             std::vector<std::vector<std::string>> convention,
             bool conventionSender,
-            bool conventionOverride)
+            bool conventionOverride, 
+            bool conventionFictitiousOverride, 
+            bool useExperience)
         : Actor(playerIdx, convention, conventionSender, conventionOverride)
           , runner_(std::move(runner))
           , rng_(seed)
@@ -52,8 +54,9 @@ public:
           , colorPermutes_(batchsize_)
           , invColorPermutes_(batchsize_)
           , replayBuffer_(std::move(replayBuffer))
-          , r2d2Buffer_(std::make_unique<rela::R2D2Buffer>(multiStep, seqLen, gamma)) {
-          }
+          , r2d2Buffer_(std::make_unique<rela::R2D2Buffer>(multiStep, seqLen, gamma))
+          , conventionFictitiousOverride_(conventionFictitiousOverride) 
+          , useExperience_(true) {}
 
     // simpler constructor for eval mode
     R2D2Actor(
@@ -81,8 +84,9 @@ public:
           , colorPermutes_(batchsize_)
           , invColorPermutes_(batchsize_)
           , replayBuffer_(nullptr)
-          , r2d2Buffer_(nullptr) {
-          }
+          , r2d2Buffer_(nullptr) 
+          , conventionFictitiousOverride_(false) 
+          , useExperience_(false) {}
 
     virtual void addHid(rela::TensorDict& to, rela::TensorDict& hid);
     void reset(const HanabiEnv& env) override;
@@ -120,9 +124,6 @@ protected:
         auto h0 = rela::tensor_dict::fromIValue(output, torch::kCPU, true);
         return h0;
     }
-
-    virtual hle::HanabiMove getFicticiousTeammateMove(
-        const HanabiEnv& env, hle::HanabiState& fictState);
 
     std::shared_ptr<rela::BatchRunner> runner_;
     std::shared_ptr<rela::BatchRunner> classifier_;
@@ -168,4 +169,7 @@ protected:
     bool validFict_ = false;
     std::unique_ptr<hle::HanabiState> fictState_ = nullptr;
     std::vector<std::shared_ptr<R2D2Actor>> partners_;
+
+    bool conventionFictitiousOverride_;
+    bool useExperience_;
 };

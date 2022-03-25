@@ -84,19 +84,16 @@ def evaluate(
                         convention_role[i], 
                         override[i])
                 else:
-                    actor = hanalearn.R2D2ConventionActor(
-                        runners[i], 
-                        num_player, 
-                        i, 
-                        False, 
-                        sad[i], 
-                        hide_action[i],
-                        convention, 
-                        convention_role[i], 
-                        override[i])
-                    # actor = hanalearn.R2D2Actor(
-                        # runners[i], num_player, i, False, sad[i], hide_action[i]
-                    # )
+                    actor = hanalearn.R2D2Actor(
+                        runners[i], # runner
+                        num_player, # numPlayer
+                        i, # playerIdx
+                        False, # vdn
+                        sad[i], # sad
+                        hide_action[i], # hideAction
+                        convention, # convention
+                        convention_role[i], # conventionSender
+                        override[i]) # conventionOverride
                 actors.append(actor)
                 all_actors.append(actor)
             thread_actors.append(actors)
