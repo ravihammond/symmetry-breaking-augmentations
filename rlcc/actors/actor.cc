@@ -7,7 +7,7 @@
 
 using namespace std;
 
-#define PR true
+#define PR false
 
 tuple<bool, bool> Actor::analyzeCardBelief(const vector<float>& b) {
     assert(b.size() == 25);

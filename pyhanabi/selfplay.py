@@ -25,6 +25,7 @@ import r2d2
 import utils
 
 from convention_belief import ConventionBelief
+from wandb_logger import log_wandb
 
 def load_convention(convention_path):
     if convention_path == "None":
@@ -110,7 +111,8 @@ def selfplay(args):
     agent = agent.to(args.train_device)
     optim = torch.optim.Adam(agent.online_net.parameters(), lr=args.lr, eps=args.eps)
     print(agent)
-    # wandb.watch(agent)
+    if args.wandb:
+        wandb.watch(agent)
     eval_agent = agent.clone(args.train_device, {"vdn": False, "boltzmann_act": False})
 
     replay_buffer = rela.RNNPrioritizedReplay(
@@ -287,8 +289,9 @@ def selfplay(args):
                 partner_agent for _ in range(args.num_player - 1)
             ]
 
-        score, perfect, *_ = evaluate(
+        score, perfect, _, scores, eval_actors = evaluate(
             eval_agents,
+            1000,
             eval_seed,
             args.eval_bomb,
             0,  # explore eps
@@ -327,11 +330,9 @@ def selfplay(args):
                 % (epoch, 100 * np.mean(success_fict))
             )
 
-        wandb.log({
-            "score": score,
-            "perfect": perfect,
-            "loss": last_loss,
-        })
+        if args.wandb:
+            log_wandb(score, perfect, scores, eval_games, loss)
+
         print("==========")
 
 def parse_args():
@@ -413,6 +414,7 @@ def parse_args():
     parser.add_argument("--convention_fict_act_override", type=int, default=0)
     parser.add_argument("--partner_model", type=str, default=0)
     parser.add_argument("--static_partner", type=int, default=0)
+    parser.add_argument("--wandb", type=int, default=0)
 
     args = parser.parse_args()
     if args.off_belief == 1:
@@ -424,6 +426,8 @@ def parse_args():
     return args
 
 def setup_wandb(args):
+    if not args.wandb:
+        return 
     wandb.config = {
         "seed": args.seed,
         "gamma": args.gamma,
@@ -471,5 +475,5 @@ def setup_wandb(args):
 if __name__ == "__main__":
     torch.backends.cudnn.benchmark = True
     args = parse_args()
-    # setup_wandb(args)
+    setup_wandb(args)
     selfplay(args)

@@ -117,28 +117,6 @@ class HanabiThreadLoop : public rela::ThreadLoop {
                 }
                 if(PR)printf("\n----\n");
 
-                //if(ST)printf("\nScore: %d\n", envs_[0]->getScore());
-                //if(ST)printf("Lives: %d\n", envs_[0]->getLife());
-                //if(ST)printf("Information: %d\n", envs_[0]->getInfo());
-                //deck = envs_[0]->getHleState().Deck();
-                //if(ST)printf("Deck: %d\n", deck.Size());
-                //colours = "RYGWB";
-                //fireworks = envs_[0]->getFireworks();
-                //if(ST)printf("Fireworks: ");
-                //for (unsigned long i = 0; i < colours.size(); i++)
-                    //if(ST)printf("%c%d ", colours[i], fireworks[i]);
-                //if(ST)printf("\n");
-                //hands = envs_[0]->getHleState().Hands();
-                //cp = envs_[0]->getCurrentPlayer();
-                //for(unsigned long i = 0; i < hands.size(); i++) {
-                    //if(ST)printf("Actor %ld hand:%s\n", i,
-                        //cp == (int)i ? " <-- current player" : ""); 
-                    //auto hand = hands[i].ToString();
-                    //hand.pop_back();
-                    //if(ST)printf("%s\n", hand.c_str());
-                //}
-                //if(PR)printf("\n----\n");
-
                 for (size_t i = 0; i < envs_.size(); ++i) {
                     if (done_[i] == 1) {
                         continue;

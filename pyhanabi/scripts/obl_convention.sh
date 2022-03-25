@@ -1,7 +1,7 @@
 #!/bin/bash
 
 python selfplay.py \
-       --save_dir exps/obl_CR_P0_test \
+       --save_dir exps/test \
        --num_thread 24 \
        --num_game_per_thread 80 \
        --sad 0 \

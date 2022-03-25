@@ -1,7 +1,7 @@
 #!/bin/bash
 
 python selfplay.py \
-       --save_dir exps/test \
+       --save_dir exps/convention_1 \
        --num_thread 24 \
        --num_game_per_thread 80 \
        --method iql \
@@ -25,4 +25,4 @@ python selfplay.py \
        --convention conventions/hint_red_play_0.json \
        --partner_model exps/obl1/model_epoch1400.pthw \
        --static_partner 0 \
-       --wandb 0
+       --wandb 1

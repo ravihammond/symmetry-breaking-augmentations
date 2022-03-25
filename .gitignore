@@ -25,3 +25,4 @@ models/*
 hanabi-learning-environment/*
 temp
 test.cpp
+*/wandb/*

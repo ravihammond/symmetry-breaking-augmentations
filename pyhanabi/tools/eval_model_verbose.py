@@ -27,8 +27,8 @@ def evaluate_model(args):
         sys.stdout = Logger(args.output)
 
     weight_files = load_weights(args)
-    regex_search = re.search("model_epoch([0-9]+).pthw", args.weight1)
-    print(f"epoch: {regex_search.group(1)}")
+    # regex_search = re.search("model_epoch([0-9]+).pthw", args.weight1)
+    # print(f"epoch: {regex_search.group(1)}")
     scores, actors = run_evaluation(args, weight_files)
 
     print_scores(scores)
@@ -62,7 +62,7 @@ def load_weights(args):
 
 
 def run_evaluation(args, weight_files):
-    _, _, _, scores, actors = evaluate_saved_model(
+    score, perfect, _, scores, actors = evaluate_saved_model(
         weight_files,
         args.num_game,
         args.seed,
