@@ -46,7 +46,7 @@ def evaluate(
 
     # Create Batch Runners only if agent is a learned r2d2 agent.
     runners = [
-        rela.BatchRunner(agent, device, 1000, ["act"]) 
+        rela.BatchRunner(agent.clone(device), device, 1000, ["act"]) 
         if isinstance(agent, r2d2.R2D2Agent)
         else None
         for agent in agents

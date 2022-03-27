@@ -1,7 +1,7 @@
 #!/bin/bash
 
 python selfplay.py \
-       --save_dir exps/static_obl \
+       --save_dir exps/static_obl1_convention \
        --num_thread 24 \
        --num_game_per_thread 80 \
        --method iql \

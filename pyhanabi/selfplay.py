@@ -53,8 +53,6 @@ def selfplay(args):
         args.act_base_eps, args.act_eps_alpha, args.num_t
     )
     expected_eps = np.mean(explore_eps)
-    print("explore eps:", explore_eps)
-    print("avg explore eps:", np.mean(explore_eps))
     
     if args.boltzmann_act:
         boltzmann_beta = utils.generate_log_uniform(
@@ -65,7 +63,6 @@ def selfplay(args):
         print("avg boltzmann beta:", np.mean(boltzmann_beta))
     else:
         boltzmann_t = []
-        print("no boltzmann")
 
     games = create_envs(
         args.num_thread * args.num_game_per_thread,
@@ -297,6 +294,7 @@ def selfplay(args):
             0,  # explore eps
             args.sad,
             args.hide_action,
+            device=args.train_device,
             convention=convention,
             override=[0, 1]
         )
@@ -472,10 +470,12 @@ def setup_wandb(args):
         "partner_model": args.partner_model,
         "static_partner": args.static_partner,
     }
+    run_name = os.path.basename(os.path.normpath(args.save_dir))
     wandb.init(
         project="hanabi-conventions", 
         entity="ravihammond",
-        config=wandb_config
+        config=wandb_config,
+        name=run_name,
     )
     
 if __name__ == "__main__":
