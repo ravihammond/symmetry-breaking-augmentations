@@ -204,8 +204,9 @@ void Actor::incrementStats(
 
 void Actor::incrementStatsConvention(
         const HanabiEnv& env, hle::HanabiMove move) {
-    if (convention_.size() == 0)
+    if (convention_.size() == 0) {
         return;
+    }
 
     auto& state = env.getHleState();
 

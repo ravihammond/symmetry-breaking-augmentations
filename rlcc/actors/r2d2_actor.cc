@@ -414,11 +414,9 @@ void R2D2Actor::observeAfterAct(const HanabiEnv& env) {
         return;
     }
 
-    if (!futPriority_.isNull()) {
+    if (!futPriority_.isNull() && useExperience_) {
         auto priority = futPriority_.get()["priority"].item<float>();
-        if (useExperience_) {
-            replayBuffer_->add(std::move(lastEpisode_), priority);
-        }
+        replayBuffer_->add(std::move(lastEpisode_), priority);
     }
 
     float reward = env.stepReward();
@@ -438,6 +436,8 @@ void R2D2Actor::observeAfterAct(const HanabiEnv& env) {
     if (terminated) {
         lastEpisode_ = r2d2Buffer_->popTransition();
         auto input = lastEpisode_.toDict();
-        futPriority_ = runner_->call("compute_priority", input);
+        if (useExperience_) {
+            futPriority_ = runner_->call("compute_priority", input);
+        }
     }
 }

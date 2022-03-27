@@ -102,11 +102,11 @@ class ActGroup:
         self.create_r2d2_actors()
 
     def create_r2d2_actors(self):
-        convention_act_override = [0, 0]
-        convention_sender = [1, 1]
-        if self.convention_act_override:
-            convention_act_override = [0, 1]
-            convention_sender = [1, 0]
+        # convention_act_override = [0, 0]
+        # convention_sender = [1, 1]
+        # if self.convention_act_override:
+            # convention_act_override = [0, 1]
+            # convention_sender = [1, 0]
 
         actors = []
         if self.method == "vdn":
@@ -145,17 +145,38 @@ class ActGroup:
                     game_actors = []
                     for k in range(self.num_player):
                         if k > 0 and self.static_partner:
+                            # actor = hanalearn.R2D2Actor(
+                                # self.partner_runners[i % self.num_runners],
+                                # self.num_player, 
+                                # k, # playerIdx
+                                # False, # vdn
+                                # self.partner_cfg["sad"], # sad
+                                # self.partner_cfg["hide_action"], # hideAction
+                                # self.convention, # convention
+                                # 0, # conventionSender
+                                # 1) # conventionOverride
                             actor = hanalearn.R2D2Actor(
                                 self.partner_runners[i % self.num_runners],
-                                # self.model_runners[i % self.num_runners],
-                                self.num_player, 
-                                k, # playerIdx
-                                False, # vdn
-                                self.partner_cfg["sad"], # sad
-                                self.partner_cfg["hide_action"], # hideAction
-                                self.convention, # convention
-                                0, # conventionSender
-                                1) # conventionOverride
+                                self.seed,
+                                self.num_player,
+                                k,
+                                self.explore_eps,
+                                self.boltzmann_t,
+                                False,
+                                self.partner_cfg["sad"],
+                                self.shuffle_color,
+                                self.partner_cfg["hide_action"],
+                                self.trinary,
+                                self.replay_buffer,
+                                self.multi_step,
+                                self.max_len,
+                                self.gamma,
+                                self.convention,
+                                0,
+                                self.convention_fict_act_override,
+                                self.convention_fict_act_override,
+                                0,
+                            )
                         else: 
                             actor = hanalearn.R2D2Actor(
                                 self.model_runners[i % self.num_runners],

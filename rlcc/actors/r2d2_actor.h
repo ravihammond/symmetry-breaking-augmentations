@@ -56,7 +56,7 @@ public:
           , replayBuffer_(std::move(replayBuffer))
           , r2d2Buffer_(std::make_unique<rela::R2D2Buffer>(multiStep, seqLen, gamma))
           , conventionFictitiousOverride_(conventionFictitiousOverride) 
-          , useExperience_(true) {}
+          , useExperience_(useExperience) {}
 
     // simpler constructor for eval mode
     R2D2Actor(

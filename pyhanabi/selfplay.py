@@ -25,7 +25,7 @@ import r2d2
 import utils
 
 from convention_belief import ConventionBelief
-from wandb_logger import log_wandb
+from tools.wandb_logger import log_wandb
 
 def load_convention(convention_path):
     if convention_path == "None":
@@ -285,11 +285,11 @@ def selfplay(args):
         eval_agent.load_state_dict(agent.state_dict())
         eval_agents = [eval_agent for _ in range(args.num_player)]
         if args.static_partner:
-            eval_agents = [eval_agents] + [
+            eval_agents = [eval_agent] + [
                 partner_agent for _ in range(args.num_player - 1)
             ]
 
-        score, perfect, _, scores, eval_actors = evaluate(
+        score, perfect, scores, _, eval_actors = evaluate(
             eval_agents,
             1000,
             eval_seed,
@@ -297,7 +297,11 @@ def selfplay(args):
             0,  # explore eps
             args.sad,
             args.hide_action,
+            convention=convention,
+            override=[0, 1]
         )
+        if args.wandb:
+            log_wandb(score, perfect, scores, eval_actors, last_loss)
 
         force_save_name = None
         if epoch > 0 and epoch % args.save_checkpoints == 0:
@@ -310,8 +314,9 @@ def selfplay(args):
             % (epoch, score, perfect * 100, model_saved)
         )
 
+
         if clone_bot is not None:
-            score, perfect, *_ = evaluate(
+            score, perfect, _, scores, eval_actors = evaluate(
                 [clone_bot] + [eval_agent for _ in range(args.num_player - 1)],
                 1000,
                 eval_seed,
@@ -329,9 +334,6 @@ def selfplay(args):
                 "epoch %d, success rate for sampling ficticious state: %.2f%%"
                 % (epoch, 100 * np.mean(success_fict))
             )
-
-        if args.wandb:
-            log_wandb(score, perfect, scores, eval_games, loss)
 
         print("==========")
 
@@ -428,7 +430,7 @@ def parse_args():
 def setup_wandb(args):
     if not args.wandb:
         return 
-    wandb.config = {
+    wandb_config = {
         "seed": args.seed,
         "gamma": args.gamma,
         "eta": args.eta,
@@ -470,7 +472,11 @@ def setup_wandb(args):
         "partner_model": args.partner_model,
         "static_partner": args.static_partner,
     }
-    wandb.init(project="hanabi-conventions", entity="ravihammond")
+    wandb.init(
+        project="hanabi-conventions", 
+        entity="ravihammond",
+        config=wandb_config
+    )
     
 if __name__ == "__main__":
     torch.backends.cudnn.benchmark = True

@@ -4,24 +4,14 @@ import numpy as np
 pprint = pprint.pprint
 
 def log_wandb(score, perfect, scores, actors, loss):
-    # wandb.log({
-        # "score": score,
-        # "perfect": perfect,
-        # "loss": loss,
-    # })
-
-    # wandb.log(scores(scores))
-    # wandb.log(actor_stats(actors, 0))
-    # wandb.log(actor_stats(actors, 1))
-
-    pprint({
+    wandb.log({
         "score": score,
         "perfect": perfect,
         "loss": loss,
     })
-    pprint(get_scores(scores))
-    pprint(actor_stats(actors, 0))
-    pprint(actor_stats(actors, 1))
+    wandb.log(get_scores(scores))
+    wandb.log(actor_stats(actors, 0))
+    wandb.log(actor_stats(actors, 1))
 
 
 def get_scores(scores):
@@ -140,5 +130,4 @@ def merge_dictionaries(dicts):
         for key, value in dic.items():
             stats[key] = value
     return stats
-
 
