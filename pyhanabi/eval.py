@@ -127,6 +127,7 @@ def evaluate_saved_model(
     overwrite=None,
     num_run=1,
     verbose=True,
+    device="cuda:0",
     convention="None",
     convention_sender=0,
     override=[0, 0],
@@ -137,7 +138,7 @@ def evaluate_saved_model(
     if overwrite is None:
         overwrite = {}
     overwrite["vdn"] = False
-    overwrite["device"] = "cuda:0"
+    overwrite["device"] = device
     overwrite["boltzmann_act"] = False
 
     # Load models from weight files
@@ -176,6 +177,7 @@ def evaluate_saved_model(
             0,  # eps
             sad,
             hide_action,
+            device=device,
             convention=load_convention(convention),
             convention_sender=convention_sender,
             override=override,

@@ -68,9 +68,10 @@ def run_evaluation(args, weight_files):
         args.seed,
         args.bomb,
         num_run=args.num_run,
+        device=args.device,
         convention=args.convention,
         convention_sender=args.convention_sender,
-        override=[args.override1, args.override2],
+        override=[args.override0, args.override1],
     )
 
     return scores, actors
@@ -180,10 +181,11 @@ if __name__ == "__main__":
         type=int,
         help="num of {num_game} you want to run, i.e. num_run=2 means 2*num_game",
     )
+    parser.add_argument("--device", default="cuda:0", type=str)
     parser.add_argument("--convention", default="None", type=str)
     parser.add_argument("--convention_sender", default=0, type=int)
+    parser.add_argument("--override0", default=0, type=int)
     parser.add_argument("--override1", default=0, type=int)
-    parser.add_argument("--override2", default=0, type=int)
     args = parser.parse_args()
 
     evaluate_model(args)
