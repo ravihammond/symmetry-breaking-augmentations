@@ -286,6 +286,10 @@ def selfplay(args):
                 partner_agent for _ in range(args.num_player - 1)
             ]
 
+        eval_act_override = [0, 0]
+        if args.convention_act_override:
+            eval_act_override = [0, 1]
+
         score, perfect, scores, _, eval_actors = evaluate(
             eval_agents,
             1000,
@@ -296,7 +300,7 @@ def selfplay(args):
             args.hide_action,
             device=args.train_device,
             convention=convention,
-            override=[0, 1]
+            override=eval_act_override
         )
         if args.wandb:
             log_wandb(score, perfect, scores, eval_actors, last_loss)

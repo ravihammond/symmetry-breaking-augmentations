@@ -15,5 +15,9 @@ build-all: build-cuda build-conda build-project
 run:
 	bash scripts/run_docker.bash
 
+run-plot:
+	bash scripts/run_docker_plot.bash
+
 jupyter:
 	bash scripts/jupyter.bash
+

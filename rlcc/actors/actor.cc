@@ -59,7 +59,7 @@ hle::HanabiMove Actor::overrideMove(
         return move;
     }
 
-    auto last_move = env.getMove(env.getLastAction());
+    auto lastMove = env.getMove(env.getLastAction());
     auto senderMove = strToMove(convention_[conventionIdx_][0]);
     auto responseMove = strToMove(convention_[conventionIdx_][1]);
     auto& state = env.getHleState();
@@ -73,7 +73,7 @@ hle::HanabiMove Actor::overrideMove(
             return randomMove(env, exclude, move);
         }
     } else {
-        if (last_move == senderMove){
+        if (lastMove == senderMove){
             return responseMove;
         } else if (move == responseMove) {
             vector<hle::HanabiMove> exclude = {responseMove};
@@ -200,6 +200,7 @@ void Actor::incrementStats(
     }   
 
     incrementStatsConvention(env, move);
+    incrementStatsTwoStep(env, move);
 }
 
 void Actor::incrementStatsConvention(
@@ -237,8 +238,8 @@ void Actor::incrementStatsConvention(
 
     } else {
         conventionMove = responseMove;
-        auto last_move = env.getMove(env.getLastAction());
-        if (last_move == senderMove && state.MoveIsLegal(responseMove))
+        auto lastMove = env.getMove(env.getLastAction());
+        if (lastMove == senderMove && state.MoveIsLegal(responseMove))
             shouldHavePlayedConvention = true;
     }
 
@@ -256,3 +257,41 @@ void Actor::incrementStatsConvention(
         }
     }
 }
+
+void Actor::incrementStatsTwoStep(
+        const HanabiEnv& env, hle::HanabiMove move) {
+    auto lastMove = env.getMove(env.getLastAction());
+    string colours[5] = {"R", "Y", "G", "W", "B"};
+    string ranks[5] = {"1", "2", "3", "4", "5"};
+
+    string stat = "";
+
+    if (lastMove.MoveType() == hle::HanabiMove::kRevealColor) {
+        stat = "C" + colours[lastMove.Color()] ;
+    } else if (lastMove.MoveType() == hle::HanabiMove::kRevealRank) {
+        stat = "R" + ranks[lastMove.Rank()];
+    } else if (lastMove.MoveType() == hle::HanabiMove::kPlay) {
+        stat = "P" + to_string(lastMove.CardIndex());
+    } else if (lastMove.MoveType() == hle::HanabiMove::kDiscard) {
+        stat = "D" + to_string(lastMove.CardIndex());
+    } else {
+        return;
+    }
+
+    incrementStat(stat);
+
+    if (move.MoveType() == hle::HanabiMove::kPlay) {
+        stat += "_P" + to_string(move.CardIndex());
+    } else if (move.MoveType() == hle::HanabiMove::kDiscard) {
+        stat += "_D" + to_string(move.CardIndex());
+    } else if (move.MoveType() == hle::HanabiMove::kRevealColor) {
+        stat += "_C" + colours[move.Color()];
+    } else if (move.MoveType() == hle::HanabiMove::kRevealRank) {
+        stat += "_R" + ranks[move.Rank()];
+    } else {
+        return;
+    }
+
+    incrementStat(stat);
+}
+

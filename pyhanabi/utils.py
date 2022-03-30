@@ -12,6 +12,7 @@ import torch
 import numpy as np
 
 import r2d2
+import r2d2_sad
 from create import create_envs
 import common_utils
 from supervised_model import SupervisedAgent
@@ -191,6 +192,21 @@ def load_agent(weight_file, overwrite):
     return agent, cfg
 
 
+def load_sad_model(weight_file, device):
+    print("loading file from: ", weight_file)
+    state_dict = torch.load(weight_file, map_location=device)
+    input_dim = state_dict["net.0.weight"].size()[1]
+    hid_dim = 512
+    output_dim = state_dict["fc_a.weight"].size()[0]
+
+    agent = r2d2_sad.R2D2Agent(
+        False, 3, 0.999, 0.9, device, input_dim, hid_dim, output_dim, 2, 5, False
+    ).to(device)
+    load_weight(agent.online_net, weight_file, device)
+
+    return agent
+
+
 def log_explore_ratio(games, expected_eps):
     explore = []
     for g in games:
@@ -276,6 +292,7 @@ class Tachometer:
 def load_weight(model, weight_file, device, *, state_dict=None):
     if state_dict is None:
         state_dict = torch.load(weight_file, map_location=device)
+
     source_state_dict = OrderedDict()
     target_state_dict = model.state_dict()
 
@@ -293,7 +310,7 @@ def load_weight(model, weight_file, device, *, state_dict=None):
             state_dict[k] = v
         elif state_dict[k].size() != v.size():
             print(
-                "warnning: %s not loaded\n[size mismatch %s (in net) vs %s (in file)]"
+                "warning: %s not loaded\n[size mismatch %s (in net) vs %s (in file)]"
                 % (k, v.size(), state_dict[k].size())
             )
             state_dict[k] = v
