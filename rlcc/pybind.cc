@@ -69,9 +69,10 @@ PYBIND11_MODULE(hanalearn, m) {
     py::class_<Actor, std::shared_ptr<Actor>>(m, "Actor")
         .def(py::init<
                 int, //playerIdx
-                std::vector<std::vector<std::string>>, // convention
+                std::vector<std::vector<std::vector<std::string>>>, // convention
                 bool, // conventionSender
-                bool>()) // conventionOverride
+                bool, // conventionOverride
+                bool>()) //recordStats
         .def("get_played_card_info", &Actor::getPlayedCardInfo)
         .def("get_stats", &Actor::getStats);
 
@@ -93,7 +94,7 @@ PYBIND11_MODULE(hanalearn, m) {
                 int, // multiStep,
                 int, // seqLen,
                 float,  // gamma
-                std::vector<std::vector<std::string>>, // convention
+                std::vector<std::vector<std::vector<std::string>>>, // convention
                 bool, // conventionSender
                 bool, // conventionOverride
                 bool, // conventionFictitiousOverride
@@ -105,7 +106,7 @@ PYBIND11_MODULE(hanalearn, m) {
                 bool,  // vdn
                 bool,  // sad
                 bool,  // hideAction
-                std::vector<std::vector<std::string>>, // convention
+                std::vector<std::vector<std::vector<std::string>>>, // convention
                 bool, // conventionSender
                 bool>()) // conventionOverride
         .def("set_partners", &R2D2Actor::setPartners)
@@ -116,17 +117,19 @@ PYBIND11_MODULE(hanalearn, m) {
                 m, "RulebotActor")
         .def(py::init<
                 int, //playerIdx
-                std::vector<std::vector<std::string>>, // convention
+                std::vector<std::vector<std::vector<std::string>>>, // convention
                 bool, // conventionSender
-                bool>()); // conventionOverride
+                bool, // conventionOverride
+                bool>()); // recordStats
 
     py::class_<Rulebot2Actor, Actor, std::shared_ptr<Rulebot2Actor>>(
             m, "Rulebot2Actor")
         .def(py::init<
                 int, //playerIdx
-                std::vector<std::vector<std::string>>, // convention
+                std::vector<std::vector<std::vector<std::string>>>, // convention
                 bool, // conventionSender
-                bool>()); // conventionOverride
+                bool, // conventionOverride
+                bool>()); // recordStats
 
     m.def("observe", py::overload_cast<const hle::HanabiState&, int, bool>(&observe));
 

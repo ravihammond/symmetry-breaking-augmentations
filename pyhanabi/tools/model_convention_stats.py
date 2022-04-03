@@ -29,7 +29,7 @@ def convention_data(args):
     weight_files = load_weights(args)
     _, actors = run_evaluation(args, weight_files)
 
-    stats = extract_convention_stats(actors)
+    stats = extract_convention_stats(actors, args.actor)
     pprint(stats)
 
     plot_data = generate_plot_data(stats, args)
@@ -72,40 +72,41 @@ def run_evaluation(args, weight_files):
     return scores, actors
 
 
-def extract_convention_stats(actors):
+def extract_convention_stats(actors, actor):
     stats = {}
-    signal_response_data(stats, "D", CARDS, actors)
-    signal_response_data(stats, "P", CARDS, actors)
-    signal_response_data(stats, "C", COLOURS, actors)
-    signal_response_data(stats, "R", RANKS, actors)
+    signal_response_data(stats, "D", CARDS, actors, actor)
+    signal_response_data(stats, "P", CARDS, actors, actor)
+    signal_response_data(stats, "C", COLOURS, actors, actor)
+    signal_response_data(stats, "R", RANKS, actors, actor)
     return stats
 
 
-def signal_response_data(stats, signal_type, type_map, actors):
+def signal_response_data(stats, signal_type, type_map, actors, actor):
     for s_idx in range(5):
         signal = f"{signal_type}{type_map[s_idx]}"
-        total = sum_stats(signal, actors)
+        total = sum_stats(signal, actors, actor)
 
         for r_idx in range(5):
-            response_data(stats, signal, "D", r_idx, CARDS, actors, total)
-            response_data(stats, signal, "P", r_idx, CARDS, actors, total)
-            response_data(stats, signal, "C", r_idx, COLOURS, actors, total)
-            response_data(stats, signal, "R", r_idx, RANKS, actors, total)
+            response_data(stats, signal, "D", r_idx, CARDS, actors, total, actor)
+            response_data(stats, signal, "P", r_idx, CARDS, actors, total, actor)
+            response_data(stats, signal, "C", r_idx, COLOURS, actors, total, actor)
+            response_data(stats, signal, "R", r_idx, RANKS, actors, total, actor)
 
 
 def response_data(
-        stats, signal, response_type, index, type_map, actors, total):
+        stats, signal, response_type, index, type_map, actors, total, actor):
     response = f"{signal}_{response_type}{type_map[index]}"
-    response_sum = sum_stats(response, actors)
+    response_sum = sum_stats(response, actors, actor)
     stats[response] = divide(response_sum, total)
     return response_sum
 
 
-def sum_stats(key, actors):
+def sum_stats(key, actors, actor):
     stats = []
     for i, g in enumerate(actors): 
-        if key in g.get_stats():
-            stats.append(g.get_stats()[key])
+        if actor == -1 or i % 2 == actor:
+            if key in g.get_stats():
+                stats.append(g.get_stats()[key])
     return int(sum(stats))
 
 def divide(n, total):
@@ -123,8 +124,6 @@ def generate_plot_data(stats, args):
         row_data = []
         for xticklabel in xticklabels:
             row_data.append(stats[f"{yticklabel}_{xticklabel}"])
-            # stat = f"{yticklabel}_{xticklabel}"
-            # print(f"{stat}: {stats[stat]}")
         plot_data.append(row_data)
 
     return plot_data, xticklabels, yticklabels
@@ -170,12 +169,7 @@ if __name__ == "__main__":
     parser.add_argument("--seed", default=1, type=int)
     parser.add_argument("--bomb", default=0, type=int)
     parser.add_argument("--num_game", default=5000, type=int)
-    parser.add_argument(
-        "--num_run",
-        default=1,
-        type=int,
-        help="num of {num_game} you want to run, i.e. num_run=2 means 2*num_game",
-    )
+    parser.add_argument("--num_run", default=1, type=int)
     parser.add_argument("--device", default="cuda:0", type=str)
     parser.add_argument("--convention", default="None", type=str)
     parser.add_argument("--convention_sender", default=0, type=int)
@@ -184,7 +178,8 @@ if __name__ == "__main__":
     parser.add_argument("--signal_actions", default="CR", type=str)
     parser.add_argument("--response_actions", default="DP", type=str)
     parser.add_argument("--title", default="None", type=str)
-    parser.add_argument("--colour_max", default=1.0, type=float)
+    parser.add_argument("--colour_max", default=0.7, type=float)
+    parser.add_argument("--actor", default=-1, type=int)
     args = parser.parse_args()
 
     convention_data(args)

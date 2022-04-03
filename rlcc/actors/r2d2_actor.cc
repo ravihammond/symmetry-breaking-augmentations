@@ -364,24 +364,25 @@ void R2D2Actor::fictAct(const HanabiEnv& env) {
         // it was not our turn, we have computed our partner's fict move
         auto fictReply = fictReply_.get();
         auto action = fictReply.at("a").item<int64_t>();
-        auto learned_move =  env.getMove(action);
+        move = env.getMove(action);
 
         if (conventionFictitiousOverride_) {
-            auto senderMove = strToMove(convention_[conventionIdx_][0]);
-            auto responseMove = strToMove(convention_[conventionIdx_][1]);
+            for (auto convention: convention_[conventionIdx_]) {
+                auto senderMove = strToMove(convention[0]);
+                auto responseMove = strToMove(convention[1]);
 
-            auto moveHistory = fictState_->MoveHistory();
-            auto lastMove = moveHistory[moveHistory.size() - 1].move;
-            if (lastMove.MoveType() == hle::HanabiMove::kDeal) {
-                lastMove = moveHistory[moveHistory.size() - 2].move;
-            }
+                auto moveHistory = fictState_->MoveHistory();
+                auto lastMove = moveHistory[moveHistory.size() - 1].move;
+                if (lastMove.MoveType() == hle::HanabiMove::kDeal) {
+                    lastMove = moveHistory[moveHistory.size() - 2].move;
+                }
 
-            if (lastMove.MoveType() != hle::HanabiMove::kDeal &&
-                lastMove == senderMove && 
-                fictState_->MoveIsLegal(responseMove)) {
-                move = responseMove;
-            } else {
-                move = learned_move;
+                if (lastMove.MoveType() != hle::HanabiMove::kDeal &&
+                    lastMove == senderMove && 
+                    fictState_->MoveIsLegal(responseMove)) {
+                    move = responseMove;
+                    break;
+                }
             }
         }
     }

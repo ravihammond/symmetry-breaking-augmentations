@@ -9,36 +9,17 @@ sys.path.append(lib_path)
 from eval import evaluate_saved_model
 from model_zoo import model_zoo
 
-class Logger(object):
-    def __init__(self, filename):
-        self.terminal = sys.stdout
-        self.logfile = open(filename, "a")
-
-    def write(self, message):
-        self.terminal.write(message)
-        self.logfile.write(message)
-
-    def flush(self):
-        pass
-
 
 def evaluate_model(args):
     if args.output is not None:
         sys.stdout = Logger(args.output)
 
     weight_files = load_weights(args)
-    # regex_search = re.search("model_epoch([0-9]+).pthw", args.weight1)
-    # print(f"epoch: {regex_search.group(1)}")
     scores, actors = run_evaluation(args, weight_files)
 
     print_scores(scores)
     print_actor_stats(actors, 0)
     print_actor_stats(actors, 1)
-    print("==========")
-
-    if args.output is not None:
-        sys.stdout.logfile.close()
-        sys.stdout = sys.stdout.terminal
 
 
 def load_weights(args):
@@ -109,9 +90,12 @@ def print_played_card_knowledge(actors, player):
 def print_move_stats(actors, player):
     colour_move_map = ["red", "yellow", "green", "white", "blue"]
     rank_move_map = ["1", "2", "3", "4", "5"]
+    card_index_map = ["0", "1", "3", "3", "4"]
 
     print_move_type_stat(actors, player, "play")
+    print_move_type_stats(actors, player, "play", card_index_map, "play")
     print_move_type_stat(actors, player, "discard")
+    print_move_type_stats(actors, player, "discard", card_index_map, "discard")
     print_move_type_stat(actors, player, "hint_colour")
     print_move_type_stats(actors, player, "hint", colour_move_map, "hint_colour")
     print_move_type_stat(actors, player, "hint_rank")
@@ -141,10 +125,6 @@ def print_convention_stats(actors, player):
             f"{played_correct_played_percent:.1f}%)")
     print(f"actor{player}_convention_played_incorrect: {played_incorrect}")
 
-    for i in range(5):
-        playable = sum_stats(f"convention_played_{i}_playable", actors, player)
-        print(f"actor{player}_convention_played_{i}_playable: {playable}")
-
 
 def print_move_type_stat(actors, player, move_type):
     count = sum_stats(move_type, actors, player)
@@ -158,6 +138,7 @@ def sum_stats(key, actors, player):
             if key in g.get_stats():
                 stats.append(g.get_stats()[key])
     return int(sum(stats))
+
 
 def percent(n, total):
     if total == 0:
@@ -189,4 +170,3 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     evaluate_model(args)
-

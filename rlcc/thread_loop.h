@@ -13,7 +13,6 @@
 #include "rlcc/actors/actor.h"
 
 #define PR false
-#define ST false
 
 class HanabiThreadLoop : public rela::ThreadLoop {
     public:
@@ -61,25 +60,25 @@ class HanabiThreadLoop : public rela::ThreadLoop {
                     }
                 }
 
-                if(ST)printf("\nScore: %d\n", envs_[0]->getScore());
-                if(ST)printf("Lives: %d\n", envs_[0]->getLife());
-                if(ST)printf("Information: %d\n", envs_[0]->getInfo());
+                if(PR)printf("\nScore: %d\n", envs_[0]->getScore());
+                if(PR)printf("Lives: %d\n", envs_[0]->getLife());
+                if(PR)printf("Information: %d\n", envs_[0]->getInfo());
                 auto deck = envs_[0]->getHleState().Deck();
-                if(ST)printf("Deck: %d\n", deck.Size());
+                if(PR)printf("Deck: %d\n", deck.Size());
                 std::string colours = "RYGWB";
                 auto fireworks = envs_[0]->getFireworks();
-                if(ST)printf("Fireworks: ");
+                if(PR)printf("Fireworks: ");
                 for (unsigned long i = 0; i < colours.size(); i++)
-                    if(ST)printf("%c%d ", colours[i], fireworks[i]);
-                if(ST)printf("\n");
+                    if(PR)printf("%c%d ", colours[i], fireworks[i]);
+                if(PR)printf("\n");
                 auto hands = envs_[0]->getHleState().Hands();
                 int cp = envs_[0]->getCurrentPlayer();
                 for(unsigned long i = 0; i < hands.size(); i++) {
-                    if(ST)printf("Actor %ld hand:%s\n", i,
+                    if(PR)printf("Actor %ld hand:%s\n", i,
                         cp == (int)i ? " <-- current player" : ""); 
                     auto hand = hands[i].ToString();
                     hand.pop_back();
-                    if(ST)printf("%s\n", hand.c_str());
+                    if(PR)printf("%s\n", hand.c_str());
                 }
 
                 if(PR)printf("\n----\n");
@@ -155,3 +154,4 @@ class HanabiThreadLoop : public rela::ThreadLoop {
         const bool eval_;
         int numDone_ = 0;
 };
+

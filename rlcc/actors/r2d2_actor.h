@@ -32,12 +32,16 @@ public:
             int multiStep,
             int seqLen,
             float gamma,
-            std::vector<std::vector<std::string>> convention,
+            std::vector<std::vector<std::vector<std::string>>> convention,
             bool conventionSender,
             bool conventionOverride, 
             bool conventionFictitiousOverride, 
             bool useExperience)
-        : Actor(playerIdx, convention, conventionSender, conventionOverride)
+        : Actor(playerIdx, 
+                convention, 
+                conventionSender, 
+                conventionOverride, 
+                false)
           , runner_(std::move(runner))
           , rng_(seed)
           , numPlayer_(numPlayer)
@@ -67,10 +71,15 @@ public:
             bool vdn,
             bool sad,
             bool hideAction,
-            std::vector<std::vector<std::string>> convention,
+            std::vector<std::vector<std::vector<std::string>>> convention,
             bool conventionSender,
             bool conventionOverride)
-        : Actor(playerIdx, convention, conventionSender, conventionOverride)
+        : Actor(
+                playerIdx, 
+                convention, 
+                conventionSender, 
+                conventionOverride, 
+                true)
           , runner_(std::move(runner))
           , rng_(1)  // not used in eval mode
           , numPlayer_(numPlayer)
