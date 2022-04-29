@@ -5,6 +5,8 @@
 // LICENSE file in the root directory of this source tree.
 #include <stdio.h>
 #include <iostream>
+#include <random>
+#include <functional>
 
 #include "rlcc/actors/r2d2_actor.h"
 #include "rlcc/utils.h"

@@ -3,6 +3,7 @@ import os
 import sys
 import numpy as np
 import re
+import json
 
 lib_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(lib_path)
@@ -17,9 +18,11 @@ def evaluate_model(args):
     weight_files = load_weights(args)
     scores, actors = run_evaluation(args, weight_files)
 
+    convention = load_convention(args.convention)
+
     print_scores(scores)
-    print_actor_stats(actors, 0)
-    print_actor_stats(actors, 1)
+    print_actor_stats(actors, 0, convention)
+    print_actor_stats(actors, 1, convention)
 
 
 def load_weights(args):
@@ -65,10 +68,10 @@ def print_scores(scores):
     print(f"bomb_out_rate: {100 * (1 - len(non_zero_scores) / len(scores)):.2f}%")
 
 
-def print_actor_stats(actors, player):
+def print_actor_stats(actors, player, convention):
     print_played_card_knowledge(actors, player)
     print_move_stats(actors, player)
-    print_convention_stats(actors, player)
+    print_convention_stats(actors, player, convention)
 
 
 def print_played_card_knowledge(actors, player):
@@ -110,20 +113,31 @@ def print_move_type_stats(actors, player, move_type, move_map, move_total):
                 f"({percent(move_total, total):.1f}%)")
 
 
-def print_convention_stats(actors, player):
-    available = sum_stats("convention_available", actors, player)
-    played = sum_stats("convention_played", actors, player)
-    played_correct = sum_stats("convention_played_correct", actors, player)
-    played_incorrect = sum_stats("convention_played_incorrect", actors, player)
-    played_correct_available_percent = percent(played_correct, available)
-    played_correct_played_percent = percent(played_correct, played)
+def print_convention_stats(actors, player, conventions):
+    convention_strings = []
+    for convention_set in conventions:
+        convention_string = ""
+        for i, convention in enumerate(convention_set):
+            if i > 0:
+                convention_string += "-"
+            convention_string += convention[0] + convention[1]
+        convention_strings.append(convention_string)
 
-    print(f"actor{player}_convention_available: {int(available)}")
-    print(f"actor{player}_convention_played: {played}")
-    print(f"actor{player}_convention_played_correct: {played_correct}", 
-            f"({played_correct_available_percent:.1f}%",
-            f"{played_correct_played_percent:.1f}%)")
-    print(f"actor{player}_convention_played_incorrect: {played_incorrect}")
+    for convention_string in convention_strings:
+        conv_str = "convention_" + convention_string
+        available = sum_stats(f"{conv_str}_available", actors, player)
+        played = sum_stats(f"{conv_str}_played", actors, player)
+        played_correct = sum_stats(f"{conv_str}_played_correct", actors, player)
+        played_incorrect = sum_stats(f"{conv_str}_played_incorrect", actors, player)
+        played_correct_available_percent = percent(played_correct, available)
+        played_correct_played_percent = percent(played_correct, played)
+
+        print(f"actor{player}_{conv_str}_available: {int(available)}")
+        print(f"actor{player}_{conv_str}_played: {played}")
+        print(f"actor{player}_{conv_str}_played_correct: {played_correct}", 
+                f"({played_correct_available_percent:.1f}%",
+                f"{played_correct_played_percent:.1f}%)")
+        print(f"actor{player}_{conv_str}_played_incorrect: {played_incorrect}")
 
 
 def print_move_type_stat(actors, player, move_type):
@@ -145,6 +159,11 @@ def percent(n, total):
         return 0
     return (n / total) * 100
 
+def load_convention(convention_path):
+    if convention_path == "None":
+        return []
+    convention_file = open(convention_path)
+    return json.load(convention_file)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

@@ -33,14 +33,17 @@ public:
             int seqLen,
             float gamma,
             std::vector<std::vector<std::vector<std::string>>> convention,
+            int conventionIdx,
             bool conventionSender,
-            bool conventionOverride, 
-            bool conventionFictitiousOverride, 
+            bool conventionOverride,
+            bool conventionFictitiousOverride,
             bool useExperience)
-        : Actor(playerIdx, 
-                convention, 
-                conventionSender, 
-                conventionOverride, 
+        : Actor(
+                playerIdx,
+                convention,
+                conventionIdx,
+                conventionSender,
+                conventionOverride,
                 false)
           , runner_(std::move(runner))
           , rng_(seed)
@@ -59,7 +62,7 @@ public:
           , invColorPermutes_(batchsize_)
           , replayBuffer_(std::move(replayBuffer))
           , r2d2Buffer_(std::make_unique<rela::R2D2Buffer>(multiStep, seqLen, gamma))
-          , conventionFictitiousOverride_(conventionFictitiousOverride) 
+          , conventionFictitiousOverride_(conventionFictitiousOverride)
           , useExperience_(useExperience) {
     }
 
@@ -72,13 +75,15 @@ public:
             bool sad,
             bool hideAction,
             std::vector<std::vector<std::vector<std::string>>> convention,
+            int conventionIdx,
             bool conventionSender,
             bool conventionOverride)
         : Actor(
-                playerIdx, 
-                convention, 
-                conventionSender, 
-                conventionOverride, 
+                playerIdx,
+                convention,
+                conventionIdx,
+                conventionSender,
+                conventionOverride,
                 true)
           , runner_(std::move(runner))
           , rng_(1)  // not used in eval mode
@@ -94,8 +99,8 @@ public:
           , colorPermutes_(batchsize_)
           , invColorPermutes_(batchsize_)
           , replayBuffer_(nullptr)
-          , r2d2Buffer_(nullptr) 
-          , conventionFictitiousOverride_(false) 
+          , r2d2Buffer_(nullptr)
+          , conventionFictitiousOverride_(false)
           , useExperience_(false) {
     }
 

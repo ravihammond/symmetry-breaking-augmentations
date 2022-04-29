@@ -70,11 +70,13 @@ PYBIND11_MODULE(hanalearn, m) {
         .def(py::init<
                 int, //playerIdx
                 std::vector<std::vector<std::vector<std::string>>>, // convention
+                int, // conventionIdx
                 bool, // conventionSender
                 bool, // conventionOverride
                 bool>()) //recordStats
         .def("get_played_card_info", &Actor::getPlayedCardInfo)
-        .def("get_stats", &Actor::getStats);
+        .def("get_stats", &Actor::getStats)
+        .def("get_convention_index", &Actor::getConventionIndex);
 
     py::class_<R2D2Actor, Actor, std::shared_ptr<R2D2Actor>>(m, "R2D2Actor")
         .def(py::init<
@@ -95,6 +97,7 @@ PYBIND11_MODULE(hanalearn, m) {
                 int, // seqLen,
                 float,  // gamma
                 std::vector<std::vector<std::vector<std::string>>>, // convention
+                int, // conventionIdx
                 bool, // conventionSender
                 bool, // conventionOverride
                 bool, // conventionFictitiousOverride
@@ -107,6 +110,7 @@ PYBIND11_MODULE(hanalearn, m) {
                 bool,  // sad
                 bool,  // hideAction
                 std::vector<std::vector<std::vector<std::string>>>, // convention
+                int, // conventionIdx
                 bool, // conventionSender
                 bool>()) // conventionOverride
         .def("set_partners", &R2D2Actor::setPartners)
@@ -118,6 +122,7 @@ PYBIND11_MODULE(hanalearn, m) {
         .def(py::init<
                 int, //playerIdx
                 std::vector<std::vector<std::vector<std::string>>>, // convention
+                int, // conventionIdx
                 bool, // conventionSender
                 bool, // conventionOverride
                 bool>()); // recordStats
@@ -127,6 +132,7 @@ PYBIND11_MODULE(hanalearn, m) {
         .def(py::init<
                 int, //playerIdx
                 std::vector<std::vector<std::vector<std::string>>>, // convention
+                int, // conventionIdx
                 bool, // conventionSender
                 bool, // conventionOverride
                 bool>()); // recordStats

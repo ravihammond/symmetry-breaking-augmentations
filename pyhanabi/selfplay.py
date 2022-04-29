@@ -302,8 +302,8 @@ def selfplay(args):
             convention=convention,
             override=eval_act_override
         )
-        if args.wandb:
-            log_wandb(score, perfect, scores, eval_actors, last_loss)
+        # if args.wandb:
+        log_wandb(score, perfect, scores, eval_actors, last_loss, convention)
 
         force_save_name = None
         if epoch > 0 and epoch % args.save_checkpoints == 0:

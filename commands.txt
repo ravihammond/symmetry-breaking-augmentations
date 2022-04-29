@@ -16,9 +16,8 @@ python pyhanabi/tools/eval_model.py --weight1 pyhanabi/exps/obl1/model_epoch1400
 python pyhanabi/tools/eval_model_verbose.py --weight1 pyhanabi/exps/obl_CR_P0/model_epoch230.pthw --weight2 rulebot --convention pyhanabi/conventions/hint_red_play_0.json
 
 == OVERRIDE ==
-python pyhanabi/tools/eval_model_verbose.py --weight1 pyhanabi/exps/obl1/model_epoch1400.pthw --convention pyhanabi/conventions/CR_P0.json --override0 1 --override1 1 --num_game 1
 
-python pyhanabi/tools/eval_model_verbose.py --weight1 pyhanabi/exps/iql_obl1_CR_PO/model_epoch1500.pthw --weight2 pyhanabi/exps/obl1/model_epoch1400.pthw --override1 1 pyhanabi/conventions/hint_red_play_0.json --num_game 1
+python pyhanabi/tools/eval_model_verbose.py --weight1 pyhanabi/exps/iql_obl1_CR_P0/model_epoch1500.pthw --weight2 pyhanabi/exps/obl1/model_epoch1400.pthw --override1 1 --convention pyhanabi/conventions/CR_P0.json
 
 == ACTION MATRIX ==
 python pyhanabi/tools/model_convention_stats.py --weight1 pyhanabi/exps/iql/model_epoch1900.pthw --title IQL --signal_actions DPCR --response_actions DPCR

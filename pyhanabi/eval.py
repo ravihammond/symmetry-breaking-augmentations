@@ -10,6 +10,7 @@ import json
 import numpy as np
 import torch
 import sys
+import random
 
 from create import *
 import rela
@@ -70,17 +71,20 @@ def evaluate(
         thread_actors = []
         for g_idx in range(t_idx * game_per_thread, (t_idx + 1) * game_per_thread):
             actors = []
+            convention_index = random.randint(0, len(convention) - 1)
             for i in range(num_player):
                 if agents[i] == "rulebot":
                     actor = hanalearn.RulebotActor(
                         i, 
                         convention, 
+                        convention_index, 
                         convention_role[i], 
                         override[i])
                 elif agents[i] == "rulebot2":
                     actor = hanalearn.Rulebot2Actor(
                         i, 
-                        convention, 
+                        convention,
+                        convention_index,
                         convention_role[i], 
                         override[i])
                 else:
@@ -92,6 +96,7 @@ def evaluate(
                         sad[i], # sad
                         hide_action[i], # hideAction
                         convention, # convention
+                        convention_index, # conventionIndex
                         convention_role[i], # conventionSender
                         override[i]) # conventionOverride
                 actors.append(actor)

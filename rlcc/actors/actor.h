@@ -7,15 +7,10 @@ public:
     Actor(
             int playerIdx,
             std::vector<std::vector<std::vector<std::string>>> convention,
+            int conventionIdx,
             bool conventionSender,
             bool conventionOverride,
-            bool recordStats)
-        : playerIdx_(playerIdx) 
-        , convention_(convention) 
-        , conventionSender_(conventionSender) 
-        , conventionIdx_(0) 
-        , conventionOverride_(conventionOverride) 
-        , recordStats_(recordStats) {}
+            bool recordStats);
 
     virtual void reset(const HanabiEnv& env) { (void)env; }
     virtual void observeBeforeAct(HanabiEnv& env) { (void)env; }
@@ -36,6 +31,10 @@ public:
         return {testVariable_};
     }
 
+    int getConventionIndex() {
+        return {conventionIdx_};
+    }
+
 protected:
     std::tuple<bool, bool> analyzeCardBelief(const std::vector<float>& b);
 
@@ -49,6 +48,8 @@ protected:
     void incrementStatsConvention(const HanabiEnv& env, hle::HanabiMove move);
 
     void incrementStatsTwoStep(const HanabiEnv& env, hle::HanabiMove move);
+
+    std::string conventionString();
 
     hle::HanabiMove overrideMove(const HanabiEnv& env, hle::HanabiMove move);
 

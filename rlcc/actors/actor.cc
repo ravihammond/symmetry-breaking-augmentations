@@ -1,13 +1,25 @@
 #include <stdio.h>
 #include <algorithm>
 #include <random>
-#include <cstdlib>
 
 #include "actor.h"
 
 using namespace std;
 
-
+Actor::Actor(
+        int playerIdx,
+        std::vector<std::vector<std::vector<std::string>>> convention,
+        int conventionIdx,
+        bool conventionSender,
+        bool conventionOverride,
+        bool recordStats)
+    : playerIdx_(playerIdx) 
+    , convention_(convention) 
+    , conventionSender_(conventionSender) 
+    , conventionIdx_(conventionIdx) 
+    , conventionOverride_(conventionOverride) 
+    , recordStats_(recordStats) {
+}
 
 tuple<bool, bool> Actor::analyzeCardBelief(const vector<float>& b) {
     assert(b.size() == 25);
@@ -82,7 +94,6 @@ hle::HanabiMove Actor::overrideMove(
     } else {
         if (moveInVector(senderMoves, lastMove)) {
             return matchingResponseMove(currentConvention, lastMove);
-        } else {
         }
         if (moveInVector(responseMoves, move)) {
             return randomMove(env, responseMoves, move);
@@ -310,16 +321,18 @@ void Actor::incrementStatsConvention(
         }
     }
 
+    string conventionStr = "convention_" + conventionString();
+
     if (shouldHavePlayedConvention) {
-        incrementStat("convention_available");
+        incrementStat(conventionStr + "_available");
     }
 
     if (conventionMove == move) {
-        incrementStat("convention_played");
+        incrementStat(conventionStr + "_played");
         if (shouldHavePlayedConvention) {
-            incrementStat("convention_played_correct");
+            incrementStat(conventionStr + "_played_correct");
         } else {
-            incrementStat("convention_played_incorrect");
+            incrementStat(conventionStr + "_played_incorrect");
         }
     }
 }
@@ -370,3 +383,19 @@ void Actor::incrementStatsTwoStep(
  
     incrementStat(stat);
 }
+
+string Actor::conventionString() {
+    string conventionStr = "";
+
+    auto conventionSet = convention_[conventionIdx_];
+    for (size_t i = 0; i < conventionSet.size(); i++) {
+        if (i > 0) {
+            conventionStr += "-";
+        }
+        auto convention = conventionSet[i];
+        conventionStr += convention[0] + convention[1];
+    }
+
+    return conventionStr;
+}
+

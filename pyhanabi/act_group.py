@@ -131,6 +131,7 @@ class ActGroup:
                         0,
                         0,
                         0,
+                        0,
                         1,
                     )
                     self.seed += 1
@@ -160,6 +161,7 @@ class ActGroup:
                                 self.max_len,
                                 self.gamma,
                                 self.convention,
+                                0,
                                 0, # convention sender
                                 self.convention_act_override,
                                 self.convention_fict_act_override,
@@ -183,6 +185,7 @@ class ActGroup:
                                 self.max_len,
                                 self.gamma,
                                 self.convention,
+                                0,
                                 1, # convention sender
                                 0, # convention act override
                                 self.convention_fict_act_override,

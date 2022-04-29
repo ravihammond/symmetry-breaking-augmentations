@@ -3,15 +3,20 @@ import pprint
 import numpy as np
 pprint = pprint.pprint
 
-def log_wandb(score, perfect, scores, actors, loss):
-    wandb.log({
-        "score": score,
-        "perfect": perfect,
-        "loss": loss,
-    })
-    wandb.log(get_scores(scores))
-    wandb.log(actor_stats(actors, 0))
-    wandb.log(actor_stats(actors, 1))
+# from collect_actor_stats import collect_stats
+
+def log_wandb(score, perfect, scores, actors, loss, convention):
+    # wandb.log({
+        # "score": score,
+        # "perfect": perfect,
+        # "loss": loss,
+    # })
+    # wandb.log(get_scores(scores))
+    # wandb.log(actor_stats(actors, 0))
+    # wandb.log(actor_stats(actors, 1))
+    pprint(get_scores(scores))
+    pprint(actor_stats(actors, 0, convention))
+    pprint(actor_stats(actors, 1, convention))
 
 
 def get_scores(scores):
@@ -25,11 +30,11 @@ def get_scores(scores):
     })
 
 
-def actor_stats(actors, player):
+def actor_stats(actors, player, convention):
     return merge_dictionaries([
         played_card_knowledge(actors, player),
         move_stats(actors, player),
-        convention_stats(actors, player),
+        convention_stats(actors, player, convention),
     ])
 
 
@@ -78,28 +83,35 @@ def move_type_stats(actors, player, move_type, move_map, move_total):
     return stats
 
 
-def convention_stats(actors, player):
-    available = sum_stats("convention_available", actors, player)
-    played = sum_stats("convention_played", actors, player)
-    played_correct = sum_stats("convention_played_correct", actors, player)
-    played_incorrect = sum_stats("convention_played_incorrect", actors, player)
-    played_correct_available_percent = percent(played_correct, available)
-    played_correct_played_percent = percent(played_correct, played)
+def convention_stats(actors, player, conventions):
+    convention_strings = []
+    for convention_set in conventions:
+        convention_string = ""
+        for i, convention in enumerate(convention_set):
+            if i > 0:
+                convention_string += "-"
+            convention_string += convention[0] + convention[1]
+        convention_strings.append(convention_string)
 
-    stats = {
-        f"actor{player}_convention_available": int(available),
-        f"actor{player}_convention_played": played,
-        f"actor{player}_convention_played_correct": played_correct,
-        f"actor{player}_convention_played_correct_available%": \
-            played_correct_available_percent,
-        f"actor{player}_convention_played_correct_played%": \
-            played_correct_played_percent,
-        f"actor{player}_convention_played_incorrect": played_incorrect
-    }
+    stats = {}
 
-    for i in range(5):
-        playable = sum_stats(f"convention_played_{i}_playable", actors, player)
-        stats[f"actor{player}_convention_played_{i}_playable"] = playable
+    for convention_string in convention_strings:
+        conv_str = "convention_" + convention_string
+        available = sum_stats(f"{conv_str}_available", actors, player)
+        played = sum_stats(f"{conv_str}_played", actors, player)
+        played_correct = sum_stats(f"{conv_str}_played_correct", actors, player)
+        played_incorrect = sum_stats(f"{conv_str}_played_incorrect", actors, player)
+        played_correct_available_percent = percent(played_correct, available)
+        played_correct_played_percent = percent(played_correct, played)
+
+        stats[f"actor{player}_{conv_str}_available"] = int(available)
+        stats[f"actor{player}_{conv_str}_played"] = played
+        stats[f"actor{player}_{conv_str}_played_correct"] = played_correct
+        stats[f"actor{player}_{conv_str}_played_correct_available%"] = \
+                played_correct_available_percent
+        stats[f"actor{player}_{conv_str}_played_correct_played%"] = \
+                played_correct_played_percent
+        stats[f"actor{player}_{conv_str}_played_incorrect"] = played_incorrect
 
     return stats
 
