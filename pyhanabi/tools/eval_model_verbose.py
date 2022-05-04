@@ -4,11 +4,14 @@ import sys
 import numpy as np
 import re
 import json
+import pprint
+pprint = pprint.pprint
 
 lib_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(lib_path)
 from eval import evaluate_saved_model
 from model_zoo import model_zoo
+from collect_actor_stats import collect_stats
 
 
 def evaluate_model(args):
@@ -16,13 +19,14 @@ def evaluate_model(args):
         sys.stdout = Logger(args.output)
 
     weight_files = load_weights(args)
-    scores, actors = run_evaluation(args, weight_files)
+    score, perfect, scores, actors = run_evaluation(args, weight_files)
+    conventions = load_convention(args.convention)
 
-    convention = load_convention(args.convention)
+    stats = collect_stats(score, perfect, scores, actors, conventions)
 
-    print_scores(scores)
-    print_actor_stats(actors, 0, convention)
-    print_actor_stats(actors, 1, convention)
+    print_scores(stats)
+    print_actor_stats(stats, 0, conventions)
+    print_actor_stats(stats, 1, conventions)
 
 
 def load_weights(args):
@@ -46,7 +50,7 @@ def load_weights(args):
 
 
 def run_evaluation(args, weight_files):
-    score, perfect, _, scores, actors = evaluate_saved_model(
+    score, _, perfect,scores, actors = evaluate_saved_model(
         weight_files,
         args.num_game,
         args.seed,
@@ -56,64 +60,51 @@ def run_evaluation(args, weight_files):
         convention=args.convention,
         convention_sender=args.convention_sender,
         override=[args.override0, args.override1],
+        verbose=False,
     )
 
-    return scores, actors
+    return score, perfect, scores, actors
 
 
-def print_scores(scores):
-    non_zero_scores = [s for s in scores if s > 0]
-    print(f"non_zero_mean: %.3f" % (
-        0 if len(non_zero_scores) == 0 else np.mean(non_zero_scores)))
-    print(f"bomb_out_rate: {100 * (1 - len(non_zero_scores) / len(scores)):.2f}%")
+def print_scores(stats):
+    score = stats["score"]
+    perfect = stats["perfect"] * 100
+    non_zero_mean = stats["non_zero_mean"]
+    bomb_out_rate = stats["bomb_out_rate"]
+
+    print(f"score: {score}")
+    print(f"perfect: {perfect:.2}%")
+    print(f"non_zero_mean: {non_zero_mean:.4}")
+    print(f"bomb_out_rate: {bomb_out_rate:.2}")
 
 
-def print_actor_stats(actors, player, convention):
-    print_played_card_knowledge(actors, player)
-    print_move_stats(actors, player)
-    print_convention_stats(actors, player, convention)
+def print_actor_stats(stats, player, conventions):
+    print_move_stats(stats, player)
+    print_convention_stats(stats, player, conventions)
 
 
-def print_played_card_knowledge(actors, player):
-    card_stats = []
-    for i, g in enumerate(actors):
-        if i % 2 == player:
-            card_stats.append(g.get_played_card_info())
-    card_stats = np.array(card_stats).sum(0)
-    total_played = sum(card_stats)
-
-    print(f"actor{player}_total_cards_played: {total_played}")
-    for i, ck in enumerate(["none", "color", "rank", "both"]):
-        percentage = (card_stats[i] / total_played) * 100
-        percentage = percent(card_stats[i], total_played)
-        print(f"actor{player}_card_played_knowledge_{ck}: {card_stats[i]}",
-              f"({percentage:.1f}%)")
-
-
-def print_move_stats(actors, player):
+def print_move_stats(stats, player):
+    actor_str = f"actor{player}"
+    moves = ["play", "discard", "hint", "hint"]
+    suffixes = ["", "", "_colour", "_rank"]
+    card_index_map = ["0", "1", "2", "3", "4"]
     colour_move_map = ["red", "yellow", "green", "white", "blue"]
     rank_move_map = ["1", "2", "3", "4", "5"]
-    card_index_map = ["0", "1", "3", "3", "4"]
+    move_maps = [card_index_map, card_index_map, colour_move_map, rank_move_map]
 
-    print_move_type_stat(actors, player, "play")
-    print_move_type_stats(actors, player, "play", card_index_map, "play")
-    print_move_type_stat(actors, player, "discard")
-    print_move_type_stats(actors, player, "discard", card_index_map, "discard")
-    print_move_type_stat(actors, player, "hint_colour")
-    print_move_type_stats(actors, player, "hint", colour_move_map, "hint_colour")
-    print_move_type_stat(actors, player, "hint_rank")
-    print_move_type_stats(actors, player, "hint", rank_move_map, "hint_rank")
+    for move_type, suffix, move_map in zip(moves, suffixes, move_maps):
+        move_with_suffix = f"{move_type}{suffix}"
+        total = stats[f"{actor_str}_{move_with_suffix}"]
+        print(f"{actor_str}_{move_with_suffix}: {total}")
 
-
-def print_move_type_stats(actors, player, move_type, move_map, move_total):
-    total = sum_stats(move_total, actors, player)
-    for move in move_map:
-        move_total = sum_stats(move_type + "_" + move, actors, player)
-        print(f"actor{player}_{move_type}_{move}: {move_total}", 
-                f"({percent(move_total, total):.1f}%)")
+        for move in move_map:
+            move_type_with_move = f"{actor_str}_{move_type}_{move}"
+            move_count = stats[move_type_with_move]
+            percentage = stats[f"{move_type_with_move}%"] * 100
+            print(f"{move_type_with_move}: {move_count} ({percentage:.1f}%)")
 
 
-def print_convention_stats(actors, player, conventions):
+def print_convention_stats(stats, player, conventions):
     convention_strings = []
     for convention_set in conventions:
         convention_string = ""
@@ -124,40 +115,25 @@ def print_convention_stats(actors, player, conventions):
         convention_strings.append(convention_string)
 
     for convention_string in convention_strings:
-        conv_str = "convention_" + convention_string
-        available = sum_stats(f"{conv_str}_available", actors, player)
-        played = sum_stats(f"{conv_str}_played", actors, player)
-        played_correct = sum_stats(f"{conv_str}_played_correct", actors, player)
-        played_incorrect = sum_stats(f"{conv_str}_played_incorrect", actors, player)
-        played_correct_available_percent = percent(played_correct, available)
-        played_correct_played_percent = percent(played_correct, played)
+        prefix = f"actor{player}_convention_{convention_string}"
 
-        print(f"actor{player}_{conv_str}_available: {int(available)}")
-        print(f"actor{player}_{conv_str}_played: {played}")
-        print(f"actor{player}_{conv_str}_played_correct: {played_correct}", 
-                f"({played_correct_available_percent:.1f}%",
-                f"{played_correct_played_percent:.1f}%)")
-        print(f"actor{player}_{conv_str}_played_incorrect: {played_incorrect}")
+        available = f"{prefix}_available"
+        played = f"{prefix}_played"
+        played_correct = f"{prefix}_played_correct"
+        played_incorrect = f"{prefix}_played_incorrect"
+        available_percent_str = f"{prefix}_played_correct_available%"
+        played_percent_str = f"{prefix}_played_correct_played%"
 
+        available_percent = stats[available_percent_str] * 100
+        played_percent = stats[played_percent_str] * 100
 
-def print_move_type_stat(actors, player, move_type):
-    count = sum_stats(move_type, actors, player)
-    print(f"actor{player}_{move_type}: {int(count)}")
+        print(f"{available}: {stats[available]}")
+        print(f"{played}: {stats[played]}")
+        print(f"{played_correct}: {stats[played_correct]}")
+        print(f"{available_percent_str}: {available_percent:.1f}%")
+        print(f"{played_percent_str}: {played_percent:.1f}%")
+        print(f"{played}: {stats[played_incorrect]}")
 
-
-def sum_stats(key, actors, player):
-    stats = []
-    for i, g in enumerate(actors): 
-        if i % 2 == player:
-            if key in g.get_stats():
-                stats.append(g.get_stats()[key])
-    return int(sum(stats))
-
-
-def percent(n, total):
-    if total == 0:
-        return 0
-    return (n / total) * 100
 
 def load_convention(convention_path):
     if convention_path == "None":
