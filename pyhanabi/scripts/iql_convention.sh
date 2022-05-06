@@ -1,7 +1,7 @@
 #!/bin/bash
 
 python selfplay.py \
-       --save_dir exps/iql_obl1_CY-P1 \
+       --save_dir exps/iql_obl1_CR-P0_CY-P1 \
        --num_thread 24 \
        --num_game_per_thread 80 \
        --method iql \
@@ -14,7 +14,7 @@ python selfplay.py \
        --replay_buffer_size 100000 \
        --batchsize 128 \
        --epoch_len 1000 \
-       --num_epoch 1501 \
+       --num_epoch 3001 \
        --num_player 2 \
        --net lstm \
        --num_lstm_layer 2 \
@@ -22,7 +22,7 @@ python selfplay.py \
        --train_device cuda:0 \
        --act_device cuda:1 \
        --convention_act_override 1 \
-       --convention conventions/CY-P1.json \
+       --convention conventions/CR-P0_CY-P1.json \
        --partner_model exps/obl1/model_epoch1400.pthw \
        --static_partner 1 \
        --wandb 1

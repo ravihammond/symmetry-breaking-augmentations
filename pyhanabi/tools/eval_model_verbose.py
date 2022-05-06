@@ -21,12 +21,16 @@ def evaluate_model(args):
     weight_files = load_weights(args)
     score, perfect, scores, actors = run_evaluation(args, weight_files)
     conventions = load_convention(args.convention)
+    convention_strings = extract_convention_strings(conventions)
 
     stats = collect_stats(score, perfect, scores, actors, conventions)
 
     print_scores(stats)
-    print_actor_stats(stats, 0, conventions)
-    print_actor_stats(stats, 1, conventions)
+    for convention_string in convention_strings:
+        print()
+        print_scores(stats, f"{convention_string}_")
+        print_actor_stats(stats, 0, convention_string)
+        print_actor_stats(stats, 1, convention_string)
 
 
 def load_weights(args):
@@ -66,25 +70,25 @@ def run_evaluation(args, weight_files):
     return score, perfect, scores, actors
 
 
-def print_scores(stats):
-    score = stats["score"]
-    perfect = stats["perfect"] * 100
-    non_zero_mean = stats["non_zero_mean"]
-    bomb_out_rate = stats["bomb_out_rate"]
-
-    print(f"score: {score}")
-    print(f"perfect: {perfect:.2}%")
-    print(f"non_zero_mean: {non_zero_mean:.4}")
-    print(f"bomb_out_rate: {bomb_out_rate:.2}")
+def print_actor_stats(stats, player, convention_string):
+    print_move_stats(stats, player, convention_string)
+    print_convention_stats(stats, player, convention_string)
 
 
-def print_actor_stats(stats, player, conventions):
-    print_move_stats(stats, player)
-    print_convention_stats(stats, player, conventions)
+def print_scores(stats, convention=""):
+    score = stats[f"{convention}score"]
+    perfect = stats[f"{convention}perfect"] * 100
+    non_zero_mean = stats[f"{convention}non_zero_mean"]
+    bomb_out_rate = stats[f"{convention}bomb_out_rate"] * 100
+
+    print(f"{convention}score: {score:.4f}")
+    print(f"{convention}perfect: {perfect:.2f}%")
+    print(f"{convention}non_zero_mean: {non_zero_mean:.4f}")
+    print(f"{convention}bomb_out_rate: {bomb_out_rate:.2f}%")
 
 
-def print_move_stats(stats, player):
-    actor_str = f"actor{player}"
+def print_move_stats(stats, player, convention_string):
+    actor_str = f"{convention_string}_actor{player}"
     moves = ["play", "discard", "hint", "hint"]
     suffixes = ["", "", "_colour", "_rank"]
     card_index_map = ["0", "1", "2", "3", "4"]
@@ -104,35 +108,25 @@ def print_move_stats(stats, player):
             print(f"{move_type_with_move}: {move_count} ({percentage:.1f}%)")
 
 
-def print_convention_stats(stats, player, conventions):
-    convention_strings = []
-    for convention_set in conventions:
-        convention_string = ""
-        for i, convention in enumerate(convention_set):
-            if i > 0:
-                convention_string += "-"
-            convention_string += convention[0] + convention[1]
-        convention_strings.append(convention_string)
+def print_convention_stats(stats, player, convention_string):
+    prefix = f"{convention_string}_actor{player}_convention"
 
-    for convention_string in convention_strings:
-        prefix = f"actor{player}_convention_{convention_string}"
+    available = f"{prefix}_available"
+    played = f"{prefix}_played"
+    played_correct = f"{prefix}_played_correct"
+    played_incorrect = f"{prefix}_played_incorrect"
+    available_percent_str = f"{prefix}_played_correct_available%"
+    played_percent_str = f"{prefix}_played_correct_played%"
 
-        available = f"{prefix}_available"
-        played = f"{prefix}_played"
-        played_correct = f"{prefix}_played_correct"
-        played_incorrect = f"{prefix}_played_incorrect"
-        available_percent_str = f"{prefix}_played_correct_available%"
-        played_percent_str = f"{prefix}_played_correct_played%"
+    available_percent = stats[available_percent_str] * 100
+    played_percent = stats[played_percent_str] * 100
 
-        available_percent = stats[available_percent_str] * 100
-        played_percent = stats[played_percent_str] * 100
-
-        print(f"{available}: {stats[available]}")
-        print(f"{played}: {stats[played]}")
-        print(f"{played_correct}: {stats[played_correct]}")
-        print(f"{available_percent_str}: {available_percent:.1f}%")
-        print(f"{played_percent_str}: {played_percent:.1f}%")
-        print(f"{played}: {stats[played_incorrect]}")
+    print(f"{available}: {stats[available]}")
+    print(f"{played}: {stats[played]}")
+    print(f"{played_correct}: {stats[played_correct]}")
+    print(f"{available_percent_str}: {available_percent:.1f}%")
+    print(f"{played_percent_str}: {played_percent:.1f}%")
+    print(f"{played}: {stats[played_incorrect]}")
 
 
 def load_convention(convention_path):
@@ -140,6 +134,20 @@ def load_convention(convention_path):
         return []
     convention_file = open(convention_path)
     return json.load(convention_file)
+
+
+def extract_convention_strings(conventions):
+    convention_strings = []
+
+    for convention in conventions:
+        convention_str = ""
+        for i, two_step in enumerate(convention):
+            if i > 0:
+                convention_str + '-'
+            convention_str += two_step[0] + two_step[1]
+        convention_strings.append(convention_str)
+
+    return convention_strings
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

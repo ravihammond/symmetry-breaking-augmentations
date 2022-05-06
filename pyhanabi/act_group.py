@@ -102,9 +102,7 @@ class ActGroup:
         self.create_r2d2_actors()
 
     def create_r2d2_actors(self):
-        # convention_sender = [1, 1]
-        # if self.convention_act_override:
-            # convention_sender = [1, 0]
+        convention_index_count = 0
 
         actors = []
         if self.method == "vdn":
@@ -142,6 +140,7 @@ class ActGroup:
                 thread_actors = []
                 for j in range(self.num_game_per_thread):
                     game_actors = []
+                    convention_index = convention_index_count % len(self.convention)
                     for k in range(self.num_player):
                         if k > 0 and self.static_partner:
                             actor = hanalearn.R2D2Actor(
@@ -161,7 +160,7 @@ class ActGroup:
                                 self.max_len,
                                 self.gamma,
                                 self.convention,
-                                0,
+                                convention_index,
                                 0, # convention sender
                                 self.convention_act_override,
                                 self.convention_fict_act_override,
@@ -185,7 +184,7 @@ class ActGroup:
                                 self.max_len,
                                 self.gamma,
                                 self.convention,
-                                0,
+                                convention_index,
                                 1, # convention sender
                                 0, # convention act override
                                 self.convention_fict_act_override,
@@ -206,6 +205,7 @@ class ActGroup:
                         partners[k] = None
                         game_actors[k].set_partners(partners)
                     thread_actors.append(game_actors)
+                    convention_index_count += 1
                 actors.append(thread_actors)
         self.actors = actors
         print("ActGroup created")

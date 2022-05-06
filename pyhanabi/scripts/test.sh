@@ -3,7 +3,7 @@
 python selfplay.py \
        --save_dir exps/test \
        --num_thread 1 \
-       --num_game_per_thread 1 \
+       --num_game_per_thread 80 \
        --method iql \
        --sad 0 \
        --lr 6.25e-05 \
