@@ -3,7 +3,7 @@
 from setuptools import find_packages, setup
 
 setup(
-    name="obl-project",
+    name="hanabi-conventions",
     version="0.0.0",
     description="Describe Your Cool Project",
     author="",

@@ -71,7 +71,9 @@ def evaluate(
         thread_actors = []
         for g_idx in range(t_idx * game_per_thread, (t_idx + 1) * game_per_thread):
             actors = []
-            convention_index = random.randint(0, len(convention) - 1)
+            convention_index = 0
+            if len(convention) > 0:
+                convention_index = random.randint(0, len(convention) - 1)
             for i in range(num_player):
                 if agents[i] == "rulebot":
                     actor = hanalearn.RulebotActor(

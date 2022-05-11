@@ -292,7 +292,7 @@ def selfplay(args):
 
         score, perfect, scores, _, eval_actors = evaluate(
             eval_agents,
-            1000,
+            5000,
             eval_seed,
             args.eval_bomb,
             0,  # explore eps

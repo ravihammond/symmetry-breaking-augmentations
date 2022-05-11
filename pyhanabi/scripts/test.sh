@@ -22,7 +22,7 @@ python selfplay.py \
        --train_device cuda:2 \
        --act_device cuda:3 \
        --convention_act_override 0 \
-       --convention conventions/CR-P0_CY-P1.json \
+       --convention conventions/CR-P0_CY-P1_CG-P2.json \
        --partner_model exps/obl1/model_epoch1400.pthw \
        --static_partner 1 \
        --wandb 0

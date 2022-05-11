@@ -5,6 +5,8 @@ import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
 import numpy as np
 import re
+import json
+from collections import defaultdict
 import pprint
 pprint = pprint.pprint
 
@@ -29,11 +31,10 @@ def convention_data(args):
     weight_files = load_weights(args)
     _, actors = run_evaluation(args, weight_files)
 
-    stats = extract_convention_stats(actors, args.actor)
-    pprint(stats)
+    stats = extract_convention_stats(actors, args.convention)
 
-    plot_data = generate_plot_data(stats, args)
-    convention_matrix(*plot_data, title=args.title, colour_max=args.colour_max)
+    # plot_data = generate_plot_data(stats, args)
+    # convention_matrix(*plot_data, title=args.title, colour_max=args.colour_max)
 
 
 def load_weights(args):
@@ -72,47 +73,118 @@ def run_evaluation(args, weight_files):
     return scores, actors
 
 
-def extract_convention_stats(actors, actor):
-    stats = {}
-    signal_response_data(stats, "D", CARDS, actors, actor)
-    signal_response_data(stats, "P", CARDS, actors, actor)
-    signal_response_data(stats, "C", COLOURS, actors, actor)
-    signal_response_data(stats, "R", RANKS, actors, actor)
-    return stats
+def extract_convention_stats(actors, convention_path):
+    convention_strings = load_convention_strings(convention_path)
+
+    action_counts = defaultdict(int)
+
+    for i, actor in enumerate(actors):
+        convention_index = actor.get_convention_index()
+        convention_str = convention_strings[convention_index]
+        actor_stats = defaultdict(int, actor.get_stats())
+        record_action_counts(action_counts, actor_stats, convention_str, i % 2)
+
+    action_matrix_stats = calculate_plot_stats(action_counts, convention_strings)
+
+    return action_matrix_stats
 
 
-def signal_response_data(stats, signal_type, type_map, actors, actor):
+def load_convention_strings(convention_path):
+    if convention_path == "None":
+        return []
+
+    convention_file = open(convention_path)
+    conventions = json.load(convention_file)
+
+    convention_strings = []
+
+    for convention in conventions:
+        convention_str = ""
+        for i, two_step in enumerate(convention):
+            if i > 0:
+                convention_str + '-'
+            convention_str += two_step[0] + two_step[1]
+        convention_strings.append(convention_str)
+
+    return convention_strings
+
+
+def record_action_counts(action_counts, actor_stats, convention, player_idx):
+    for signal_type in "DPCR":
+        signal_response_counts(action_counts, actor_stats, 
+                convention, signal_type, player_idx)
+
+
+def signal_response_counts(action_counts, actor_stats, 
+        convention, signal_type, player_idx):
+    type_map = ACTION_MAP[signal_type]
+
     for s_idx in range(5):
         signal = f"{signal_type}{type_map[s_idx]}"
-        total = sum_stats(signal, actors, actor)
+        for r_idx in range(5):
+            for response_type in "DPCR":
+                response_counts(action_counts, actor_stats, 
+                        convention, signal, response_type, r_idx, player_idx)
+
+
+def response_counts(action_counts, actor_stats, 
+        convention, signal, response_type, index, player_idx):
+    type_map = ACTION_MAP[response_type]
+    two_step = f"{signal}_{response_type}{type_map[index]}"
+    action_counts[f"{convention}:{player_idx}:{two_step}"] += actor_stats[two_step]
+
+
+def calculate_plot_stats(action_counts, conventions):
+    plot_stats = []
+
+    for convention in conventions:
+        convention_plot_stats = {}
+        convention_plot_stats["convention"] = convention
+        for player_idx in range(2):
+            convention_plot_stats[f"player{player_idx}"] = \
+                action_matrix_stats(action_counts, convention, player_idx)
+        plot_stats.append(convention_plot_stats)
+    
+    return plot_stats
+
+def action_matrix_stats(action_counts, convention, player_idx):
+    stats = defaultdict(float)
+
+    for signal_type in "DPCR":
+        signal_response_stats(stats, action_counts, convention, signal_type, player_idx)
+
+    return dict(stats)
+
+def signal_response_stats(stats, action_counts, convention, 
+        signal_type, type_map, player_idx):
+    type_map = ACTION_MAP[signal_type]
+
+    for s_idx in range(5):
+        signal = f"{signal_type}{type_map[s_idx]}"
+        print("signal")
+        print(signal)
+
+        for response_type in "DPCR":
+            response_counts = get_response_counts(stats, action_counts, 
+                    convention, signal, response_type, r_idx, player_idx)
+            total = sum(response_counts)
 
         for r_idx in range(5):
-            response_data(stats, signal, "D", r_idx, CARDS, actors, total, actor)
-            response_data(stats, signal, "P", r_idx, CARDS, actors, total, actor)
-            response_data(stats, signal, "C", r_idx, COLOURS, actors, total, actor)
-            response_data(stats, signal, "R", r_idx, RANKS, actors, total, actor)
+            response_stats(stats, action_counts, convention, 
+                    signal, "D", r_idx, CARDS, player_idx)
+            response_stats(stats, action_counts, convention, 
+                    signal, "P", r_idx, CARDS, player_idx)
+            response_stats(stats, action_counts, convention, 
+                    signal, "C", r_idx, COLOURS, player_idx)
+            response_stats(stats, action_counts, convention, 
+                    signal, "R", r_idx, RANKS, player_idx)
 
-
-def response_data(
-        stats, signal, response_type, index, type_map, actors, total, actor):
-    response = f"{signal}_{response_type}{type_map[index]}"
-    response_sum = sum_stats(response, actors, actor)
-    stats[response] = divide(response_sum, total)
-    return response_sum
-
-
-def sum_stats(key, actors, actor):
-    stats = []
-    for i, g in enumerate(actors): 
-        if actor == -1 or i % 2 == actor:
-            if key in g.get_stats():
-                stats.append(g.get_stats()[key])
-    return int(sum(stats))
 
 def divide(n, total):
     if total == 0:
         return 0
     return (n / total)
+
 
 def generate_plot_data(stats, args):
     xticklabels = ticklabels(args.response_actions)
@@ -128,6 +200,7 @@ def generate_plot_data(stats, args):
 
     return plot_data, xticklabels, yticklabels
 
+
 def ticklabels(actions):
     tick_labels = []
     for action_type in actions:
@@ -135,6 +208,7 @@ def ticklabels(actions):
             tick_labels.append(f"{action_type}{signal_move}")
 
     return tick_labels
+
 
 def convention_matrix(data, xticklabels, yticklabels, colour_max=1.0, 
         xlabel="response t+1", ylabel="signal t", title="None"):
@@ -159,6 +233,7 @@ def convention_matrix(data, xticklabels, yticklabels, colour_max=1.0,
 
     plt.show()
 
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--weight1", default=None, type=str, required=True)
@@ -168,7 +243,7 @@ if __name__ == "__main__":
     parser.add_argument("--num_player", default=2, type=int)
     parser.add_argument("--seed", default=1, type=int)
     parser.add_argument("--bomb", default=0, type=int)
-    parser.add_argument("--num_game", default=5000, type=int)
+    parser.add_argument("--num_game", default=1000, type=int)
     parser.add_argument("--num_run", default=1, type=int)
     parser.add_argument("--device", default="cuda:0", type=str)
     parser.add_argument("--convention", default="None", type=str)
