@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: resolv-config-map
+data:
+  resolv.conf: |
+    nameserver 8.8.8.8
+    search default.svc.cluster.local svc.cluster.local cluster.local
+    options ndots:5

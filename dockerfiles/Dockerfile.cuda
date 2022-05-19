@@ -1,23 +1,35 @@
-# FROM nvidia/cuda:11.0-cudnn8-devel-ubuntu18.04
 FROM nvidia/cuda:11.3.1-cudnn8-devel-ubuntu20.04
 
+ENV TEMP=temp
 ARG DEBIAN_FRONTEND=noninteractive
+
+RUN rm /etc/apt/sources.list.d/cuda.list && \
+    rm /etc/apt/sources.list.d/nvidia-ml.list
 
 RUN apt-get update && apt-get -y upgrade && apt-get install -y apt-utils
 
 # Install some basic utilities
 RUN apt-get install -y \
-    net-tools iputils-ping \
-    build-essential cmake git \
-    curl wget \
+    net-tools=1.60+git20180626.aebd88e-1ubuntu1 \
+    iputils-ping=3:20190709-3 \
+    build-essential=12.8ubuntu1.1 \
+    cmake=3.16.3-1ubuntu1 \
+    git \
+    curl \
+    wget=1.20.3-1ubuntu2 \
     vim \
-    zip p7zip-full p7zip-rar bzip2 \
-    ca-certificates \
-    imagemagick ffmpeg \
-    libopenmpi-dev libomp5\
-    sudo \
-    libx11-6 \
+    zip=3.0-11build1 \
+    p7zip-full=16.02+dfsg-7build1 \
+    p7zip-rar=16.02-3build1 \
+    bzip2=1.0.8-2 \
+    ca-certificates=20210119~20.04.2 \
+    imagemagick=8:6.9.10.23+dfsg-2.1ubuntu11.4 \
+    ffmpeg \
+    libopenmpi-dev=4.0.3-0ubuntu1 \
+    libomp5=1:10.0-50~exp1\
+    sudo=1.8.31-1ubuntu1.2 \
+    libx11-6=2:1.6.9-2ubuntu1.2 \
     && rm -rf /var/lib/apt/lists/*
 
 CMD ["bash"]
-
+ 

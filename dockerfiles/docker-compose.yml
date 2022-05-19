@@ -1,0 +1,15 @@
+version: "3.5"
+services: 
+  hanabi-project:
+    image: ravihammond/hanabi-project:prod
+    environment: 
+      - WANDB_TOKEN=987171ac29b12908e00aaec4441ca1ee977307e2
+    command: ["exps/test", "conventions/CR-P0.json"]
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+

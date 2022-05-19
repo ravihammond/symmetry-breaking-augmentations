@@ -1,7 +1,7 @@
 #!/bin/bash
 
 python selfplay.py \
-       --save_dir exps/iql_obl1_CR-P0_CR-P1 \
+       --save_dir exps/CR-P0_CR-P1_CR-P2_CR-P3_CR-P4 \
        --num_thread 24 \
        --num_game_per_thread 80 \
        --method iql \
@@ -22,7 +22,7 @@ python selfplay.py \
        --train_device cuda:0 \
        --act_device cuda:1 \
        --convention_act_override 1 \
-       --convention conventions/CR-P0_CR-P1.json \
+       --convention conventions/CR-P0_CR-P1_CR-P2_CR-P3_CR-P4.json \
        --partner_model exps/obl1/model_epoch1400.pthw \
        --static_partner 1 \
        --wandb 1

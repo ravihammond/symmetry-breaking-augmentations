@@ -1,4 +1,4 @@
-FROM ravihammond/cuda
+FROM ravihammond/cuda-temp
 
 ENV LANG=C.UTF-8 LC_ALL=C.UTF-8
 ENV CONDA_AUTO_UPDATE_CONDA=false
@@ -29,24 +29,31 @@ RUN set -x && \
     find /opt/conda/ -follow -type f -name '*.js.map' -delete && \
     /opt/conda/bin/conda clean -afy
 
-RUN /opt/conda/bin/conda install -y \
-    numpy \
-    jupyter \
-    seaborn plotly \
-    scikit-learn scikit-image \
-    dask dask-image \
-    beautifulsoup4
+#RUN /opt/conda/bin/conda install -y \
+#    numpy \
+#    jupyter \
+#    seaborn plotly \
+#    scikit-learn scikit-image \
+#    dask dask-image \
+#    beautifulsoup4
 
-RUN /opt/conda/bin/conda install -yc conda-forge \
-    pandas matplotlib \
-    ffmpeg \
-    tqdm \
-    cmake \ 
-    xgboost lightgbm catboost \
-    mlxtend \
-    shap \
-    uvicorn starlette aiohttp \
-    easydict \ 
-    wandb
+#RUN /opt/conda/bin/conda install -yc conda-forge \
+#    pandas matplotlib \
+#    ffmpeg \
+#    tqdm \
+#    cmake \ 
+#    xgboost lightgbm catboost \
+#    mlxtend \
+#    shap \
+#    uvicorn starlette aiohttp \
+#    easydict \ 
+#    wandb
 
-CMD [ "/bin/bash" ]
+RUN pip install torch==1.10.2+cu113 torchvision==0.11.3+cu113 torchaudio==0.10.2+cu113 -f https://download.pytorch.org/whl/cu113/torch_stable.html
+
+RUN pip install \
+    psutil 
+
+COPY conda_environment.yml /
+
+RUN conda env update --file conda_environment.yml --prune

@@ -1,0 +1,40 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: hanabi-test-train
+spec:
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: test-container-ravi
+          image: ravihammond/hanabi-project:prod
+          tty: true
+          #args: ["exps/test", "conventions/CR-P0.json"]
+          command: ["/bin/bash", "-c"]
+          args: ["while true; do sleep 30; done;"]
+
+          env:
+            - name: WANDB_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: wandb-secret
+                  key: WANDB_TOKEN
+
+          resources:
+            limits:
+              nvidia.com/gpu: 3
+              memory: 10Gi
+              cpu: 24
+            requests:
+              nvidia.com/gpu: 3
+              memory: 10Gi
+              cpu: 10
+          volumeMounts:
+            - name: resolv-conf-volume
+              mountPath: /etc/resolv.conf
+              subPath: resolv.conf
+      volumes:
+        - name: resolv-conf-volume
+          configMap:
+            name: resolv-config-map
