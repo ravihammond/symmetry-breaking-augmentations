@@ -444,7 +444,7 @@ def setup_wandb(args):
         "adam_epsilon": args.eps,
         "grad_clip": args.grad_clip,
         "num_lstm_layer": args.num_lstm_layer,
-        "runn_hid_dim": args.rnn_hid_dim,
+        "rnn_hid_dim": args.rnn_hid_dim,
         "net": args.net,
         "batch_size": args.batchsize,
         "num_epochs": args.num_epoch,

@@ -15,10 +15,14 @@ def collect_stats(score, perfect, scores, actors, conventions):
     convention_scores = defaultdict(list)
 
     for i, actor in enumerate(actors):
+        actor_stats = defaultdict(int, actor.get_stats())
+        move_stats(stats, actor_stats, i % 2)
+
+        if len(convention_strings) == 0:
+            continue
+
         convention_index = actor.get_convention_index()
         convention_str = convention_strings[convention_index]
-        actor_stats = defaultdict(int, actor.get_stats())
-
         record_actor_stats(stats, actor_stats, convention_str, i % 2)
 
         if i % 2 == 0:
@@ -74,7 +78,7 @@ def record_actor_stats(stats, actor_stats, convention_str, player):
     convention_stats(stats, actor_stats, player, convention_str)
 
  
-def move_stats(stats, actor_stats, player, convention):
+def move_stats(stats, actor_stats, player, convention=None):
     move_type_stats(stats, actor_stats, player, 
             CARD_INDEX_MAP, "play", convention)
     move_type_stats(stats, actor_stats, player, 
@@ -87,7 +91,9 @@ def move_stats(stats, actor_stats, player, convention):
 
 def move_type_stats(stats, actor_stats, player, move_map, move_type, 
         convention, move_type_suffix=""):
-    prefix = f"{convention}_actor{player}"
+    prefix = f"actor{player}"
+    if convention != None:
+        prefix = convention + "_" + prefix
     move_with_suffix = f"{move_type}{move_type_suffix}"
 
     stats[f"{prefix}_{move_with_suffix}"] += int(actor_stats[move_with_suffix])
@@ -112,12 +118,14 @@ def convention_stats(stats, actor_stats, player, convention):
 
 
 def evaluate_percentages(stats, conventions):
+    for player in range(2):
+        move_percentages(stats, player)
     for convention in conventions:
         for player in range(2):
             move_percentages(stats, player, convention)
             convention_percentages(stats, player, convention)
 
-def move_percentages(stats, player, convention):
+def move_percentages(stats, player, convention=None):
     percent_move_type(stats, player, CARD_INDEX_MAP, "play", convention)
     percent_move_type(stats, player, CARD_INDEX_MAP, "discard", convention)
     percent_move_type(stats, player, COLOUR_MOVE_MAP, "hint", convention, "_colour")
@@ -125,7 +133,9 @@ def move_percentages(stats, player, convention):
 
 def percent_move_type(stats, player, move_map, move_type, 
         convention, move_type_suffix=""):
-    actor_str = f"{convention}_actor{player}"
+    actor_str = f"actor{player}"
+    if convention != None:
+        actor_str = convention + "_" + actor_str
     move_with_suffix = f"{move_type}{move_type_suffix}"
 
     total = stats[f"{actor_str}_{move_with_suffix}"]

@@ -192,21 +192,6 @@ def load_agent(weight_file, overwrite):
     return agent, cfg
 
 
-def load_sad_model(weight_file, device):
-    print("loading file from: ", weight_file)
-    state_dict = torch.load(weight_file, map_location=device)
-    input_dim = state_dict["net.0.weight"].size()[1]
-    hid_dim = 512
-    output_dim = state_dict["fc_a.weight"].size()[0]
-
-    agent = r2d2_sad.R2D2Agent(
-        False, 3, 0.999, 0.9, device, input_dim, hid_dim, output_dim, 2, 5, False
-    ).to(device)
-    load_weight(agent.online_net, weight_file, device)
-
-    return agent
-
-
 def log_explore_ratio(games, expected_eps):
     explore = []
     for g in games:

@@ -6,7 +6,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import re
 import json
-from collections import defaultdict
 import pprint
 pprint = pprint.pprint
 
@@ -14,6 +13,7 @@ lib_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(lib_path)
 from eval import evaluate_saved_model
 from model_zoo import model_zoo
+from calculate_convention_stats import extract_convention_stats
 
 COLOURS = "RYGWB"
 RANKS = "12345"
@@ -28,14 +28,34 @@ ACTION_MAP = {
 
 
 def convention_data(args):
+    conventions = load_convention_strings(args.convention)
     weight_files = load_weights(args)
-    _, actors = run_evaluation(args, weight_files)
+    _, actors = run_evaluation(args, weight_files, conventions)
 
-    stats = extract_convention_stats(actors, args.convention)
+    stats = extract_convention_stats(actors, args, conventions)
 
-    # plot_data = generate_plot_data(stats, args)
-    # convention_matrix(*plot_data, title=args.title, colour_max=args.colour_max)
+    model_name = os.path.basename(os.path.dirname(args.weight1))
+    create_figures(stats, conventions, model_name, args)
+    # create_plots(stats, conventions)
 
+def load_convention_strings(convention_path):
+    if convention_path == "None":
+        return []
+
+    convention_file = open(convention_path)
+    conventions = json.load(convention_file)
+
+    convention_strings = []
+
+    for convention in conventions:
+        convention_str = ""
+        for i, two_step in enumerate(convention):
+            if i > 0:
+                convention_str + '-'
+            convention_str += two_step[0] + two_step[1]
+        convention_strings.append(convention_str)
+
+    return convention_strings
 
 def load_weights(args):
     weight_files = []
@@ -57,10 +77,12 @@ def load_weights(args):
     return weight_files
 
 
-def run_evaluation(args, weight_files):
+def run_evaluation(args, weight_files, conventions):
+    num_game_multiplier = 1 if len(conventions) == 0 else len(conventions)
+
     score, perfect, _, scores, actors = evaluate_saved_model(
         weight_files,
-        args.num_game,
+        args.num_game * num_game_multiplier,
         args.seed,
         args.bomb,
         num_run=args.num_run,
@@ -72,121 +94,42 @@ def run_evaluation(args, weight_files):
 
     return scores, actors
 
+def create_figures(stats, conventions, title, args):
+    figx = 5 * (2 if args.split else 1)
+    figy = 5 * (1 if len(conventions) == 0 else len(conventions) + 1)
+    fig = plt.figure(constrained_layout=True, figsize=(figx, figy))
 
-def extract_convention_stats(actors, convention_path):
-    convention_strings = load_convention_strings(convention_path)
+    rows = len(conventions) + 1
+    subfigs = fig.subfigures(rows, 1)
+    if rows == 1:
+        subfigs = [subfigs]
 
-    action_counts = defaultdict(int)
+    for i in range(rows):
+        create_figure_row(subfigs[i], stats[i], args)
 
-    for i, actor in enumerate(actors):
-        convention_index = actor.get_convention_index()
-        convention_str = convention_strings[convention_index]
-        actor_stats = defaultdict(int, actor.get_stats())
-        record_action_counts(action_counts, actor_stats, convention_str, i % 2)
+    fig.suptitle(title, fontsize='xx-large')
 
-    action_matrix_stats = calculate_plot_stats(action_counts, convention_strings)
+    plt.show()
 
-    return action_matrix_stats
+def create_figure_row(fig, stats, args):
+    plots = stats["plots"]
+    title = stats["title"]
+    axs = fig.subplots(1, len(plots), sharey=True)
+    if len(plots) == 1:
+        axs = [axs]
 
+    fig.suptitle(title)
 
-def load_convention_strings(convention_path):
-    if convention_path == "None":
-        return []
-
-    convention_file = open(convention_path)
-    conventions = json.load(convention_file)
-
-    convention_strings = []
-
-    for convention in conventions:
-        convention_str = ""
-        for i, two_step in enumerate(convention):
-            if i > 0:
-                convention_str + '-'
-            convention_str += two_step[0] + two_step[1]
-        convention_strings.append(convention_str)
-
-    return convention_strings
+    for i, plot_stats in enumerate(plots):
+        plot_data = generate_plot_data(plot_stats, args, title, i)
+        create_plot(axs[i], *plot_data)
 
 
-def record_action_counts(action_counts, actor_stats, convention, player_idx):
-    for signal_type in "DPCR":
-        signal_response_counts(action_counts, actor_stats, 
-                convention, signal_type, player_idx)
-
-
-def signal_response_counts(action_counts, actor_stats, 
-        convention, signal_type, player_idx):
-    type_map = ACTION_MAP[signal_type]
-
-    for s_idx in range(5):
-        signal = f"{signal_type}{type_map[s_idx]}"
-        for r_idx in range(5):
-            for response_type in "DPCR":
-                response_counts(action_counts, actor_stats, 
-                        convention, signal, response_type, r_idx, player_idx)
-
-
-def response_counts(action_counts, actor_stats, 
-        convention, signal, response_type, index, player_idx):
-    type_map = ACTION_MAP[response_type]
-    two_step = f"{signal}_{response_type}{type_map[index]}"
-    action_counts[f"{convention}:{player_idx}:{two_step}"] += actor_stats[two_step]
-
-
-def calculate_plot_stats(action_counts, conventions):
-    plot_stats = []
-
-    for convention in conventions:
-        convention_plot_stats = {}
-        convention_plot_stats["convention"] = convention
-        for player_idx in range(2):
-            convention_plot_stats[f"player{player_idx}"] = \
-                action_matrix_stats(action_counts, convention, player_idx)
-        plot_stats.append(convention_plot_stats)
+def generate_plot_data(stats, args, convention, player_idx):
+    prefix = convention + ":"
+    if convention == "All":
+        prefix = ""
     
-    return plot_stats
-
-def action_matrix_stats(action_counts, convention, player_idx):
-    stats = defaultdict(float)
-
-    for signal_type in "DPCR":
-        signal_response_stats(stats, action_counts, convention, signal_type, player_idx)
-
-    return dict(stats)
-
-def signal_response_stats(stats, action_counts, convention, 
-        signal_type, type_map, player_idx):
-    type_map = ACTION_MAP[signal_type]
-
-    for s_idx in range(5):
-        signal = f"{signal_type}{type_map[s_idx]}"
-        print("signal")
-        print(signal)
-
-        for response_type in "DPCR":
-            response_counts = get_response_counts(stats, action_counts, 
-                    convention, signal, response_type, r_idx, player_idx)
-            total = sum(response_counts)
-
-        for r_idx in range(5):
-            response_stats(stats, action_counts, convention, 
-                    signal, "D", r_idx, CARDS, player_idx)
-            response_stats(stats, action_counts, convention, 
-                    signal, "P", r_idx, CARDS, player_idx)
-            response_stats(stats, action_counts, convention, 
-                    signal, "C", r_idx, COLOURS, player_idx)
-            response_stats(stats, action_counts, convention, 
-                    signal, "R", r_idx, RANKS, player_idx)
-
-
-def divide(n, total):
-    if total == 0:
-        return 0
-    return (n / total)
-
-
-def generate_plot_data(stats, args):
     xticklabels = ticklabels(args.response_actions)
     yticklabels = ticklabels(args.signal_actions)
 
@@ -195,7 +138,7 @@ def generate_plot_data(stats, args):
     for yticklabel in yticklabels:
         row_data = []
         for xticklabel in xticklabels:
-            row_data.append(stats[f"{yticklabel}_{xticklabel}"])
+            row_data.append(stats[f"{prefix}{player_idx}:{yticklabel}_{xticklabel}"])
         plot_data.append(row_data)
 
     return plot_data, xticklabels, yticklabels
@@ -208,6 +151,24 @@ def ticklabels(actions):
             tick_labels.append(f"{action_type}{signal_move}")
 
     return tick_labels
+
+
+def create_plot(ax, data, xticklabels, yticklabels, colour_max=1.0):
+    norm = mcolors.Normalize(vmin=0., vmax=colour_max)
+    pc_kwargs = {'rasterized': True, 'cmap': 'cividis', 'norm': norm}
+
+    im = ax.imshow(data, **pc_kwargs)
+
+    ax.set_xlabel("response t+1")
+    ax.set_ylabel("signal t")
+
+    ax.set_xticks(range(len(xticklabels)));
+    ax.set_xticklabels(xticklabels);
+    ax.xaxis.tick_top()
+    ax.tick_params('both', length=1, width=1, which='major')
+
+    ax.set_yticks(range(len(yticklabels)));
+    ax.set_yticklabels(yticklabels);
 
 
 def convention_matrix(data, xticklabels, yticklabels, colour_max=1.0, 
@@ -254,7 +215,7 @@ if __name__ == "__main__":
     parser.add_argument("--response_actions", default="DPCR", type=str)
     parser.add_argument("--title", default="None", type=str)
     parser.add_argument("--colour_max", default=0.7, type=float)
-    parser.add_argument("--actor", default=-1, type=int)
+    parser.add_argument("--split", default=1, type=int)
     args = parser.parse_args()
 
     convention_data(args)

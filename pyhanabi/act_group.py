@@ -140,7 +140,11 @@ class ActGroup:
                 thread_actors = []
                 for j in range(self.num_game_per_thread):
                     game_actors = []
-                    convention_index = convention_index_count % len(self.convention)
+                    if len(self.convention) == 0:
+                        convention_index = -1
+                    else: 
+                        convention_index = convention_index_count % \
+                                len(self.convention)
                     for k in range(self.num_player):
                         if k > 0 and self.static_partner:
                             actor = hanalearn.R2D2Actor(

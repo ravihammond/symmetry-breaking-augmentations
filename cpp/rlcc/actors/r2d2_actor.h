@@ -6,6 +6,8 @@
 //
 #pragma once
 
+#include <stdio.h>
+
 #include "rela/batch_runner.h"
 #include "rela/prioritized_replay.h"
 #include "rela/r2d2.h"

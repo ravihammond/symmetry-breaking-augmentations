@@ -27,3 +27,7 @@ temp
 test.cpp
 */wandb/*
 pyhanabi/wandb/
+training_models/*
+.gitlab-ci.yml
+.pypirc
+.vscode/

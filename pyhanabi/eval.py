@@ -150,14 +150,6 @@ def evaluate_saved_model(
 
     # Load models from weight files
     for weight_file in weight_files:
-        if "sad" in weight_file:
-            assert os.path.exists(weight_file)
-            agent = utils.load_sad_model(weight_file, device)
-            agents.append(agent)
-            sad.append(True)
-            hide_action.append(False)
-            continue
-
         if "rulebot" in weight_file:
             agents.append(weight_file)
             sad.append(False)

@@ -25,7 +25,11 @@ def evaluate_model(args):
 
     stats = collect_stats(score, perfect, scores, actors, conventions)
 
+    print()
     print_scores(stats)
+    print_move_stats(stats, 0)
+    print_move_stats(stats, 1)
+
     for convention_string in convention_strings:
         print()
         print_scores(stats, f"{convention_string}_")
@@ -87,8 +91,10 @@ def print_scores(stats, convention=""):
     print(f"{convention}bomb_out_rate: {bomb_out_rate:.2f}%")
 
 
-def print_move_stats(stats, player, convention_string):
-    actor_str = f"{convention_string}_actor{player}"
+def print_move_stats(stats, player, convention_string=None):
+    actor_str = f"actor{player}"
+    if convention_string != None:
+        actor_str = convention_string + "_" + actor_str
     moves = ["play", "discard", "hint", "hint"]
     suffixes = ["", "", "_colour", "_rank"]
     card_index_map = ["0", "1", "2", "3", "4"]

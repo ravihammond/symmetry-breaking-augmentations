@@ -199,10 +199,6 @@ void R2D2Actor::observeBeforeAct(HanabiEnv& env) {
                 sad_);
     }
 
-    //for (auto const &pair: input) {
-        //std::cout << "{" << pair.first << "}\n";
-    //}
-
     // add features such as eps and temperature
     input["eps"] = torch::tensor(playerEps_);
     if (playerTemp_.size() > 0) {

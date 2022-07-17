@@ -6,6 +6,8 @@
 //
 #pragma once
 
+#include <stdio.h>
+
 #include "hanabi-learning-environment/hanabi_lib/canonical_encoders.h"
 #include "hanabi-learning-environment/hanabi_lib/hanabi_game.h"
 #include "hanabi-learning-environment/hanabi_lib/hanabi_observation.h"
