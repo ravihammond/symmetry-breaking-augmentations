@@ -1,6 +1,6 @@
 python selfplay.py \
-       --seed 3 \
-       --save_dir exps/sad_3 \
+       --seed 4 \
+       --save_dir exps/sad_4 \
        --num_thread 24 \
        --num_game_per_thread 80 \
        --method iql \
