@@ -18,7 +18,9 @@ Actor::Actor(
     , conventionSender_(conventionSender) 
     , conventionIdx_(conventionIdx) 
     , conventionOverride_(conventionOverride) 
-    , recordStats_(recordStats) {
+    , recordStats_(recordStats)
+    , livesBeforeMove_(-1) {
+    , currentTwoStep_("X") {
 }
 
 tuple<bool, bool> Actor::analyzeCardBelief(const vector<float>& b) {
@@ -252,7 +254,7 @@ void Actor::incrementStat(std::string key) {
     stats_[key]++;
 }
 
-void Actor::incrementStats(
+void Actor::incrementStatsBeforeMove(
         const HanabiEnv& env, hle::HanabiMove move) {
     if (!recordStats_) {
         return;
@@ -284,6 +286,8 @@ void Actor::incrementStats(
 
     incrementStatsConvention(env, move);
     incrementStatsTwoStep(env, move);
+
+    livesBeforeMove_ = env.getLife();
 }
 
 void Actor::incrementStatsConvention(
@@ -337,6 +341,21 @@ void Actor::incrementStatsConvention(
     }
 }
 
+string Actor::conventionString() {
+    string conventionStr = "";
+
+    auto conventionSet = convention_[conventionIdx_];
+    for (size_t i = 0; i < conventionSet.size(); i++) {
+        if (i > 0) {
+            conventionStr += "-";
+        }
+        auto convention = conventionSet[i];
+        conventionStr += convention[0] + convention[1];
+    }
+
+    return conventionStr;
+}
+
 void Actor::incrementStatsTwoStep(
         const HanabiEnv& env, hle::HanabiMove move) {
     auto lastMove = env.getMove(env.getLastAction());
@@ -359,6 +378,7 @@ void Actor::incrementStatsTwoStep(
             stat = "D" + to_string(lastMove.CardIndex());
             break;
         default:
+            currentTwoStep_ = "X";
             return;
     }
 
@@ -378,24 +398,26 @@ void Actor::incrementStatsTwoStep(
             stat += "_R" + ranks[move.Rank()];
             break;
         default:
+            currentTwoStep_ = "X";
             return;
     }
  
+    currentTwoStep_ = stat;
     incrementStat(stat);
 }
 
-string Actor::conventionString() {
-    string conventionStr = "";
 
-    auto conventionSet = convention_[conventionIdx_];
-    for (size_t i = 0; i < conventionSet.size(); i++) {
-        if (i > 0) {
-            conventionStr += "-";
-        }
-        auto convention = conventionSet[i];
-        conventionStr += convention[0] + convention[1];
+void Actor::incrementStatsAfterMove(
+        const HanabiEnv& env) {
+    if (!recordStats_) {
+        return;
     }
 
-    return conventionStr;
+    incrementDubiousTwoStep(env);
+    if (env.getCurrentPlayer() != playerIdx_ &&
+        env.getLife() != livesBeforeMove_ &&
+        currentTwoStep_ != "X") {
+        incrementStat("dubious_" + currentTwoStep);
+    }
 }
 

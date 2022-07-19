@@ -11,8 +11,6 @@
 #include "rlcc/actors/r2d2_actor.h"
 #include "rlcc/utils.h"
 
-#define PR false
-
 using namespace std;
 
 void R2D2Actor::addHid(rela::TensorDict& to, rela::TensorDict& hid) {
@@ -345,9 +343,9 @@ void R2D2Actor::act(HanabiEnv& env, const int curPlayer) {
     }
 
     incrementPlayedCardKnowledgeCount(env, move);
-    incrementStats(env, move);
+    incrementStatsBeforeMove(env, move);
 
-    if(PR)printf("Playing move: %s\n", move.ToString().c_str());
+    printf("Playing move: %s\n", move.ToString().c_str());
     env.step(move);
 }
 
@@ -408,6 +406,8 @@ void R2D2Actor::fictAct(const HanabiEnv& env) {
 }
 
 void R2D2Actor::observeAfterAct(const HanabiEnv& env) {
+    incrementStatsAfterMove(env);
+
     torch::NoGradGuard ng;
     if (replayBuffer_ == nullptr) {
         return;

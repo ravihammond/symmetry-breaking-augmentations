@@ -122,7 +122,7 @@ def create_figure_row(fig, stats, args):
 
     for i, plot_stats in enumerate(plots):
         plot_data = generate_plot_data(plot_stats, args, title, i)
-        create_plot(axs[i], *plot_data)
+        create_plot(axs[i], *plot_data, colour_max=args.colour_max)
 
 
 def generate_plot_data(stats, args, convention, player_idx):
@@ -169,30 +169,6 @@ def create_plot(ax, data, xticklabels, yticklabels, colour_max=1.0):
 
     ax.set_yticks(range(len(yticklabels)));
     ax.set_yticklabels(yticklabels);
-
-
-def convention_matrix(data, xticklabels, yticklabels, colour_max=1.0, 
-        xlabel="response t+1", ylabel="signal t", title="None"):
-    norm = mcolors.Normalize(vmin=0., vmax=colour_max)
-    # see note above: this makes all pcolormesh calls consistent:
-    pc_kwargs = {'rasterized': True, 'cmap': 'cividis', 'norm': norm}
-    fig, ax = plt.subplots(constrained_layout=True)
-    im = ax.imshow(data, **pc_kwargs)
-    cb = fig.colorbar(im, ax=ax,fraction=0.024, pad=0.04)
-    cb.ax.tick_params(length=1)
-
-    plt.xlabel(xlabel)
-    plt.ylabel(ylabel)
-    plt.xticks(range(len(xticklabels)));
-    ax.set_xticklabels(xticklabels);
-    ax.xaxis.tick_top()
-    ax.tick_params('both', length=1, width=1, which='major')
-    plt.yticks(range(len(yticklabels)));
-    ax.set_yticklabels(yticklabels);
-    if title != "None":
-        plt.title(title)
-
-    plt.show()
 
 
 if __name__ == "__main__":

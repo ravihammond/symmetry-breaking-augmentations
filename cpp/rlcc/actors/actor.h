@@ -43,13 +43,16 @@ protected:
 
     void incrementStat(std::string key);
 
-    virtual void incrementStats(const HanabiEnv& env, hle::HanabiMove move);
+    virtual void incrementStatsBeforeMove(
+            const HanabiEnv& env, hle::HanabiMove move);
 
     void incrementStatsConvention(const HanabiEnv& env, hle::HanabiMove move);
 
     void incrementStatsTwoStep(const HanabiEnv& env, hle::HanabiMove move);
 
     std::string conventionString();
+
+    virtual void incrementStatsAfterMove(const HanabiEnv& env);
 
     hle::HanabiMove overrideMove(const HanabiEnv& env, hle::HanabiMove move);
 
@@ -88,4 +91,6 @@ protected:
         {'R', 0}, {'Y', 1}, {'G', 2}, {'W', 3}, {'B', 4} };
     std::unordered_map<char, int> rankMoveToIndex_{
         {'1', 0}, {'2', 1}, {'3', 2}, {'4', 3}, {'5', 4} };
+    int livesBeforeMove_;
+    std::string livesBeforeMove_;
 };

@@ -13,7 +13,7 @@ ACTION_MAP = {
     "D": CARDS
 }
 
-def extract_convention_stats(actors, args, convention_strings):
+def extract_convention_stats(actors, args, convention_strings=[]):
     action_counts = defaultdict(int)
 
     for i, actor in enumerate(actors):
