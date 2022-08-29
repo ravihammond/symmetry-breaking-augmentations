@@ -6,21 +6,29 @@
 
 using namespace std;
 
+#define CV false
+
 Actor::Actor(
         int playerIdx,
         std::vector<std::vector<std::vector<std::string>>> convention,
         int conventionIdx,
-        bool conventionSender,
-        bool conventionOverride,
+        int conventionOverride,
         bool recordStats)
     : playerIdx_(playerIdx) 
     , convention_(convention) 
-    , conventionSender_(conventionSender) 
     , conventionIdx_(conventionIdx) 
     , conventionOverride_(conventionOverride) 
+    , sentSignal_(false)
+    , sentSignalStats_(false)
     , recordStats_(recordStats)
-    , livesBeforeMove_(-1) {
+    , livesBeforeMove_(-1) 
     , currentTwoStep_("X") {
+}
+
+void Actor::reset(const HanabiEnv& env) {
+    (void)env;
+    sentSignal_ = false;
+    sentSignalStats_ = false;
 }
 
 tuple<bool, bool> Actor::analyzeCardBelief(const vector<float>& b) {
@@ -67,95 +75,48 @@ void Actor::incrementPlayedCardKnowledgeCount(
     }
 }
 
-hle::HanabiMove Actor::overrideMove(
-        const HanabiEnv& env, hle::HanabiMove move) {
-    if (not conventionOverride_ || convention_.size() == 0 || 
+hle::HanabiMove Actor::overrideMove(const HanabiEnv& env, hle::HanabiMove move, 
+        vector<float> action_q) {
+    if (conventionOverride_ == 0|| convention_.size() == 0 || 
             convention_[conventionIdx_].size() == 0) {
         return move;
     }
 
     auto lastMove = env.getMove(env.getLastAction());
+    auto signalMove = strToMove(convention_[conventionIdx_][0][0]);
+    auto responseMove = strToMove(convention_[conventionIdx_][0][1]);
+    auto& state = env.getHleState();
 
-    vector<hle::HanabiMove> senderMoves;
-    vector<hle::HanabiMove> responseMoves;
-    auto currentConvention = convention_[conventionIdx_];
-    for (auto convention: currentConvention) {
-        senderMoves.push_back(strToMove(convention[0]));
-        responseMoves.push_back(strToMove(convention[1]));
+    if ((lastMove.MoveType() == hle::HanabiMove::kPlay 
+            || lastMove.MoveType() == hle::HanabiMove::kDiscard) 
+            && sentSignal_
+            && lastMove.CardIndex() <= responseMove.CardIndex()) {
+        sentSignal_ = false;
+        if(CV)printf("seen signal\n");
     }
 
-    if (conventionSender_) {
-        auto [senderMove, moveAvailable] = 
-            availableSenderMove(env, currentConvention);
-        if (moveAvailable) {
-            return senderMove;
-        }
-        if (moveInVector(senderMoves, move)) {
-            return randomMove(env, senderMoves, move);
-        }
-    } else {
-        if (moveInVector(senderMoves, lastMove)) {
-            return matchingResponseMove(currentConvention, lastMove);
-        }
-        if (moveInVector(responseMoves, move)) {
-            return randomMove(env, responseMoves, move);
+    if (conventionOverride_ == 2 || conventionOverride_ == 3 ) {
+        if (lastMove == signalMove) {
+            if(CV)printf("play response\n");
+            return responseMove;
+        } 
+    }
+
+    if (conventionOverride_ == 1 || conventionOverride_ == 3) {
+        if (!sentSignal_ && movePlayableOnFireworks(env, responseMove) &&
+                state.MoveIsLegal(signalMove)) {
+            sentSignal_ = true;
+            if(CV)printf("play signal\n");
+            return signalMove;
+        } else if (move == signalMove) {
+            vector<hle::HanabiMove> exclude = {signalMove};
+            if (conventionOverride_ == 3) exclude.push_back(responseMove);
+            if(CV)printf("playing next best move (move was signal)\n");
+            return action_argmax(env, exclude, action_q);
         }
     }
 
     return move;
-}
-
-
-bool Actor::moveInVector(vector<hle::HanabiMove> moves, hle::HanabiMove move) {
-    if (find(moves.begin(), moves.end(), move) != moves.end()) {
-        return true;
-    }
-    return false;
-}
-
-
-hle::HanabiMove Actor::matchingResponseMove(vector<vector<string>> convention,
-        hle::HanabiMove senderMove) {
-    for (auto twoStepConvention: convention) {
-        if (strToMove(twoStepConvention[0]) == senderMove) {
-            return strToMove(twoStepConvention[1]);
-        }
-    }
-    return hle::HanabiMove(hle::HanabiMove::kInvalid, -1, -1, -1, -1);
-}
-
-
-tuple<hle::HanabiMove, bool> Actor::availableSenderMove(const HanabiEnv& env,
-        vector<vector<string>> convention) {
-    auto move = hle::HanabiMove(hle::HanabiMove::kInvalid, -1, -1, -1, -1);
-    bool available = false;
-    auto& state = env.getHleState();
-    vector<hle::HanabiMove> possibleMoves;
-
-    for (size_t i = 0; i < convention.size(); i++) {
-        auto senderMove = strToMove(convention[i][0]);
-        auto responseMove = strToMove(convention[i][1]);
-
-        if (responseMove.MoveType() == hle::HanabiMove::kPlay) {
-            if (movePlayableOnFireworks(env, responseMove)
-                    && state.MoveIsLegal(senderMove)) {
-                possibleMoves.push_back(senderMove);
-                available = true;
-            }
-        } else if (responseMove.MoveType() == hle::HanabiMove::kDiscard) {
-            if (discardMovePlayable(env, responseMove)
-                    && state.MoveIsLegal(senderMove)) {
-                possibleMoves.push_back(senderMove);
-                available = true;
-            }
-        }
-    }
-
-    if (possibleMoves.size() > 0) {
-        move = possibleMoves[rand() % possibleMoves.size()];
-    }
-
-    return {move, available};
 }
 
 bool Actor::movePlayableOnFireworks(const HanabiEnv& env, hle::HanabiMove move) {
@@ -171,47 +132,19 @@ bool Actor::movePlayableOnFireworks(const HanabiEnv& env, hle::HanabiMove move) 
     return false;
 }
 
-bool Actor::discardMovePlayable(const HanabiEnv& env, hle::HanabiMove move) {
-    // TODO: Implement discard response Convention Moves.
-    (void)env;
-    (void)move;
-    return false;
-}
-
-hle::HanabiMove Actor::randomMove(const HanabiEnv& env, 
-        vector<hle::HanabiMove> exclude, hle::HanabiMove originalMove) {
+hle::HanabiMove Actor::action_argmax(const HanabiEnv& env, 
+        vector<hle::HanabiMove> exclude, vector<float> action_q) {
+    assert(action_q.size() == 21);
     auto game = env.getHleGame();
 
-    // Get possible discard and hint moves, and shuffle them.
-    vector<int> discard_moves = {0, 1, 2, 3, 4};
-    vector<int> hint_moves = {10, 11, 12, 13, 14, 15, 16, 17, 18, 19};
-    auto rd = random_device {};
-    auto rng = default_random_engine { rd() };
-    shuffle(begin(discard_moves), end(discard_moves), rng);
-    shuffle(begin(hint_moves), end(hint_moves), rng);
-
-    // Concatenate possible moves into single list, random order.
-    auto moveList = discard_moves;
-    auto appendList = hint_moves;
-    if (rand() % 2 == 0) {
-        moveList = hint_moves;
-        appendList = discard_moves;
-    }
-    moveList.insert(moveList.end(), appendList.begin(), appendList.end());
-
-    // Loop through all possible moves.
-    auto& state = env.getHleState();
-    for (auto moveUid: moveList) {
-        auto move = game.GetMove(moveUid);
-        // If current move should be excluded, skip it.
-        if (find(exclude.begin(), exclude.end(), move) != exclude.end())
-            continue;
-        // If random move is legal, choose it.
-        if (state.MoveIsLegal(move))
-            return move;
+    for (auto exclude_move: exclude) {
+        action_q[game.GetMoveUid(exclude_move)] = 0;
     }
 
-    return originalMove;
+    auto next_best_move = distance(action_q.begin(), max_element(
+                action_q.begin(), action_q.end()));
+
+    return game.GetMove(next_best_move);
 }
 
 hle::HanabiMove Actor::strToMove(string key) {
@@ -292,53 +225,65 @@ void Actor::incrementStatsBeforeMove(
 
 void Actor::incrementStatsConvention(
         const HanabiEnv& env, hle::HanabiMove move) {
-    if (convention_.size() == 0) {
+    if (convention_.size() == 0 || 
+            convention_[conventionIdx_].size() == 0) {
         return;
     }
 
+    auto lastMove = env.getMove(env.getLastAction());
+    auto signalMove = strToMove(convention_[conventionIdx_][0][0]);
+    auto responseMove = strToMove(convention_[conventionIdx_][0][1]);
     auto& state = env.getHleState();
-    auto conventionMove = hle::HanabiMove(hle::HanabiMove::kInvalid, -1, -1, -1, -1);
-    bool shouldHavePlayedConvention = false;
+    bool shouldHavePlayedSignal = false;
+    bool shouldHavePlayedResponse = false;
 
-    // Extract convention moves
-    for (auto convention: convention_[conventionIdx_]) {
-        auto senderMove = strToMove(convention[0]);
-        auto responseMove = strToMove(convention[1]);
+    if ((lastMove.MoveType() == hle::HanabiMove::kPlay
+            || lastMove.MoveType() == hle::HanabiMove::kDiscard)
+            && sentSignalStats_
+            && lastMove.CardIndex() <= responseMove.CardIndex()) {
+        sentSignalStats_ = false;
+        if(CV)printf("stats seen signal\n");
+    }
 
-        if (conventionSender_) {
-            conventionMove = senderMove;
-            if (movePlayableOnFireworks(env, responseMove) &&
-                    state.MoveIsLegal(senderMove)) {
-                shouldHavePlayedConvention = true;
-            }
+    if (lastMove == signalMove && state.MoveIsLegal(responseMove)) {
+        shouldHavePlayedResponse = true;
+        if(CV)printf("stats should play response\n");
+    }
+    
+    if (!shouldHavePlayedResponse
+            && !sentSignalStats_ 
+            && movePlayableOnFireworks(env, responseMove)
+            && state.MoveIsLegal(signalMove)) {
+        sentSignalStats_ = true;
+        shouldHavePlayedSignal = true;
+        if(CV)printf("stats should play signal\n");
+    } 
 
+    incrementStatsConventionRole(shouldHavePlayedResponse, "response", 
+            move, responseMove);
+    incrementStatsConventionRole(shouldHavePlayedSignal, "signal", move, signalMove);
+}
+
+void Actor::incrementStatsConventionRole(bool shouldHavePlayed, string role,
+        hle::HanabiMove movePlayed, hle::HanabiMove moveRole) {
+    string roleStr = role + "_" + conventionString();
+
+    if (shouldHavePlayed) {
+        incrementStat(roleStr + "_available");
+        if(CV)printf("stats %s available\n", role.c_str());
+    }
+
+    if (movePlayed == moveRole) {
+        incrementStat(roleStr + "_played");
+        if (shouldHavePlayed) {
+            incrementStat(roleStr + "_played_correct");
+            if(CV)printf("stats %s played correct\n", role.c_str());
         } else {
-            conventionMove = responseMove;
-            auto lastMove = env.getMove(env.getLastAction());
-            if (lastMove == senderMove && state.MoveIsLegal(responseMove)) {
-                shouldHavePlayedConvention = true;
-            }
-        }
-
-        if (shouldHavePlayedConvention && conventionMove == move) {
-            break;
+            incrementStat(roleStr + "_played_incorrect");
+            if(CV)printf("stats %s played incorrect\n", role.c_str());
         }
     }
 
-    string conventionStr = "convention_" + conventionString();
-
-    if (shouldHavePlayedConvention) {
-        incrementStat(conventionStr + "_available");
-    }
-
-    if (conventionMove == move) {
-        incrementStat(conventionStr + "_played");
-        if (shouldHavePlayedConvention) {
-            incrementStat(conventionStr + "_played_correct");
-        } else {
-            incrementStat(conventionStr + "_played_incorrect");
-        }
-    }
 }
 
 string Actor::conventionString() {
@@ -413,11 +358,10 @@ void Actor::incrementStatsAfterMove(
         return;
     }
 
-    incrementDubiousTwoStep(env);
     if (env.getCurrentPlayer() != playerIdx_ &&
         env.getLife() != livesBeforeMove_ &&
         currentTwoStep_ != "X") {
-        incrementStat("dubious_" + currentTwoStep);
+        incrementStat("dubious_" + currentTwoStep_);
     }
 }
 

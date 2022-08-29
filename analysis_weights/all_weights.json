@@ -1,3 +1,5 @@
 [
-    "pyhanabi/exps/sad_1/model_epoch1900.pthw"
+    "pyhanabi/exps/iql/model_epoch1900.pthw",
+    "pyhanabi/exps/sad_1_old/model_epoch1900.pthw",
+    "pyhanabi/exps/sad_2_old/model_epoch1500.pthw"
 ]

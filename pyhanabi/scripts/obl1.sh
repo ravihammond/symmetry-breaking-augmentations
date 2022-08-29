@@ -6,7 +6,7 @@
 #
 #!/bin/bash
 python selfplay.py \
-       --save_dir exps/obl1_checkpoints10 \
+       --save_dir exps/obl1_test \
        --num_thread 24 \
        --num_game_per_thread 80 \
        --sad 0 \
@@ -37,4 +37,3 @@ python selfplay.py \
        --belief_model exps/belief_obl0/model0.pthw \
        --load_model None \
        --net publ-lstm \
-       --save_checkpoints 10 \

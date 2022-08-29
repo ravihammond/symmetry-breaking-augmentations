@@ -75,7 +75,9 @@ void RulebotActor::act(HanabiEnv& env, const int curPlayer) {
         );
     }
 
-    move = overrideMove(env, move);
+    vector<float> action_q(21, 1);
+
+    move = overrideMove(env, move, action_q);
     incrementPlayedCardKnowledgeCount(env, move);
     incrementStatsBeforeMove(env, move);
 

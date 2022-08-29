@@ -13,6 +13,8 @@
 
 using namespace std;
 
+#define PR false
+
 void R2D2Actor::addHid(rela::TensorDict& to, rela::TensorDict& hid) {
     for (auto& kv : hid) {
         // hid: [num_layer, batch/num_player, dim]
@@ -117,6 +119,7 @@ std::tuple<std::vector<hle::HanabiCardValue>, bool> filterSample(
 }
 
 void R2D2Actor::reset(const HanabiEnv& env) {
+    Actor::reset(env);
     hidden_ = getH0(batchsize_, runner_);
     if (beliefRunner_ != nullptr) {
         beliefHidden_ = getH0(batchsize_, beliefRunner_);
@@ -334,8 +337,13 @@ void R2D2Actor::act(HanabiEnv& env, const int curPlayer) {
         return;
     }
 
+    vector<float> action_q;
+    auto actions = reply.at("all_a");
+    for (int i = 0; i < 21; i++)
+        action_q.push_back(actions[i].item<float_t>());
+
     auto move = state.ParentGame()->GetMove(action);
-    move = overrideMove(env, move);
+    move = overrideMove(env, move, action_q);
 
     if (shuffleColor_ && move.MoveType() == hle::HanabiMove::Type::kRevealColor) {
         int realColor = (*invColorPermute)[move.Color()];
@@ -345,7 +353,7 @@ void R2D2Actor::act(HanabiEnv& env, const int curPlayer) {
     incrementPlayedCardKnowledgeCount(env, move);
     incrementStatsBeforeMove(env, move);
 
-    printf("Playing move: %s\n", move.ToString().c_str());
+    if(PR)printf("Playing move: %s\n", move.ToString().c_str());
     env.step(move);
 }
 
@@ -406,7 +414,7 @@ void R2D2Actor::fictAct(const HanabiEnv& env) {
 }
 
 void R2D2Actor::observeAfterAct(const HanabiEnv& env) {
-    incrementStatsAfterMove(env);
+    //incrementStatsAfterMove(env);
 
     torch::NoGradGuard ng;
     if (replayBuffer_ == nullptr) {

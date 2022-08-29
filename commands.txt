@@ -1,21 +1,12 @@
-== RULEBOTS ==
-python pyhanabi/tools/eval_model.py --weight1 rulebot --weight2 rulebot2 --num_game 1
-
 == OBL_1 ==
 python pyhanabi/tools/eval_model.py --weight1 rulebot --weight2 pyhanabi/exps/obl1/model_epoch1400.pthw --num_game 1
 
-python pyhanabi/tools/eval_model.py --weight1 pyhanabi/exps/obl1/model_epoch1400.pthw --weight2 rulebot --num_game 1
-
-python pyhanabi/tools/eval_model.py --weight1 pyhanabi/exps/obl1/model_epoch1400.pthw --num_game 1
-
 == TEST == 
-python pyhanabi/tools/eval_model.py --weight1 rulebot --weight2 pyhanabi/exps/convention_only/model_epoch1400.pthw
-
 python pyhanabi/tools/eval_model.py --weight1 pyhanabi/exps/obl1/model_epoch1400.pthw --weight2 pyhanabi/exps/convention_only/model_epoch1400.pthw --override1 rulebot
 
 python pyhanabi/tools/eval_model_verbose.py --weight1 pyhanabi/exps/obl_CR_P0/model_epoch230.pthw --weight2 rulebot --convention pyhanabi/conventions/hint_red_play_0.json
 
-python pyhanabi/tools/eval_model_verbose.py --weight1 pyhanabi/exps/obl1/model_epoch1400.pthw --convention pyhanabi/conventions/CR-P0_CY-P1.json --override0 1 --override1 1
+python pyhanabi/tools/eval_model_verbose.py --weight1 training_models/obl1/model0.pthw --convention pyhanabi/conventions/CR-P0.json --override0 3 --override1 3 --num_game 5000
 
 == OVERRIDE ==
 

@@ -127,11 +127,11 @@ class R2D2Agent(torch.jit.ScriptModule):
         publ_s: torch.Tensor,
         legal_move: torch.Tensor,
         hid: Dict[str, torch.Tensor],
-    ) -> Tuple[torch.Tensor, Dict[str, torch.Tensor]]:
+    ) -> Tuple[torch.Tensor, Dict[str, torch.Tensor], torch.Tensor]:
         adv, new_hid = self.online_net.act(priv_s, publ_s, hid)
         legal_adv = (1 + adv - adv.min()) * legal_move
         greedy_action = legal_adv.argmax(1).detach()
-        return greedy_action, new_hid
+        return greedy_action, new_hid, legal_adv
 
     @torch.jit.script_method
     def boltzmann_act(
@@ -184,8 +184,10 @@ class R2D2Agent(torch.jit.ScriptModule):
                 priv_s, publ_s, legal_move, temp, hid
             )
             reply = {"prob": prob}
+            legal_act = prob
         else:
-            greedy_action, new_hid = self.greedy_act(priv_s, publ_s, legal_move, hid)
+            greedy_action, new_hid, legal_act = \
+                    self.greedy_act(priv_s, publ_s, legal_move, hid)
             reply = {}
 
         random_action = legal_move.multinomial(1).squeeze(1)
@@ -219,6 +221,7 @@ class R2D2Agent(torch.jit.ScriptModule):
         reply["a"] = action.detach().cpu()
         reply["h0"] = new_hid["h0"].detach().cpu()
         reply["c0"] = new_hid["c0"].detach().cpu()
+        reply["all_a"] = legal_act.detach().cpu()
 
         size = torch.prod(torch.tensor(legal_move.shape))
         ascending = torch.arange(0, size, legal_move.shape[1])

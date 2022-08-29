@@ -66,7 +66,6 @@ def run_evaluation(args, weight_files):
         num_run=args.num_run,
         device=args.device,
         convention=args.convention,
-        convention_sender=args.convention_sender,
         override=[args.override0, args.override1],
         verbose=False,
     )
@@ -76,7 +75,8 @@ def run_evaluation(args, weight_files):
 
 def print_actor_stats(stats, player, convention_string):
     print_move_stats(stats, player, convention_string)
-    print_convention_stats(stats, player, convention_string)
+    print_convention_stats(stats, player, convention_string, "signal")
+    print_convention_stats(stats, player, convention_string, "response")
 
 
 def print_scores(stats, convention=""):
@@ -114,8 +114,8 @@ def print_move_stats(stats, player, convention_string=None):
             print(f"{move_type_with_move}: {move_count} ({percentage:.1f}%)")
 
 
-def print_convention_stats(stats, player, convention_string):
-    prefix = f"{convention_string}_actor{player}_convention"
+def print_convention_stats(stats, player, convention_string, role):
+    prefix = f"{convention_string}_actor{player}_{role}"
 
     available = f"{prefix}_available"
     played = f"{prefix}_played"
@@ -173,7 +173,6 @@ if __name__ == "__main__":
     )
     parser.add_argument("--device", default="cuda:0", type=str)
     parser.add_argument("--convention", default="None", type=str)
-    parser.add_argument("--convention_sender", default=0, type=int)
     parser.add_argument("--override0", default=0, type=int)
     parser.add_argument("--override1", default=0, type=int)
     args = parser.parse_args()

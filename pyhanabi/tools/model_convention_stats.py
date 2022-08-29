@@ -5,7 +5,7 @@ import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
 import numpy as np
 import re
-import json
+import json 
 import pprint
 pprint = pprint.pprint
 
@@ -88,7 +88,6 @@ def run_evaluation(args, weight_files, conventions):
         num_run=args.num_run,
         device=args.device,
         convention=args.convention,
-        convention_sender=args.convention_sender,
         override=[args.override0, args.override1],
     )
 
@@ -184,7 +183,6 @@ if __name__ == "__main__":
     parser.add_argument("--num_run", default=1, type=int)
     parser.add_argument("--device", default="cuda:0", type=str)
     parser.add_argument("--convention", default="None", type=str)
-    parser.add_argument("--convention_sender", default=0, type=int)
     parser.add_argument("--override0", default=0, type=int)
     parser.add_argument("--override1", default=0, type=int)
     parser.add_argument("--signal_actions", default="DPCR", type=str)

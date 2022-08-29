@@ -71,8 +71,7 @@ PYBIND11_MODULE(hanalearn, m) {
                 int, //playerIdx
                 std::vector<std::vector<std::vector<std::string>>>, // convention
                 int, // conventionIdx
-                bool, // conventionSender
-                bool, // conventionOverride
+                int, // conventionOverride
                 bool>()) //recordStats
         .def("get_played_card_info", &Actor::getPlayedCardInfo)
         .def("get_stats", &Actor::getStats)
@@ -98,8 +97,7 @@ PYBIND11_MODULE(hanalearn, m) {
                 float,  // gamma
                 std::vector<std::vector<std::vector<std::string>>>, // convention
                 int, // conventionIdx
-                bool, // conventionSender
-                bool, // conventionOverride
+                int, // conventionOverride
                 bool, // conventionFictitiousOverride
                 bool>()) // useConvention
         .def(py::init<
@@ -111,8 +109,7 @@ PYBIND11_MODULE(hanalearn, m) {
                 bool,  // hideAction
                 std::vector<std::vector<std::vector<std::string>>>, // convention
                 int, // conventionIdx
-                bool, // conventionSender
-                bool>()) // conventionOverride
+                int>()) // conventionOverride
         .def("set_partners", &R2D2Actor::setPartners)
         .def("set_belief_runner", &R2D2Actor::setBeliefRunner)
         .def("get_success_fict_rate", &R2D2Actor::getSuccessFictRate);
@@ -123,8 +120,7 @@ PYBIND11_MODULE(hanalearn, m) {
                 int, //playerIdx
                 std::vector<std::vector<std::vector<std::string>>>, // convention
                 int, // conventionIdx
-                bool, // conventionSender
-                bool, // conventionOverride
+                int, // conventionOverride
                 bool>()); // recordStats
 
     py::class_<Rulebot2Actor, Actor, std::shared_ptr<Rulebot2Actor>>(
@@ -133,8 +129,7 @@ PYBIND11_MODULE(hanalearn, m) {
                 int, //playerIdx
                 std::vector<std::vector<std::vector<std::string>>>, // convention
                 int, // conventionIdx
-                bool, // conventionSender
-                bool, // conventionOverride
+                int, // conventionOverride
                 bool>()); // recordStats
 
     m.def("observe", py::overload_cast<const hle::HanabiState&, int, bool>(&observe));

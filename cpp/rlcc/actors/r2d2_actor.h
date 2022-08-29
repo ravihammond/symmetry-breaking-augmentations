@@ -36,15 +36,13 @@ public:
             float gamma,
             std::vector<std::vector<std::vector<std::string>>> convention,
             int conventionIdx,
-            bool conventionSender,
-            bool conventionOverride,
+            int conventionOverride,
             bool conventionFictitiousOverride,
             bool useExperience)
         : Actor(
                 playerIdx,
                 convention,
                 conventionIdx,
-                conventionSender,
                 conventionOverride,
                 false)
           , runner_(std::move(runner))
@@ -78,13 +76,11 @@ public:
             bool hideAction,
             std::vector<std::vector<std::vector<std::string>>> convention,
             int conventionIdx,
-            bool conventionSender,
-            bool conventionOverride)
+            int conventionOverride)
         : Actor(
                 playerIdx,
                 convention,
                 conventionIdx,
-                conventionSender,
                 conventionOverride,
                 true)
           , runner_(std::move(runner))

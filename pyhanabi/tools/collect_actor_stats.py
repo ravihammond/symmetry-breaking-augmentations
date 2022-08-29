@@ -75,7 +75,8 @@ def extract_convention_strings(conventions):
 
 def record_actor_stats(stats, actor_stats, convention_str, player):
     move_stats(stats, actor_stats, player, convention_str)
-    convention_stats(stats, actor_stats, player, convention_str)
+    convention_stats(stats, actor_stats, player, convention_str, "signal")
+    convention_stats(stats, actor_stats, player, convention_str, "response")
 
  
 def move_stats(stats, actor_stats, player, convention=None):
@@ -103,9 +104,9 @@ def move_type_stats(stats, actor_stats, player, move_map, move_type,
                 int(actor_stats[f"{move_type}_{move}"])
 
 
-def convention_stats(stats, actor_stats, player, convention):
-    prefix = f"{convention}_actor{player}_convention"
-    convention_str = f"convention_{convention}"
+def convention_stats(stats, actor_stats, player, convention, role):
+    prefix = f"{convention}_actor{player}_{role}"
+    convention_str = f"{role}_{convention}"
     available = f"{convention_str}_available"
     played = f"{convention_str}_played"
     played_correct = f"{convention_str}_played_correct"
@@ -123,7 +124,8 @@ def evaluate_percentages(stats, conventions):
     for convention in conventions:
         for player in range(2):
             move_percentages(stats, player, convention)
-            convention_percentages(stats, player, convention)
+            convention_percentages(stats, player, convention, "signal")
+            convention_percentages(stats, player, convention, "response")
 
 def move_percentages(stats, player, convention=None):
     percent_move_type(stats, player, CARD_INDEX_MAP, "play", convention)
@@ -146,8 +148,8 @@ def percent_move_type(stats, player, move_map, move_type,
         percentage = percent(move_count, total)
         stats[f"{move_type_with_move}%"] = percentage
 
-def convention_percentages(stats, player, convention):
-    prefix = f"{convention}_actor{player}_convention"
+def convention_percentages(stats, player, convention, role):
+    prefix = f"{convention}_actor{player}_{role}"
     available = stats[f"{prefix}_available"]
     played = stats[f"{prefix}_played"]
     played_correct = stats[f"{prefix}_played_correct"]

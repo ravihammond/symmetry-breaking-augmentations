@@ -288,7 +288,7 @@ def selfplay(args):
 
         eval_act_override = [0, 0]
         if args.convention_act_override:
-            eval_act_override = [0, 1]
+            eval_act_override = [0, 3]
 
         score, perfect, scores, _, eval_actors = evaluate(
             eval_agents,

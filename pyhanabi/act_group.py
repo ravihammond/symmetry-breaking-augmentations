@@ -165,7 +165,6 @@ class ActGroup:
                                 self.gamma,
                                 self.convention,
                                 convention_index,
-                                0, # convention sender
                                 self.convention_act_override,
                                 self.convention_fict_act_override,
                                 0, # use experience
@@ -189,7 +188,6 @@ class ActGroup:
                                 self.gamma,
                                 self.convention,
                                 convention_index,
-                                1, # convention sender
                                 0, # convention act override
                                 self.convention_fict_act_override,
                                 1, # use experience

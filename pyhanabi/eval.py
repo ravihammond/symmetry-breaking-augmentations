@@ -30,7 +30,6 @@ def evaluate(
     max_len=80,
     device="cuda:0",
     convention=[],
-    convention_sender=0,
     override=[0, 0],
 ):
     """
@@ -52,11 +51,6 @@ def evaluate(
         else None
         for agent in agents
     ]
-
-    # Which actor is the sender and responder of the convention
-    convention_role = [1, 0]
-    if convention_sender == 1:
-        convention_role = [0, 1]
 
     context = rela.Context()
     games = create_envs(num_game, seed, num_player, bomb, max_len)
@@ -80,14 +74,12 @@ def evaluate(
                         i, 
                         convention, 
                         convention_index, 
-                        convention_role[i], 
                         override[i])
                 elif agents[i] == "rulebot2":
                     actor = hanalearn.Rulebot2Actor(
                         i, 
                         convention,
                         convention_index,
-                        convention_role[i], 
                         override[i])
                 else:
                     actor = hanalearn.R2D2Actor(
@@ -99,7 +91,6 @@ def evaluate(
                         hide_action[i], # hideAction
                         convention, # convention
                         convention_index, # conventionIndex
-                        convention_role[i], # conventionSender
                         override[i]) # conventionOverride
                 actors.append(actor)
                 all_actors.append(actor)
@@ -136,7 +127,6 @@ def evaluate_saved_model(
     verbose=True,
     device="cuda:0",
     convention="None",
-    convention_sender=0,
     override=[0, 0],
 ):
     agents = []
@@ -186,7 +176,6 @@ def evaluate_saved_model(
             hide_action,
             device=device,
             convention=load_convention(convention),
-            convention_sender=convention_sender,
             override=override,
         )
         scores.extend(score)
