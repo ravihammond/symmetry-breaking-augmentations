@@ -75,11 +75,7 @@ class ActGroup:
         if static_partner:
             for i, dev in enumerate(self.devices):
                 runner = rela.BatchRunner(partner_agent.clone(dev), dev)
-                # runner = rela.BatchRunner(agent, dev, 5000, ["act"]) 
                 runner.add_method("act", 5000)
-                # runner.add_method("compute_priority", 100)
-                # if off_belief:
-                    # runner.add_method("compute_target", 5000)
                 self.partner_runners.append(runner)
 
         self.off_belief = off_belief

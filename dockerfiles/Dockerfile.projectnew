@@ -1,18 +1,6 @@
 # DEV 
 FROM ravihammond/cudaconda AS dev
 
-#RUN apt-get update && apt-get install -y \
-#    cmake \
-#    net-tools iputils-ping \ 
-#    build-essential cmake git \
-#    curl wget \
-#    vim \
-#    zip p7zip-full p7zip-rar bzip2 \
-#    ca-certificates \
-#    imagemagick ffmpeg \
-#    libopenmpi-dev libomp5 \
-#    libx11-6
-
 RUN apt-get update && apt-get install -y \
     net-tools=1.60+git20180626.aebd88e-1ubuntu1 \
     iputils-ping=3:20190709-3 \

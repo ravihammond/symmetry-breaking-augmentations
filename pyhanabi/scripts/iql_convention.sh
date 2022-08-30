@@ -21,8 +21,8 @@ python selfplay.py \
        --multi_step 3 \
        --train_device cuda:0 \
        --act_device cuda:1,cuda:2,cuda:3 \
-       --convention_act_override 3 \
        --convention conventions/CR-P0.json \
+       --convention_act_override 3 \
        --partner_model ../training_models/obl1/model0.pthw \
        --static_partner 1 \
        --wandb 1 \

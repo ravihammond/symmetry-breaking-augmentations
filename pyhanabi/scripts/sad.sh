@@ -20,4 +20,4 @@ python selfplay.py \
        --multi_step 3 \
        --train_device cuda:0 \
        --act_device cuda:1,cuda:2,cuda:3 \
-       --wandb 1
+       --wandb 0

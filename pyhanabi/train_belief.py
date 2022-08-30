@@ -22,202 +22,7 @@ import rela
 import utils
 import belief_model
 
-
-def parse_args():
-    parser = argparse.ArgumentParser(description="train belief model")
-    parser.add_argument("--save_dir", type=str, default="exps/dev_belief")
-    parser.add_argument("--load_model", type=int, default=0)
-    parser.add_argument("--seed", type=int, default=10001)
-    parser.add_argument("--hid_dim", type=int, default=512)
-    parser.add_argument("--fc_only", type=int, default=0)
-    parser.add_argument("--train_device", type=str, default="cuda:0")
-    parser.add_argument("--act_device", type=str, default="cuda:1")
-
-    # load policy config
-    parser.add_argument("--policy", type=str, default="")
-    parser.add_argument("--explore", type=int, default=1)
-    parser.add_argument("--rand", type=int, default=0)
-    parser.add_argument("--clone_bot", type=int, default=0)
-
-    # optimization/training settings
-    parser.add_argument("--lr", type=float, default=1e-3, help="Learning rate")
-    parser.add_argument("--eps", type=float, default=1e-8, help="Adam epsilon")
-    parser.add_argument("--grad_clip", type=float, default=50, help="max grad norm")
-    parser.add_argument("--batchsize", type=int, default=128)
-    parser.add_argument("--num_epoch", type=int, default=1000)
-    parser.add_argument("--epoch_len", type=int, default=1000)
-
-    # replay buffer settings
-    parser.add_argument("--burn_in_frames", type=int, default=80000)
-    parser.add_argument("--replay_buffer_size", type=int, default=2 ** 20)
-    parser.add_argument("--prefetch", type=int, default=3, help="#prefetch batch")
-
-    # thread setting
-    parser.add_argument("--num_thread", type=int, default=40, help="#thread_loop")
-    parser.add_argument("--num_game_per_thread", type=int, default=20)
-
-    # load from dataset setting
-    parser.add_argument("--dataset", type=str, default="")
-    parser.add_argument("--num_player", type=int, default=2)
-    parser.add_argument("--inf_data_loop", type=int, default=0)
-    parser.add_argument("--max_len", type=int, default=80)
-    parser.add_argument("--shuffle_color", type=int, default=0)
-
-    args = parser.parse_args()
-    return args
-
-
-def create_rl_context(args):
-    agent_overwrite = {
-        "vdn": False,
-        "device": args.train_device,  # batch runner will create copy on act device
-        "uniform_priority": True,
-    }
-
-    if args.clone_bot:
-        agent = utils.load_supervised_agent(args.policy, args.train_device)
-        cfgs = {
-            "act_base_eps": 0.1,
-            "act_eps_alpha": 7,
-            "num_game_per_thread": 80,
-            "num_player": 2,
-            "train_bomb": 0,
-            "max_len": 80,
-            "sad": 0,
-            "shuffle_color": 0,
-            "hide_action": 0,
-            "multi_step": 1,
-            "gamma": 0.999,
-        }
-    else:
-        agent, cfgs = utils.load_agent(args.policy, agent_overwrite)
-
-    assert cfgs["shuffle_color"] == False
-    assert args.explore
-
-    replay_buffer = rela.RNNPrioritizedReplay(
-        args.replay_buffer_size,
-        args.seed,
-        1.0,  # priority exponent
-        0.0,  # priority weight
-        args.prefetch,
-    )
-
-    if args.rand:
-        explore_eps = [1]
-    elif args.explore:
-        # use the same exploration config as policy learning
-        explore_eps = utils.generate_explore_eps(
-            cfgs["act_base_eps"], cfgs["act_eps_alpha"], cfgs["num_game_per_thread"]
-        )
-    else:
-        explore_eps = [0]
-
-    expected_eps = np.mean(explore_eps)
-    print("explore eps:", explore_eps)
-    print("avg explore eps:", np.mean(explore_eps))
-    if args.clone_bot or not agent.boltzmann:
-        print("no boltzmann act")
-        boltzmann_t = []
-    else:
-        boltzmann_beta = utils.generate_log_uniform(
-            1 / cfgs["max_t"], 1 / cfgs["min_t"], cfgs["num_t"]
-        )
-        boltzmann_t = [1 / b for b in boltzmann_beta]
-        print("boltzmann beta:", ", ".join(["%.2f" % b for b in boltzmann_beta]))
-        print("avg boltzmann beta:", np.mean(boltzmann_beta))
-
-    games = create_envs(
-        args.num_thread * args.num_game_per_thread,
-        args.seed,
-        cfgs["num_player"],
-        cfgs["train_bomb"],
-        cfgs["max_len"],
-    )
-
-    act_group = ActGroup(
-        args.act_device,
-        agent,
-        args.seed,
-        args.num_thread,
-        args.num_game_per_thread,
-        cfgs["num_player"],
-        explore_eps,
-        boltzmann_t,
-        "iql",
-        cfgs["sad"],
-        cfgs["shuffle_color"] if not args.rand else False,
-        cfgs["hide_action"],
-        False,  # not trinary, need full hand for prediction
-        replay_buffer,
-        cfgs["multi_step"],  # not used
-        cfgs["max_len"],
-        cfgs["gamma"],  # not used
-        False,  # turn off off-belief rewardless of how it is trained
-        None,  # belief_model
-    )
-
-    context, threads = create_threads(
-        args.num_thread,
-        args.num_game_per_thread,
-        act_group.actors,
-        games,
-    )
-    return agent, cfgs, replay_buffer, games, act_group, context, threads
-
-
-def create_sl_context(args):
-    games = pickle.load(open(args.dataset, "rb"))
-    print(f"total num game: {len(games)}")
-    if args.shuffle_color:
-        # to make data generation speed roughly the same as consumption
-        args.num_thread = 10
-        args.inf_data_loop = 1
-
-    if args.replay_buffer_size < 0:
-        args.replay_buffer_size = len(games) * args.num_player
-    if args.burn_in_frames < 0:
-        args.burn_in_frames = len(games) * args.num_player
-
-    # priority not used
-    priority_exponent = 1.0
-    priority_weight = 0.0
-    replay_buffer = rela.RNNPrioritizedReplay(
-        args.replay_buffer_size,
-        args.seed,
-        priority_exponent,
-        priority_weight,
-        args.prefetch,
-    )
-    data_gen = hanalearn.CloneDataGenerator(
-        replay_buffer,
-        args.num_player,
-        args.max_len,
-        args.shuffle_color,
-        False,
-        args.num_thread,
-    )
-    game_params = {
-        "players": str(args.num_player),
-        "random_start_player": "0",
-        "bomb": "0",
-    }
-    data_gen.set_game_params(game_params)
-    for i, g in enumerate(games):
-        data_gen.add_game(g["deck"], g["moves"])
-        if (i + 1) % 10000 == 0:
-            print(f"{i+1} games added")
-
-    return data_gen, replay_buffer
-
-
-if __name__ == "__main__":
-    torch.backends.cudnn.benchmark = True
-    args = parse_args()
-
-    if not os.path.exists(args.save_dir):
-        os.makedirs(args.save_dir)
-
+def train_belief(args):
     logger_path = os.path.join(args.save_dir, "train.log")
     sys.stdout = common_utils.Logger(logger_path)
     saver = common_utils.TopkSaver(args.save_dir, 2)
@@ -319,3 +124,217 @@ if __name__ == "__main__":
         )
         stat.summary(epoch)
         print("===================")
+
+
+def create_rl_context(args):
+    agent_overwrite = {
+        "vdn": False,
+        "device": args.train_device,  # batch runner will create copy on act device
+        "uniform_priority": True,
+    }
+
+    if args.clone_bot:
+        agent = utils.load_supervised_agent(args.policy, args.train_device)
+        cfgs = {
+            "act_base_eps": 0.1,
+            "act_eps_alpha": 7,
+            "num_game_per_thread": 80,
+            "num_player": 2,
+            "train_bomb": 0,
+            "max_len": 80,
+            "sad": 0,
+            "shuffle_color": 0,
+            "hide_action": 0,
+            "multi_step": 1,
+            "gamma": 0.999,
+        }
+    else:
+        agent, cfgs = utils.load_agent(args.policy, agent_overwrite)
+
+    assert cfgs["shuffle_color"] == False
+    assert args.explore
+
+    replay_buffer = rela.RNNPrioritizedReplay(
+        args.replay_buffer_size,
+        args.seed,
+        1.0,  # priority exponent
+        0.0,  # priority weight
+        args.prefetch,
+    )
+
+    if args.rand:
+        explore_eps = [1]
+    elif args.explore:
+        # use the same exploration config as policy learning
+        explore_eps = utils.generate_explore_eps(
+            cfgs["act_base_eps"], cfgs["act_eps_alpha"], cfgs["num_game_per_thread"]
+        )
+    else:
+        explore_eps = [0]
+
+    expected_eps = np.mean(explore_eps)
+    print("explore eps:", explore_eps)
+    print("avg explore eps:", np.mean(explore_eps))
+    if args.clone_bot or not agent.boltzmann:
+        print("no boltzmann act")
+        boltzmann_t = []
+    else:
+        boltzmann_beta = utils.generate_log_uniform(
+            1 / cfgs["max_t"], 1 / cfgs["min_t"], cfgs["num_t"]
+        )
+        boltzmann_t = [1 / b for b in boltzmann_beta]
+        print("boltzmann beta:", ", ".join(["%.2f" % b for b in boltzmann_beta]))
+        print("avg boltzmann beta:", np.mean(boltzmann_beta))
+
+    games = create_envs(
+        args.num_thread * args.num_game_per_thread,
+        args.seed,
+        cfgs["num_player"],
+        cfgs["train_bomb"],
+        cfgs["max_len"],
+    )
+
+    convention = load_convention(args.convention)
+
+    act_group = ActGroup(
+        args.act_device,
+        agent,
+        args.seed,
+        args.num_thread,
+        args.num_game_per_thread,
+        cfgs["num_player"],
+        explore_eps,
+        boltzmann_t,
+        "iql",
+        cfgs["sad"],
+        cfgs["shuffle_color"] if not args.rand else False,
+        cfgs["hide_action"],
+        False,  # not trinary, need full hand for prediction
+        replay_buffer,
+        cfgs["multi_step"],  # not used
+        cfgs["max_len"],
+        cfgs["gamma"],  # not used
+        False,  # turn off off-belief rewardless of how it is trained
+        None,  # belief_model
+        convention,
+        [3,3], # convention_act_override
+        False, # convention_fict_act_override
+        "None",
+    )
+
+    context, threads = create_threads(
+        args.num_thread,
+        args.num_game_per_thread,
+        act_group.actors,
+        games,
+    )
+    return agent, cfgs, replay_buffer, games, act_group, context, threads
+
+
+def create_sl_context(args):
+    games = pickle.load(open(args.dataset, "rb"))
+    print(f"total num game: {len(games)}")
+    if args.shuffle_color:
+        # to make data generation speed roughly the same as consumption
+        args.num_thread = 10
+        args.inf_data_loop = 1
+
+    if args.replay_buffer_size < 0:
+        args.replay_buffer_size = len(games) * args.num_player
+    if args.burn_in_frames < 0:
+        args.burn_in_frames = len(games) * args.num_player
+
+    # priority not used
+    priority_exponent = 1.0
+    priority_weight = 0.0
+    replay_buffer = rela.RNNPrioritizedReplay(
+        args.replay_buffer_size,
+        args.seed,
+        priority_exponent,
+        priority_weight,
+        args.prefetch,
+    )
+    data_gen = hanalearn.CloneDataGenerator(
+        replay_buffer,
+        args.num_player,
+        args.max_len,
+        args.shuffle_color,
+        False,
+        args.num_thread,
+    )
+    game_params = {
+        "players": str(args.num_player),
+        "random_start_player": "0",
+        "bomb": "0",
+    }
+    data_gen.set_game_params(game_params)
+    for i, g in enumerate(games):
+        data_gen.add_game(g["deck"], g["moves"])
+        if (i + 1) % 10000 == 0:
+            print(f"{i+1} games added")
+
+    return data_gen, replay_buffer
+
+
+def load_convention(convention_path):
+    if convention_path == "None":
+        return []
+    convention_file = open(convention_path)
+    return json.load(convention_file)
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="train belief model")
+    parser.add_argument("--save_dir", type=str, default="exps/dev_belief")
+    parser.add_argument("--load_model", type=int, default=0)
+    parser.add_argument("--seed", type=int, default=10001)
+    parser.add_argument("--hid_dim", type=int, default=512)
+    parser.add_argument("--fc_only", type=int, default=0)
+    parser.add_argument("--train_device", type=str, default="cuda:0")
+    parser.add_argument("--act_device", type=str, default="cuda:1")
+
+    # load policy config
+    parser.add_argument("--policy", type=str, default="")
+    parser.add_argument("--explore", type=int, default=1)
+    parser.add_argument("--rand", type=int, default=0)
+    parser.add_argument("--clone_bot", type=int, default=0)
+
+    # optimization/training settings
+    parser.add_argument("--lr", type=float, default=1e-3, help="Learning rate")
+    parser.add_argument("--eps", type=float, default=1e-8, help="Adam epsilon")
+    parser.add_argument("--grad_clip", type=float, default=50, help="max grad norm")
+    parser.add_argument("--batchsize", type=int, default=128)
+    parser.add_argument("--num_epoch", type=int, default=1000)
+    parser.add_argument("--epoch_len", type=int, default=1000)
+
+    # replay buffer settings
+    parser.add_argument("--burn_in_frames", type=int, default=80000)
+    parser.add_argument("--replay_buffer_size", type=int, default=2 ** 20)
+    parser.add_argument("--prefetch", type=int, default=3, help="#prefetch batch")
+
+    # thread setting
+    parser.add_argument("--num_thread", type=int, default=40, help="#thread_loop")
+    parser.add_argument("--num_game_per_thread", type=int, default=20)
+
+    # load from dataset setting
+    parser.add_argument("--dataset", type=str, default="")
+    parser.add_argument("--num_player", type=int, default=2)
+    parser.add_argument("--inf_data_loop", type=int, default=0)
+    parser.add_argument("--max_len", type=int, default=80)
+    parser.add_argument("--shuffle_color", type=int, default=0)
+
+    # conventions
+    parser.add_argument("--convention", type=str, default="None")
+
+    args = parser.parse_args()
+    return args
+
+
+if __name__ == "__main__":
+    torch.backends.cudnn.benchmark = True
+    args = parse_args()
+
+    if not os.path.exists(args.save_dir):
+        os.makedirs(args.save_dir)
+
+    train_belief(args)
