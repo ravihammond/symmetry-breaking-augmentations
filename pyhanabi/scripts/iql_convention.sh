@@ -1,7 +1,15 @@
 #!/bin/bash
 
+if [ ! -z "$WANDB_TOKEN" ]
+then
+    wandb login $WANDB_TOKEN
+else 
+    echo "Exiting, WANDB_TOKEN env var not set."
+    exit 128
+fi
+
 python selfplay.py \
-       --save_dir exps/iql_obl1_CRP0_sr \
+       --save_dir exps/iql_obl1_CRP0_sr2 \
        --num_thread 24 \
        --num_game_per_thread 80 \
        --method iql \

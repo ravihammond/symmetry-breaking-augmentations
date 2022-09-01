@@ -57,4 +57,4 @@ RUN chmod +x scripts/*
 
 RUN git config --global --add safe.directory /app
 
-ENTRYPOINT ["scripts/test.sh"]
+ENTRYPOINT ["scripts/iql_convention.sh"]

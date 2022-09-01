@@ -15,6 +15,7 @@ class Logger:
         if not os.path.exists(os.path.dirname(path)):
             os.makedirs(os.path.dirname(path))
         if mode == "w" or not os.path.exists(path):
+            print("path:", path)
             self.log = open(path, "w")
         else:
             self.log = open(path, "a")

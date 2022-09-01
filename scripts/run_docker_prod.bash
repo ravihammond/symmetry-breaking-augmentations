@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
 docker run --rm -it \
-    --volume=$(pwd):/app/:rw \
     --gpus all \
     --ipc host \
-    ravihammond/obl-project \
-    ${@:-bash}
+    --env WANDB_TOKEN=$(cat wandb_api_key.txt) \
+    ravihammond/hanabi-project:prod \
+    scripts/iql_convention.sh 

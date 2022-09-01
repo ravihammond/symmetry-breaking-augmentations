@@ -1,5 +1,4 @@
 #!/bin/bash
-
 if [ ! -z "$WANDB_TOKEN" ]
 then
     wandb login $WANDB_TOKEN
@@ -9,9 +8,9 @@ else
 fi
 
 python selfplay.py \
-       --save_dir $1 \
-       --num_thread 10 \
-       --num_game_per_thread 80 \
+       --save_dir $2 \
+       --num_thread 1 \
+       --num_game_per_thread 1 \
        --method iql \
        --sad 0 \
        --lr 6.25e-05 \
@@ -19,7 +18,7 @@ python selfplay.py \
        --gamma 0.999 \
        --seed 2254257 \
        --burn_in_frames 1 \
-       --replay_buffer_size 100000 \
+       --replay_buffer_size 10 \
        --batchsize 1 \
        --epoch_len 1000 \
        --num_epoch 1 \
@@ -28,15 +27,15 @@ python selfplay.py \
        --num_lstm_layer 2 \
        --multi_step 3 \
        --train_device cuda:0 \
-       --act_device cuda:1 \
-       --convention_act_override 0 \
-       --convention $2 \
+       --act_device cuda:0 \
+       --convention $3 \
+       --convention_act_override 3 \
        --partner_model ../training_models/obl1/model0.pthw \
        --static_partner 1 \
-       --wandb 1
+       --wandb 0 \
 
 #python selfplay.py \
-       #--save_dir exps/test \
+       #--save_dir $1 \
        #--num_thread 24 \
        #--num_game_per_thread 80 \
        #--method iql \
@@ -45,19 +44,19 @@ python selfplay.py \
        #--eps 1.5e-05 \
        #--gamma 0.999 \
        #--seed 2254257 \
-       #--burn_in_frames 1 \
+       #--burn_in_frames 10000 \
        #--replay_buffer_size 100000 \
-       #--batchsize 1 \
+       #--batchsize 128 \
        #--epoch_len 1000 \
-       #--num_epoch 1 \
+       #--num_epoch 2001 \
        #--num_player 2 \
        #--net lstm \
        #--num_lstm_layer 2 \
        #--multi_step 3 \
        #--train_device cuda:0 \
-       #--act_device cuda:1 \
-       #--convention_act_override 0 \
-       #--convention conventions/CR-P0.json \
+       #--act_device cuda:1,cuda:2,cuda:3 \
+       #--convention $2 \
+       #--convention_act_override 3 \
        #--partner_model ../training_models/obl1/model0.pthw \
        #--static_partner 1 \
-       #--wandb 1
+       #--wandb 1 \
