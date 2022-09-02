@@ -13,6 +13,9 @@ build-prod:
 push-prod:
 	docker push ravihammond/hanabi-project:prod
 
+run-old:
+	bash scripts/run_docker.bash
+
 run-dev:
 	bash scripts/run_docker_dev.bash
 

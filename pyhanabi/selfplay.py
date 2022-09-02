@@ -11,6 +11,7 @@ import argparse
 import pprint
 import json
 import wandb
+import gc
 
 import numpy as np
 import torch
@@ -206,10 +207,10 @@ def selfplay(args):
 
     act_group.start()
     context.start()
-    # while replay_buffer.size() < args.burn_in_frames:
-    while True:
+    while replay_buffer.size() < args.burn_in_frames:
         print("warming up replay buffer:", replay_buffer.size())
         time.sleep(1)
+        
 
     print("Success, Done")
     print("=======================")
@@ -225,7 +226,8 @@ def selfplay(args):
     last_loss = 0
 
     for epoch in range(args.num_epoch):
-        print("beginning of epoch: ", epoch)
+        print("beginning of epoch:", epoch)
+        print("replay buffer size:", replay_buffer.size())
         print(common_utils.get_mem_usage())
         tachometer.start()
         stat.reset()
@@ -279,64 +281,64 @@ def selfplay(args):
         stopwatch.summary()
         stat.summary(epoch)
 
-        # eval_seed = (9917 + epoch * 999999) % 7777777
-        # eval_agent.load_state_dict(agent.state_dict())
-        # eval_agents = [eval_agent for _ in range(args.num_player)]
-        # if args.static_partner:
-            # eval_agents = [eval_agent] + [
-                # partner_agent for _ in range(args.num_player - 1)
-            # ]
+        eval_seed = (9917 + epoch * 999999) % 7777777
+        eval_agent.load_state_dict(agent.state_dict())
+        eval_agents = [eval_agent for _ in range(args.num_player)]
+        if args.static_partner:
+            eval_agents = [eval_agent] + [
+                partner_agent for _ in range(args.num_player - 1)
+            ]
 
-        # eval_act_override = [0, 0]
-        # if args.convention_act_override:
-            # eval_act_override = [0, 3]
+        eval_act_override = [0, 0]
+        if args.convention_act_override:
+            eval_act_override = [0, 3]
 
-        # score, perfect, scores, _, eval_actors = evaluate(
-            # eval_agents,
-            # 5000,
-            # eval_seed,
-            # args.eval_bomb,
-            # 0,  # explore eps
-            # args.sad,
-            # args.hide_action,
-            # device=args.train_device,
-            # convention=convention,
-            # override=eval_act_override
-        # )
-        # if args.wandb:
-            # log_wandb(score, perfect, scores, eval_actors, last_loss, convention)
+        score, perfect, scores, _, eval_actors = evaluate(
+            eval_agents,
+            1000,
+            eval_seed,
+            args.eval_bomb,
+            0,  # explore eps
+            args.sad,
+            args.hide_action,
+            device=args.train_device,
+            convention=convention,
+            override=eval_act_override
+        )
+        if args.wandb:
+            log_wandb(score, perfect, scores, eval_actors, last_loss, convention)
 
-        # force_save_name = None
-        # if epoch > 0 and epoch % args.save_checkpoints == 0:
-            # force_save_name = "model_epoch%d" % epoch
-        # model_saved = saver.save(
-            # None, agent.online_net.state_dict(), score, force_save_name=force_save_name
-        # )
-        # print(
-            # "epoch %d, eval score: %.4f, perfect: %.2f, model saved: %s"
-            # % (epoch, score, perfect * 100, model_saved)
-        # )
+        force_save_name = None
+        if epoch > 0 and epoch % args.save_checkpoints == 0:
+            force_save_name = "model_epoch%d" % epoch
+        model_saved = saver.save(
+            None, agent.online_net.state_dict(), score, force_save_name=force_save_name
+        )
+        print(
+            "epoch %d, eval score: %.4f, perfect: %.2f, model saved: %s"
+            % (epoch, score, perfect * 100, model_saved)
+        )
 
 
-        # if clone_bot is not None:
-            # score, perfect, _, scores, eval_actors = evaluate(
-                # [clone_bot] + [eval_agent for _ in range(args.num_player - 1)],
-                # 1000,
-                # eval_seed,
-                # args.eval_bomb,
-                # 0,  # explore eps
-                # args.sad,
-                # args.hide_action,
-            # )
-            # print(f"clone bot score: {np.mean(score)}")
+        if clone_bot is not None:
+            score, perfect, _, scores, eval_actors = evaluate(
+                [clone_bot] + [eval_agent for _ in range(args.num_player - 1)],
+                1000,
+                eval_seed,
+                args.eval_bomb,
+                0,  # explore eps
+                args.sad,
+                args.hide_action,
+            )
+            print(f"clone bot score: {np.mean(score)}")
 
-        # if args.off_belief:
-            # actors = common_utils.flatten(act_group.actors)
-            # success_fict = [actor.get_success_fict_rate() for actor in actors]
-            # print(
-                # "epoch %d, success rate for sampling ficticious state: %.2f%%"
-                # % (epoch, 100 * np.mean(success_fict))
-            # )
+        if args.off_belief:
+            actors = common_utils.flatten(act_group.actors)
+            success_fict = [actor.get_success_fict_rate() for actor in actors]
+            print(
+                "epoch %d, success rate for sampling ficticious state: %.2f%%"
+                % (epoch, 100 * np.mean(success_fict))
+            )
 
         print("==========")
 

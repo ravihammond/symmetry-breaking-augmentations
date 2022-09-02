@@ -16,6 +16,7 @@ from create import *
 import rela
 import r2d2 
 import utils
+import gc
 
 def evaluate(
     agents,

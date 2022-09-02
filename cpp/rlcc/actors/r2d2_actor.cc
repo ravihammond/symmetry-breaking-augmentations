@@ -343,7 +343,7 @@ void R2D2Actor::act(HanabiEnv& env, const int curPlayer) {
         action_q.push_back(actions[i].item<float_t>());
 
     auto move = state.ParentGame()->GetMove(action);
-    //move = overrideMove(env, move, action_q);
+    move = overrideMove(env, move, action_q);
 
     if (shuffleColor_ && move.MoveType() == hle::HanabiMove::Type::kRevealColor) {
         int realColor = (*invColorPermute)[move.Color()];
@@ -351,7 +351,7 @@ void R2D2Actor::act(HanabiEnv& env, const int curPlayer) {
     }
 
     incrementPlayedCardKnowledgeCount(env, move);
-    //incrementStatsBeforeMove(env, move);
+    incrementStatsBeforeMove(env, move);
 
     if(PR)printf("Playing move: %s\n", move.ToString().c_str());
     env.step(move);
