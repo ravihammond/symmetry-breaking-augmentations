@@ -77,6 +77,7 @@ def record_actor_stats(stats, actor_stats, convention_str, player):
     move_stats(stats, actor_stats, player, convention_str)
     convention_stats(stats, actor_stats, player, convention_str, "signal")
     convention_stats(stats, actor_stats, player, convention_str, "response")
+    convention_lose_life_stats(stats, actor_stats, player, convention_str)
 
  
 def move_stats(stats, actor_stats, player, convention=None):
@@ -116,6 +117,12 @@ def convention_stats(stats, actor_stats, player, convention, role):
     stats[f"{prefix}_played"] += int(actor_stats[played])
     stats[f"{prefix}_played_correct"] += int(actor_stats[played_correct])
     stats[f"{prefix}_played_incorrect"] += int(actor_stats[played_incorrect])
+
+
+def convention_lose_life_stats(stats, actor_stats, player, convention_str):
+    prefix = f"{convention_str}_actor{player}"
+    stat_name = "response_played_life_lost"
+    stats[f"{prefix}_{stat_name}"] += int(actor_stats[stat_name])
 
 
 def evaluate_percentages(stats, conventions):

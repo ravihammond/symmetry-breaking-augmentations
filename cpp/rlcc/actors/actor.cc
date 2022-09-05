@@ -86,6 +86,7 @@ hle::HanabiMove Actor::overrideMove(const HanabiEnv& env, hle::HanabiMove move,
     auto signalMove = strToMove(convention_[conventionIdx_][0][0]);
     auto responseMove = strToMove(convention_[conventionIdx_][0][1]);
     auto& state = env.getHleState();
+    int nextPlayer = (playerIdx_ + 1) % 2;
 
     if ((conventionOverride_ == 1 || conventionOverride_ == 3)
             && (lastMove.MoveType() == hle::HanabiMove::kPlay 
@@ -104,8 +105,9 @@ hle::HanabiMove Actor::overrideMove(const HanabiEnv& env, hle::HanabiMove move,
             vector<hle::HanabiMove> exclude = {responseMove};
             if (conventionOverride_ == 3) {
                 exclude.push_back(signalMove);
-                if (!sentSignal_ && movePlayableOnFireworks(env, responseMove) &&
-                        state.MoveIsLegal(signalMove)) {
+                if (!sentSignal_ 
+                        && movePlayableOnFireworks(env, responseMove, nextPlayer) 
+                        && state.MoveIsLegal(signalMove)) {
                     sentSignal_ = true;
                     if(CV)printf("play signal (move was response)\n");
                     return signalMove;
@@ -117,8 +119,8 @@ hle::HanabiMove Actor::overrideMove(const HanabiEnv& env, hle::HanabiMove move,
     }
 
     if (conventionOverride_ == 1 || conventionOverride_ == 3) {
-        if (!sentSignal_ && movePlayableOnFireworks(env, responseMove) &&
-                state.MoveIsLegal(signalMove)) {
+        if (!sentSignal_ && movePlayableOnFireworks(env, responseMove, nextPlayer) 
+                && state.MoveIsLegal(signalMove)) {
             sentSignal_ = true;
             if(CV)printf("play signal\n");
             return signalMove;
@@ -133,11 +135,12 @@ hle::HanabiMove Actor::overrideMove(const HanabiEnv& env, hle::HanabiMove move,
     return move;
 }
 
-bool Actor::movePlayableOnFireworks(const HanabiEnv& env, hle::HanabiMove move) {
+bool Actor::movePlayableOnFireworks(const HanabiEnv& env, hle::HanabiMove move, 
+        int player) {
     auto& state = env.getHleState();
     hle::HanabiObservation obs = env.getObsShowCards();
     auto& allHands = obs.Hands();
-    auto partnerCards = allHands[(playerIdx_ + 1) % 2].Cards();
+    auto partnerCards = allHands[player].Cards();
     auto focusCard = partnerCards[move.CardIndex()];
 
     if (state.CardPlayableOnFireworks(focusCard))
@@ -250,7 +253,9 @@ void Actor::incrementStatsConvention(
     auto& state = env.getHleState();
     bool shouldHavePlayedSignal = false;
     bool shouldHavePlayedResponse = false;
+    int nextPlayer = (playerIdx_ + 1) % 2;
 
+    // Have seen teammate play response move, or a card before response card
     if ((lastMove.MoveType() == hle::HanabiMove::kPlay
             || lastMove.MoveType() == hle::HanabiMove::kDiscard)
             && sentSignalStats_
@@ -259,22 +264,36 @@ void Actor::incrementStatsConvention(
         if(CV)printf("stats seen signal\n");
     }
 
+    // Should play the response move
     if (lastMove == signalMove && state.MoveIsLegal(responseMove)) {
         shouldHavePlayedResponse = true;
         if(CV)printf("stats should play response\n");
     }
     
+    // Should play the signal move
     if (!shouldHavePlayedResponse
             && !sentSignalStats_ 
-            && movePlayableOnFireworks(env, responseMove)
+            && movePlayableOnFireworks(env, responseMove, nextPlayer)
             && state.MoveIsLegal(signalMove)) {
-        sentSignalStats_ = true;
         shouldHavePlayedSignal = true;
         if(CV)printf("stats should play signal\n");
     } 
+    
+    // Signal move has been played
+    if (move == signalMove) {
+        if(CV)printf("stats signal move played\n");
+        sentSignalStats_ = true;
+    }
 
-    incrementStatsConventionRole(shouldHavePlayedResponse, "response", 
-            move, responseMove);
+    // Current turn caused a life to be lost
+    if (shouldHavePlayedResponse 
+            && move == responseMove 
+            && !movePlayableOnFireworks(env, move, playerIdx_)) {
+        if(CV)printf("response played losing a life\n");
+        incrementStat("response_played_life_lost");
+    }
+
+    incrementStatsConventionRole(shouldHavePlayedResponse, "response", move, responseMove);
     incrementStatsConventionRole(shouldHavePlayedSignal, "signal", move, signalMove);
 }
 

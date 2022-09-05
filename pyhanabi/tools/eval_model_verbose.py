@@ -77,6 +77,7 @@ def print_actor_stats(stats, player, convention_string):
     print_move_stats(stats, player, convention_string)
     print_convention_stats(stats, player, convention_string, "signal")
     print_convention_stats(stats, player, convention_string, "response")
+    print_convention_lose_life_stats(stats, player, convention_string)
 
 
 def print_scores(stats, convention=""):
@@ -130,9 +131,14 @@ def print_convention_stats(stats, player, convention_string, role):
     print(f"{available}: {stats[available]}")
     print(f"{played}: {stats[played]}")
     print(f"{played_correct}: {stats[played_correct]}")
+    print(f"{played_incorrect}: {stats[played_incorrect]}")
     print(f"{available_percent_str}: {available_percent:.1f}%")
     print(f"{played_percent_str}: {played_percent:.1f}%")
-    print(f"{played}: {stats[played_incorrect]}")
+
+
+def print_convention_lose_life_stats(stats, player, convention_string):
+    stat = f"{convention_string}_actor{player}_response_played_life_lost"
+    print(f"{stat}: {stats[stat]}")
 
 
 def load_convention(convention_path):
