@@ -41,7 +41,9 @@ rela::TensorDict observe(
         const std::vector<int>& invColorPermute,
         bool hideAction,
         bool trinary,
-        bool sad) {
+        bool sad,
+        int numConventions,
+        int conventionIdx) {
     const auto& game = *(state.ParentGame());
     auto obs = hle::HanabiObservation(state, playerIdx, true);
     auto encoder = hle::CanonicalObservationEncoder(&game);
@@ -55,6 +57,10 @@ rela::TensorDict observe(
             colorPermute,
             invColorPermute,
             hideAction);
+
+    // Append convention parameter to state
+    std::vector<float> conventionParam = createOneHot(conventionIdx, numConventions);
+    vS.insert(vS.end(), conventionParam.begin(), conventionParam.end());
 
     rela::TensorDict feat;
     if (!sad) {

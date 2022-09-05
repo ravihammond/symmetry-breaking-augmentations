@@ -32,7 +32,8 @@ inline rela::TensorDict splitPrivatePublic(
     // remove my hand, should be zero anyway
     std::vector<float> vPriv(feat.begin() + bitsPerHand, feat.end());
     // remove all private observation
-    std::vector<float> vPubl(feat.begin() + bitsPerHand * game.NumPlayers(), feat.end());
+    std::vector<float> vPubl(
+            feat.begin() + bitsPerHand * game.NumPlayers(), feat.end());
     return {{"priv_s", torch::tensor(vPriv)}, {"publ_s", torch::tensor(vPubl)}};
 }
 
@@ -65,7 +66,9 @@ rela::TensorDict observe(
         bool sad);
 
 inline rela::TensorDict observe(
-        const hle::HanabiState& state, int playerIdx, bool hideAction) {
+        const hle::HanabiState& state, 
+        int playerIdx, 
+        bool hideAction) {
     return observe(
             state,
             playerIdx,
@@ -77,9 +80,18 @@ inline rela::TensorDict observe(
             false);
 }
 
-inline rela::TensorDict observeSAD(const hle::HanabiState& state, int playerIdx) {
+inline rela::TensorDict observeSAD(
+        const hle::HanabiState& state, 
+        int playerIdx) {
     return observe(
-            state, playerIdx, false, std::vector<int>(), std::vector<int>(), false, true, true);
+            state, 
+            playerIdx, 
+            false, 
+            std::vector<int>(), 
+            std::vector<int>(), 
+            false, 
+            true, 
+            true);
 }
 
 inline std::unique_ptr<hle::HanabiHistoryItem> getLastNonDealMove(
@@ -112,7 +124,10 @@ inline std::tuple<
     std::vector<int>,
     hle::HanabiHand>
     observeForSearch(
-            const hle::HanabiState& state, int playerIdx, bool hideAction, bool publCount) {
+            const hle::HanabiState& state, 
+            int playerIdx, 
+            bool hideAction, 
+            bool publCount) {
         assert(!state.IsTerminal());
         auto feat = ::observe(state, playerIdx, hideAction);
         auto obs = hle::HanabiObservation(state, playerIdx, false);
@@ -133,8 +148,11 @@ std::tuple<rela::TensorDict, std::vector<int>, std::vector<float>> beliefModelOb
         bool hideAction);
 
 inline std::vector<float> createOneHot(int oneHotValue, int oneHotLength) {
-    assert(oneHotValue < oneHotLength);
     std::vector<float> oneHot;
+    if (oneHotLength <= 0) {
+        return oneHot;
+    }
+    assert(oneHotValue < oneHotLength);
     for (int i = 0; i < oneHotLength; ++i) {
         if (i == oneHotValue) {
             oneHot.push_back(1);

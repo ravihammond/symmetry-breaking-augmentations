@@ -96,6 +96,9 @@ PYBIND11_MODULE(hanalearn, m) {
                 int, // seqLen,
                 float,  // gamma
                 std::vector<std::vector<std::vector<std::string>>>, // convention
+                bool, // actParameterized
+                bool, // beliefParameterized
+                bool, // conventionParameterized
                 int, // conventionIdx
                 int, // conventionOverride
                 bool, // conventionFictitiousOverride
@@ -108,6 +111,8 @@ PYBIND11_MODULE(hanalearn, m) {
                 bool,  // sad
                 bool,  // hideAction
                 std::vector<std::vector<std::vector<std::string>>>, // convention
+                bool, // actParameterized
+                bool, // beliefParameterized
                 int, // conventionIdx
                 int>()) // conventionOverride
         .def("set_partners", &R2D2Actor::setPartners)

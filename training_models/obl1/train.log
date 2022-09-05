@@ -4,7 +4,7 @@
  'actor_sync_freq': 10,
  'batchsize': 128,
  'belief_device': 'cuda:2',
- 'belief_model': '/private/home/hengyuan/HanabiModels/icml_run2_b0/EXPLORE1_RAND1_LOAD0_SEEDa/latest.pthw',
+ 'belief_model': 'exps/belief_obl0/model0.pthw',
  'boltzmann_act': 0,
  'burn_in_frames': 10000,
  'discard_r': 0.0,

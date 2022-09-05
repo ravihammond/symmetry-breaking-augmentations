@@ -35,6 +35,8 @@ public:
             int seqLen,
             float gamma,
             std::vector<std::vector<std::vector<std::string>>> convention,
+            bool actParameterized,
+            bool beliefParameterized,
             int conventionIdx,
             int conventionOverride,
             bool conventionFictitiousOverride,
@@ -62,6 +64,8 @@ public:
           , invColorPermutes_(batchsize_)
           , replayBuffer_(std::move(replayBuffer))
           , r2d2Buffer_(std::make_unique<rela::R2D2Buffer>(multiStep, seqLen, gamma))
+          , actParameterized_(actParameterized)
+          , beliefParameterized_(beliefParameterized_)
           , conventionFictitiousOverride_(conventionFictitiousOverride)
           , useExperience_(useExperience) {
     }
@@ -75,6 +79,8 @@ public:
             bool sad,
             bool hideAction,
             std::vector<std::vector<std::vector<std::string>>> convention,
+            bool actParameterized,
+            bool beliefParameterized,
             int conventionIdx,
             int conventionOverride)
         : Actor(
@@ -98,6 +104,8 @@ public:
           , invColorPermutes_(batchsize_)
           , replayBuffer_(nullptr)
           , r2d2Buffer_(nullptr)
+          , actParameterized_(actParameterized)
+          , beliefParameterized_(beliefParameterized_)
           , conventionFictitiousOverride_(false)
           , useExperience_(false) {
     }
@@ -184,6 +192,8 @@ protected:
     std::unique_ptr<hle::HanabiState> fictState_ = nullptr;
     std::vector<std::shared_ptr<R2D2Actor>> partners_;
 
+    bool actParameterized_;
+    bool beliefParameterized_;
     bool conventionFictitiousOverride_;
     bool useExperience_;
 };

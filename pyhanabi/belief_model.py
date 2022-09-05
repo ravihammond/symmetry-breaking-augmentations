@@ -65,7 +65,15 @@ def pred_loss(logp, gtruth, seq_len):
 
 class ARBeliefModel(torch.jit.ScriptModule):
     def __init__(
-        self, device, in_dim, hid_dim, hand_size, out_dim, num_sample, fc_only
+        self, 
+        device, 
+        in_dim, 
+        hid_dim, 
+        hand_size, 
+        out_dim, 
+        num_sample, 
+        fc_only, 
+        convention_parameters,
     ):
         """
         mode: priv: private belief prediction
@@ -117,11 +125,26 @@ class ARBeliefModel(torch.jit.ScriptModule):
         return hid
 
     @classmethod
-    def load(cls, weight_file, device, hand_size, num_sample, fc_only):
+    def load(
+            cls, 
+            weight_file, 
+            device, 
+            hand_size, 
+            num_sample, 
+            fc_only, 
+            convention_parameters):
         state_dict = torch.load(weight_file)
         hid_dim, in_dim = state_dict["net.0.weight"].size()
         out_dim = state_dict["fc.weight"].size(0)
-        model = cls(device, in_dim, hid_dim, hand_size, out_dim, num_sample, fc_only)
+        model = cls(
+                device, 
+                in_dim, 
+                hid_dim, 
+                hand_size, 
+                out_dim, 
+                num_sample, 
+                fc_only,
+                convention_parameters)
         model.load_state_dict(state_dict)
         model = model.to(device)
         return model

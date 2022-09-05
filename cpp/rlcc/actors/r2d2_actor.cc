@@ -174,6 +174,7 @@ void R2D2Actor::observeBeforeAct(HanabiEnv& env) {
     rela::TensorDict input;
     const auto& state = env.getHleState();
 
+
     if (vdn_) {
         std::vector<rela::TensorDict> vObs;
         for (int i = 0; i < numPlayer_; ++i) {
@@ -185,7 +186,7 @@ void R2D2Actor::observeBeforeAct(HanabiEnv& env) {
                         invColorPermutes_[i],
                         hideAction_,
                         trinary_,
-                        sad_));
+                        sad_);
         }
         input = rela::tensor_dict::stack(vObs, 0);
     } else {
@@ -205,6 +206,14 @@ void R2D2Actor::observeBeforeAct(HanabiEnv& env) {
     if (playerTemp_.size() > 0) {
         input["temperature"] = torch::tensor(playerTemp_);
     }
+
+    // add convention index information for parameterization
+    int numConventions = convention_.size();
+    if (!conventionParameterized_) {
+        numConventions = 0;
+    }
+    input["n_conventions"] = numConventions;
+    input["conventions_idx"] = conventionIdx_;
 
     // push before we add hidden
     if (replayBuffer_ != nullptr) {

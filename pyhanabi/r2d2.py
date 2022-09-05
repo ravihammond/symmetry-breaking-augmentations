@@ -162,6 +162,7 @@ class R2D2Agent(torch.jit.ScriptModule):
         priv_s = obs["priv_s"]
         publ_s = obs["publ_s"]
         legal_move = obs["legal_move"]
+        convention_index = obs["convention_index"]
 
         if "eps" in obs:
             eps = obs["eps"].flatten(0, 1)

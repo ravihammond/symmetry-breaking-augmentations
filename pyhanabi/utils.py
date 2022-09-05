@@ -117,10 +117,8 @@ def get_train_config(weight_file):
 
     lines = open(log, "r").readlines()
     try:
-        print("a")
         cfg, rest = parse_first_dict(lines)
     except json.decoder.JSONDecodeError as e:
-        print("b")
         cfg = parse_hydra_dict(lines)
     return cfg
 

@@ -56,6 +56,9 @@ def train_belief(args):
 
     print("Success, Done")
     print("=======================")
+    convention = []
+    if args.convention is not "None":
+        convention = load_convention(args.convention)
 
     if args.load_model:
         belief_config = utils.get_train_config(cfgs["belief_model"])
@@ -66,6 +69,7 @@ def train_belief(args):
             5,
             0,
             belief_config["fc_only"],
+            len(convention)
         )
     else:
         model = belief_model.ARBeliefModel(
@@ -76,8 +80,8 @@ def train_belief(args):
             25,  # bits per card
             0,  # num_sample
             fc_only=args.fc_only,
+            convention_parameters=len(convention),
         ).to(args.train_device)
-    return
 
     optim = torch.optim.Adam(model.parameters(), lr=args.lr, eps=args.eps)
 
@@ -219,6 +223,7 @@ def create_rl_context(args):
         False,  # turn off off-belief rewardless of how it is trained
         None,  # belief_model
         convention,
+        args.parameterized_act, # convention_parameterized
         [3,3], # convention_act_override
         False, # convention_fict_act_override
         None, # partner_agent
@@ -330,6 +335,8 @@ def parse_args():
 
     # conventions
     parser.add_argument("--convention", type=str, default="None")
+    parser.add_argument("--parameterized_belief", type=int, default=0)
+    parser.add_argument("--parameterized_act", type=int, default=0)
 
     args = parser.parse_args()
     return args
