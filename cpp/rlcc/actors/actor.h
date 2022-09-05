@@ -72,7 +72,7 @@ protected:
             std::vector<hle::HanabiMove> exclude,
             std::vector<float> action_q);
 
-    bool movePlayableOnFireworks(const HanabiEnv& env, hle::HanabiMove move);
+    bool movePlayableOnFireworks(const HanabiEnv& env, hle::HanabiMove move, int player);
 
     bool discardMovePlayable(const HanabiEnv& env, hle::HanabiMove move);
 
