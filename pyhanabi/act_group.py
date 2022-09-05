@@ -43,6 +43,7 @@ class ActGroup:
         partner_agent,
         partner_cfg,
         static_partner,
+        use_experience,
     ):
         self.devices = devices.split(",")
         self.method = method
@@ -91,9 +92,9 @@ class ActGroup:
         self.convention = convention
         self.convention_act_override = convention_act_override
         self.convention_fict_act_override = convention_fict_act_override
-        self.partner_agent = partner_agent
         self.partner_cfg = partner_cfg
         self.static_partner = static_partner
+        self.use_experience = use_experience
 
         self.create_r2d2_actors()
 
@@ -136,58 +137,36 @@ class ActGroup:
                 thread_actors = []
                 for j in range(self.num_game_per_thread):
                     game_actors = []
-                    if len(self.convention) == 0:
-                        convention_index = -1
-                    else: 
-                        convention_index = convention_index_count % \
-                                len(self.convention)
+                    convention_index = -1 if len(self.convention) == 0 \
+                            else convention_index_count % len(self.convention)
                     for k in range(self.num_player):
                         if k > 0 and self.static_partner:
-                            actor = hanalearn.R2D2Actor(
-                                self.partner_runners[i % self.num_runners],
-                                self.seed,
-                                self.num_player,
-                                k,
-                                self.explore_eps,
-                                self.boltzmann_t,
-                                False,
-                                self.partner_cfg["sad"],
-                                self.shuffle_color,
-                                self.partner_cfg["hide_action"],
-                                self.trinary,
-                                self.replay_buffer,
-                                self.multi_step,
-                                self.max_len,
-                                self.gamma,
-                                self.convention,
-                                convention_index,
-                                self.convention_act_override,
-                                self.convention_fict_act_override,
-                                0, # use experience
-                            )
-                        else: 
-                            actor = hanalearn.R2D2Actor(
-                                self.model_runners[i % self.num_runners],
-                                self.seed,
-                                self.num_player,
-                                k,
-                                self.explore_eps,
-                                self.boltzmann_t,
-                                False,
-                                self.sad,
-                                self.shuffle_color,
-                                self.hide_action,
-                                self.trinary,
-                                self.replay_buffer,
-                                self.multi_step,
-                                self.max_len,
-                                self.gamma,
-                                self.convention,
-                                convention_index,
-                                0, # convention act override
-                                self.convention_fict_act_override,
-                                1, # use experience
-                            )
+                            self.model_runners = self.partner_runners
+                            self.sad = self.partner_cfg["sad"]
+                            self.hide_action = self.partner_cfg["hide_action"]
+
+                        actor = hanalearn.R2D2Actor(
+                            self.model_runners[i % self.num_runners],
+                            self.seed,
+                            self.num_player,
+                            k,
+                            self.explore_eps,
+                            self.boltzmann_t,
+                            False,
+                            self.sad,
+                            self.shuffle_color,
+                            self.hide_action,
+                            self.trinary,
+                            self.replay_buffer,
+                            self.multi_step,
+                            self.max_len,
+                            self.gamma,
+                            self.convention,
+                            convention_index,
+                            self.convention_act_override[k],
+                            self.convention_fict_act_override,
+                            self.use_experience[k],
+                        )
 
                         if self.off_belief:
                             if self.belief_runner is None:

@@ -10,6 +10,7 @@ import sys
 import argparse
 import pprint
 import pickle
+import json
 
 import numpy as np
 import torch
@@ -76,6 +77,7 @@ def train_belief(args):
             0,  # num_sample
             fc_only=args.fc_only,
         ).to(args.train_device)
+    return
 
     optim = torch.optim.Adam(model.parameters(), lr=args.lr, eps=args.eps)
 
@@ -219,7 +221,10 @@ def create_rl_context(args):
         convention,
         [3,3], # convention_act_override
         False, # convention_fict_act_override
-        "None",
+        None, # partner_agent
+        "None", # partner_cfg
+        False, # static_partner
+        [1,1], # use_experience
     )
 
     context, threads = create_threads(

@@ -8,12 +8,12 @@ python train_belief.py \
        --eps 1.5e-05 \
        --grad_clip 5 \
        --hid_dim 512 \
-       --burn_in_frames 10000 \
-       --replay_buffer_size 100000 \
-       --epoch_len 1000 \
-       --num_epoch 200 \
-       --train_device cuda:0 \
-       --act_device cuda:1 \
+       --burn_in_frames 1 \
+       --replay_buffer_size 10 \
+       --epoch_len 1 \
+       --num_epoch 1 \
+       --train_device cuda:1 \
+       --act_device cuda:2 \
        --explore 1 \
        --policy ../training_models/obl1/model0.pthw \
        --seed 6754257 \

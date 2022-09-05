@@ -170,6 +170,9 @@ def selfplay(args):
 
     convention = load_convention(args.convention)
 
+    convention_act_override = [0, args.convention_act_override]
+    use_experience = [1, 0] 
+
     act_group = ActGroup(
         args.act_device,
         agent,
@@ -191,11 +194,12 @@ def selfplay(args):
         args.off_belief,
         belief_model,
         convention,
-        args.convention_act_override,
+        convention_act_override,
         args.convention_fict_act_override,
         partner_agent,
         partner_cfg,
         args.static_partner,
+        use_experience,
     )
 
     context, threads = create_threads(
@@ -289,10 +293,6 @@ def selfplay(args):
                 partner_agent for _ in range(args.num_player - 1)
             ]
 
-        eval_act_override = [0, 0]
-        if args.convention_act_override:
-            eval_act_override = [0, 3]
-
         score, perfect, scores, _, eval_actors = evaluate(
             eval_agents,
             1000,
@@ -303,7 +303,7 @@ def selfplay(args):
             args.hide_action,
             device=args.train_device,
             convention=convention,
-            override=eval_act_override
+            override=convention_act_override,
         )
         if args.wandb:
             log_wandb(score, perfect, scores, eval_actors, last_loss, convention)
