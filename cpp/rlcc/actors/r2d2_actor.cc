@@ -186,7 +186,7 @@ void R2D2Actor::observeBeforeAct(HanabiEnv& env) {
                         invColorPermutes_[i],
                         hideAction_,
                         trinary_,
-                        sad_);
+                        sad_));
         }
         input = rela::tensor_dict::stack(vObs, 0);
     } else {
@@ -208,17 +208,17 @@ void R2D2Actor::observeBeforeAct(HanabiEnv& env) {
     }
 
     // add convention index information for parameterization
-    int numConventions = convention_.size();
-    if (!conventionParameterized_) {
-        numConventions = 0;
-    }
-    input["n_conventions"] = numConventions;
-    input["conventions_idx"] = conventionIdx_;
+    input["n_conventions"] = torch::tensor((float)convention_.size());
+    input["convention_idx"] = torch::tensor(conventionIdx_);
+    input["actParameterized_"] = torch::tensor(actParameterized_);
+    input["beliefParameterized_"] = torch::tensor(actParameterized_);
 
     // push before we add hidden
     if (replayBuffer_ != nullptr) {
+        printf("replay buffer != nullptr\n");
         r2d2Buffer_->pushObs(input);
     } else {
+        printf("replay buffer == nullptr\n");
         // eval mode, collect some stats
         const auto& game = env.getHleGame();
         auto obs = hle::HanabiObservation(state, state.CurPlayer(), true);

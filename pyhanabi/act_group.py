@@ -38,7 +38,8 @@ class ActGroup:
         off_belief,
         belief_model,
         convention,
-        convention_parameterized,
+        act_parameterized,
+        belief_parameterized,
         convention_act_override,
         convention_fict_act_override,
         partner_agent,
@@ -91,8 +92,8 @@ class ActGroup:
                     rela.BatchRunner(bm, bm.device, 5000, ["sample"])
                 )
         self.convention = convention
-        self.convention_parameterized = convention_parameterized
-        self.convention_act_override = convention_act_override
+        self.act_parameterized = act_parameterized
+        self.belief_parameterized = belief_parameterized
         self.convention_fict_act_override = convention_fict_act_override
         self.partner_cfg = partner_cfg
         self.static_partner = static_partner
@@ -125,7 +126,8 @@ class ActGroup:
                         self.max_len,
                         self.gamma,
                         self.convention,
-                        0, # convention paramaterized
+                        0, # act paramaterized
+                        0, # belief paramaterized
                         0, # convention index
                         0, # convention act override
                         0, # convention fict act override
@@ -164,7 +166,8 @@ class ActGroup:
                             self.max_len,
                             self.gamma,
                             self.convention,
-                            self.convention_parameterized,
+                            self.act_parameterized,
+                            self.belief_parameterized,
                             convention_index,
                             self.convention_act_override[k],
                             self.convention_fict_act_override,

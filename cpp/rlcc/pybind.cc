@@ -98,11 +98,10 @@ PYBIND11_MODULE(hanalearn, m) {
                 std::vector<std::vector<std::vector<std::string>>>, // convention
                 bool, // actParameterized
                 bool, // beliefParameterized
-                bool, // conventionParameterized
                 int, // conventionIdx
                 int, // conventionOverride
                 bool, // conventionFictitiousOverride
-                bool>()) // useConvention
+                bool>()) // useExperience
         .def(py::init<
                 std::shared_ptr<rela::BatchRunner>,
                 int,  // numPlayer

@@ -223,7 +223,8 @@ def create_rl_context(args):
         False,  # turn off off-belief rewardless of how it is trained
         None,  # belief_model
         convention,
-        args.parameterized_act, # convention_parameterized
+        args.parameterized_act, # act_parameterized
+        args.parameterized_belief, # belief_parameterized
         [3,3], # convention_act_override
         False, # convention_fict_act_override
         None, # partner_agent

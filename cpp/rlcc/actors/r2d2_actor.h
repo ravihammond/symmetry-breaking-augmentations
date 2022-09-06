@@ -65,7 +65,7 @@ public:
           , replayBuffer_(std::move(replayBuffer))
           , r2d2Buffer_(std::make_unique<rela::R2D2Buffer>(multiStep, seqLen, gamma))
           , actParameterized_(actParameterized)
-          , beliefParameterized_(beliefParameterized_)
+          , beliefParameterized_(beliefParameterized)
           , conventionFictitiousOverride_(conventionFictitiousOverride)
           , useExperience_(useExperience) {
     }
@@ -105,7 +105,7 @@ public:
           , replayBuffer_(nullptr)
           , r2d2Buffer_(nullptr)
           , actParameterized_(actParameterized)
-          , beliefParameterized_(beliefParameterized_)
+          , beliefParameterized_(beliefParameterized)
           , conventionFictitiousOverride_(false)
           , useExperience_(false) {
     }
