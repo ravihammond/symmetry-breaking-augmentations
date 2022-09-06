@@ -69,7 +69,8 @@ def train_belief(args):
             5,
             0,
             belief_config["fc_only"],
-            len(convention)
+            belief_config["parameterized_belief"],
+            belief_config["num_conventions"],
         )
     else:
         model = belief_model.ARBeliefModel(
@@ -80,7 +81,8 @@ def train_belief(args):
             25,  # bits per card
             0,  # num_sample
             fc_only=args.fc_only,
-            convention_parameters=len(convention),
+            belief_parameterized=args.parameterized_belief,
+            num_conventions=args.num_conventions,
         ).to(args.train_device)
 
     optim = torch.optim.Adam(model.parameters(), lr=args.lr, eps=args.eps)
@@ -336,6 +338,7 @@ def parse_args():
 
     # conventions
     parser.add_argument("--convention", type=str, default="None")
+    parser.add_argument("--num_conventions", type=int, default=0)
     parser.add_argument("--parameterized_belief", type=int, default=0)
     parser.add_argument("--parameterized_act", type=int, default=0)
 

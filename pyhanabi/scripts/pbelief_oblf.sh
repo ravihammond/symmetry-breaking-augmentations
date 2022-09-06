@@ -2,14 +2,14 @@
 python train_belief.py \
        --save_dir exps/pbelief_oblf \
        --num_thread 1 \
-       --num_game_per_thread 1 \
-       --batchsize 10 \
+       --num_game_per_thread 2 \
+       --batchsize 4 \
        --lr 6.25e-05 \
        --eps 1.5e-05 \
        --grad_clip 5 \
        --hid_dim 512 \
-       --burn_in_frames 100 \
-       --replay_buffer_size 1000 \
+       --burn_in_frames 10 \
+       --replay_buffer_size 100 \
        --epoch_len 10 \
        --num_epoch 101 \
        --train_device cuda:0 \
@@ -21,5 +21,6 @@ python train_belief.py \
        --shuffle_color 0 \
        --load_model 1 \
        --convention conventions/CR-P0_CY-P1.json \
+       --num_conventions 2 \
        --parameterized_belief 1 \
        --parameterized_act 0 \

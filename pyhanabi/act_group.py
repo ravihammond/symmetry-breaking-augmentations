@@ -94,7 +94,9 @@ class ActGroup:
         self.convention = convention
         self.act_parameterized = act_parameterized
         self.belief_parameterized = belief_parameterized
+        self.convention_act_override = convention_act_override
         self.convention_fict_act_override = convention_fict_act_override
+        self.partner_agent = partner_agent
         self.partner_cfg = partner_cfg
         self.static_partner = static_partner
         self.use_experience = use_experience

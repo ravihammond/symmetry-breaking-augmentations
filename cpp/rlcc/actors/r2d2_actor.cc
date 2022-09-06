@@ -208,17 +208,15 @@ void R2D2Actor::observeBeforeAct(HanabiEnv& env) {
     }
 
     // add convention index information for parameterization
-    input["n_conventions"] = torch::tensor((float)convention_.size());
+    input["num_conventions"] = torch::tensor((float)convention_.size());
     input["convention_idx"] = torch::tensor(conventionIdx_);
-    input["actParameterized_"] = torch::tensor(actParameterized_);
-    input["beliefParameterized_"] = torch::tensor(actParameterized_);
+    input["act_parameterized"] = torch::tensor(actParameterized_);
+    input["belief_parameterized"] = torch::tensor(actParameterized_);
 
     // push before we add hidden
     if (replayBuffer_ != nullptr) {
-        printf("replay buffer != nullptr\n");
         r2d2Buffer_->pushObs(input);
     } else {
-        printf("replay buffer == nullptr\n");
         // eval mode, collect some stats
         const auto& game = env.getHleGame();
         auto obs = hle::HanabiObservation(state, state.CurPlayer(), true);

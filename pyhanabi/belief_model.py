@@ -6,6 +6,7 @@
 #
 import torch
 from torch import nn
+import torch.nn.functional as F
 from typing import Tuple, Dict
 import numpy as np
 
@@ -73,7 +74,8 @@ class ARBeliefModel(torch.jit.ScriptModule):
         out_dim, 
         num_sample, 
         fc_only, 
-        convention_parameters,
+        belief_parameterized,
+        num_conventions,
     ):
         """
         mode: priv: private belief prediction
@@ -84,6 +86,7 @@ class ARBeliefModel(torch.jit.ScriptModule):
         self.input_key = "priv_s"
         self.ar_input_key = "own_hand_ar_in"
         self.ar_target_key = "own_hand"
+        self.convention_idx_key = "convention_idx"
 
         self.in_dim = in_dim
         self.hand_size = hand_size
@@ -93,6 +96,12 @@ class ARBeliefModel(torch.jit.ScriptModule):
 
         self.num_sample = num_sample
         self.fc_only = fc_only
+
+        self.belief_parameterized = belief_parameterized
+        self.num_conventions = num_conventions
+
+        if self.belief_parameterized:
+            self.in_dim += self.num_conventions
 
         self.net = nn.Sequential(
             nn.Linear(self.in_dim, self.hid_dim),
@@ -131,8 +140,9 @@ class ARBeliefModel(torch.jit.ScriptModule):
             device, 
             hand_size, 
             num_sample, 
-            fc_only, 
-            convention_parameters):
+            fc_only,
+            belief_parameterized,
+            num_conventions):
         state_dict = torch.load(weight_file)
         hid_dim, in_dim = state_dict["net.0.weight"].size()
         out_dim = state_dict["fc.weight"].size(0)
@@ -144,7 +154,8 @@ class ARBeliefModel(torch.jit.ScriptModule):
                 out_dim, 
                 num_sample, 
                 fc_only,
-                convention_parameters)
+                belief_parameterized,
+                num_conventions)
         model.load_state_dict(state_dict)
         model = model.to(device)
         return model
@@ -175,7 +186,25 @@ class ARBeliefModel(torch.jit.ScriptModule):
         return logit
 
     def loss(self, batch, beta=1):
-        logit = self.forward(batch.obs[self.input_key], batch.obs[self.ar_input_key])
+        x = batch.obs[self.input_key]
+
+        # Append convention one-hot vectors if model is parameterized
+        if self.belief_parameterized:
+            # Concatenate convention one-hot vectors to x
+            convention_indexes = batch.obs[self.convention_idx_key]
+            one_hot = F.one_hot(convention_indexes, num_classes=self.num_conventions)
+            cat_x = torch.cat((x, one_hot), 2)
+
+            # Create mask to zero out one-hot vectors after sequences finish
+            seq_list = torch.arange(cat_x.size(0)).to(batch.seq_len.get_device())
+            mask = (seq_list < batch.seq_len[..., None])
+            mask_t = torch.transpose(mask, 0, 1)
+            seq_mask = mask_t.unsqueeze(2).repeat(1, 1, cat_x.size(2))
+
+            # Zero out one-hot vectors
+            x = cat_x * seq_mask
+
+        logit = self.forward(x, batch.obs[self.ar_input_key])
         logit = logit * beta
         logp = nn.functional.log_softmax(logit, 3)
         gtruth = batch.obs[self.ar_target_key]
