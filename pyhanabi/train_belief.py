@@ -59,6 +59,7 @@ def train_belief(args):
     convention = []
     if args.convention is not "None":
         convention = load_convention(args.convention)
+        assert(len(convention) == args.num_conventions)
 
     if args.load_model:
         belief_config = utils.get_train_config(cfgs["belief_model"])

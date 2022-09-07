@@ -5,6 +5,7 @@
 class Actor{
 public:
     Actor(
+            int seed,
             int playerIdx,
             std::vector<std::vector<std::vector<std::string>>> convention,
             int conventionIdx,
@@ -57,7 +58,8 @@ protected:
     virtual void incrementStatsAfterMove(const HanabiEnv& env);
 
     hle::HanabiMove overrideMove(const HanabiEnv& env, hle::HanabiMove move,
-             std::vector<float> action_q);
+            std::vector<float> actionQ, bool exploreAction,
+            std::vector<float> legalMoves);
 
     bool moveInVector(std::vector<hle::HanabiMove> moves, hle::HanabiMove move);
 
@@ -68,9 +70,10 @@ protected:
             std::vector<std::vector<std::string>> convention,
         hle::HanabiMove signalMove);
 
-    hle::HanabiMove action_argmax(const HanabiEnv& env, 
+    hle::HanabiMove different_action(const HanabiEnv& env, 
             std::vector<hle::HanabiMove> exclude,
-            std::vector<float> action_q);
+            std::vector<float> actionQ, bool exploreAction,
+            std::vector<float> legalMoves);
 
     bool movePlayableOnFireworks(const HanabiEnv& env, hle::HanabiMove move, int player);
 
@@ -78,7 +81,9 @@ protected:
 
     hle::HanabiMove strToMove(std::string key);
 
+    std::mt19937 rng_;
     const int playerIdx_;
+
     std::vector<std::vector<float>> perCardPrivV0_;
     std::unordered_map<std::string,float> stats_;
     int noneKnown_ = 0;
@@ -86,6 +91,7 @@ protected:
     int rankKnown_ = 0;
     int bothKnown_ = 0;
     int testVariable_ = 0;
+
     std::vector<std::vector<std::vector<std::string>>> convention_;
     int conventionIdx_;
     int conventionOverride_;

@@ -9,12 +9,14 @@ using namespace std;
 #define CV false
 
 Actor::Actor(
+        int seed,
         int playerIdx,
         std::vector<std::vector<std::vector<std::string>>> convention,
         int conventionIdx,
         int conventionOverride,
         bool recordStats)
-    : playerIdx_(playerIdx) 
+    : rng_(seed)
+    , playerIdx_(playerIdx) 
     , convention_(convention) 
     , conventionIdx_(conventionIdx) 
     , conventionOverride_(conventionOverride) 
@@ -76,7 +78,7 @@ void Actor::incrementPlayedCardKnowledgeCount(
 }
 
 hle::HanabiMove Actor::overrideMove(const HanabiEnv& env, hle::HanabiMove move, 
-        vector<float> action_q) {
+        vector<float> actionQ, bool exploreAction, vector<float> legalMoves) {
     if (conventionOverride_ == 0|| convention_.size() == 0 || 
             convention_[conventionIdx_].size() == 0) {
         return move;
@@ -94,12 +96,12 @@ hle::HanabiMove Actor::overrideMove(const HanabiEnv& env, hle::HanabiMove move,
             && sentSignal_
             && lastMove.CardIndex() <= responseMove.CardIndex()) {
         sentSignal_ = false;
-        if(CV)printf("seen signal\n");
+        if(CV)printf("signal reset\n");
     }
 
     if (conventionOverride_ == 2 || conventionOverride_ == 3 ) {
         if (lastMove == signalMove) {
-            if(CV)printf("play response\n");
+            if(CV)printf("play response =================================\n");
             return responseMove;
         } else if (move == responseMove) {
             vector<hle::HanabiMove> exclude = {responseMove};
@@ -109,12 +111,12 @@ hle::HanabiMove Actor::overrideMove(const HanabiEnv& env, hle::HanabiMove move,
                         && movePlayableOnFireworks(env, responseMove, nextPlayer) 
                         && state.MoveIsLegal(signalMove)) {
                     sentSignal_ = true;
-                    if(CV)printf("play signal (move was response)\n");
+                    if(CV)printf("play signal (move was response) **********************************\n");
                     return signalMove;
                 }
             }
-            if(CV)printf("playing next best move (move was response)\n");
-            return action_argmax(env, exclude, action_q);
+            if(CV)printf("playing new move (move was response) =================================\n");
+            return different_action(env, exclude, actionQ, exploreAction, legalMoves);
         }
     }
 
@@ -122,13 +124,13 @@ hle::HanabiMove Actor::overrideMove(const HanabiEnv& env, hle::HanabiMove move,
         if (!sentSignal_ && movePlayableOnFireworks(env, responseMove, nextPlayer) 
                 && state.MoveIsLegal(signalMove)) {
             sentSignal_ = true;
-            if(CV)printf("play signal\n");
+            if(CV)printf("play signal ========================================\n");
             return signalMove;
         } else if (move == signalMove) {
             vector<hle::HanabiMove> exclude = {signalMove};
             if (conventionOverride_ == 3) exclude.push_back(responseMove);
-            if(CV)printf("playing next best move (move was signal)\n");
-            return action_argmax(env, exclude, action_q);
+            if(CV)printf("playing new move (move was signal) *********************************\n");
+            return different_action(env, exclude, actionQ, exploreAction, legalMoves);
         }
     }
 
@@ -149,19 +151,38 @@ bool Actor::movePlayableOnFireworks(const HanabiEnv& env, hle::HanabiMove move,
     return false;
 }
 
-hle::HanabiMove Actor::action_argmax(const HanabiEnv& env, 
-        vector<hle::HanabiMove> exclude, vector<float> action_q) {
-    assert(action_q.size() == 21);
+hle::HanabiMove Actor::different_action(const HanabiEnv& env, 
+        vector<hle::HanabiMove> exclude, vector<float> actionQ, 
+        bool exploreAction, vector<float> legalMoves) {
+    assert(actionQ.size() == 21);
+    assert(legalMoves.size() == 21);
+
     auto game = env.getHleGame();
 
     for (auto exclude_move: exclude) {
-        action_q[game.GetMoveUid(exclude_move)] = 0;
+        actionQ[game.GetMoveUid(exclude_move)] = 0;
+        legalMoves[game.GetMoveUid(exclude_move)] = 0;
     }
 
-    auto next_best_move = distance(action_q.begin(), max_element(
-                action_q.begin(), action_q.end()));
+    int nextBestMove = -1;
 
-    return game.GetMove(next_best_move);
+    if (exploreAction) {
+        vector<int> legalIndices;
+        vector<int> output;
+        for(size_t i = 0; i < legalMoves.size(); i++) 
+            if(legalMoves[i]) 
+                legalIndices.push_back((int)i);
+        sample(legalIndices.begin(), legalIndices.end(),
+                back_inserter(output), 1, rng_);
+
+        nextBestMove = output[0];
+    } else {
+        nextBestMove = distance(actionQ.begin(), max_element(
+                    actionQ.begin(), actionQ.end()));
+    }
+    assert(nextBestMove != -1);
+
+    return game.GetMove(nextBestMove);
 }
 
 hle::HanabiMove Actor::strToMove(string key) {

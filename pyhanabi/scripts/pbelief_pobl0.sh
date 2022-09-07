@@ -1,25 +1,25 @@
 #!/bin/bash
 python train_belief.py \
-       --save_dir exps/pbelief_oblf \
+       --save_dir exps/pbelief_pobl0 \
        --num_thread 1 \
        --num_game_per_thread 1 \
-       --batchsize 1 \
+       --batchsize 4 \
        --lr 6.25e-05 \
        --eps 1.5e-05 \
        --grad_clip 5 \
        --hid_dim 512 \
-       --burn_in_frames 1 \
-       --replay_buffer_size 10 \
-       --epoch_len 1 \
-       --num_epoch 1 \
+       --burn_in_frames 10 \
+       --replay_buffer_size 100 \
+       --epoch_len 10 \
+       --num_epoch 101 \
        --train_device cuda:0 \
        --act_device cuda:1 \
        --explore 1 \
-       --policy ../training_models/obl1/model0.pthw \
+       --policy exps/iql_test/model0.pthw \
        --seed 2254257 \
        --num_player 2 \
        --shuffle_color 0 \
-       --load_model 1 \
+       --rand 1 \
        --convention conventions/CR-P0_CY-P1.json \
        --num_conventions 2 \
        --parameterized_belief 1 \

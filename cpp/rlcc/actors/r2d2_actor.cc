@@ -344,13 +344,20 @@ void R2D2Actor::act(HanabiEnv& env, const int curPlayer) {
         return;
     }
 
-    vector<float> action_q;
-    auto actions = reply.at("all_a");
-    for (int i = 0; i < 21; i++)
-        action_q.push_back(actions[i].item<float_t>());
+    auto actionQReply = reply.at("all_q");
+    auto legalMovesReply = reply.at("legal_moves");
+    bool exploreAction = (bool)reply.at("explore_a").item<int64_t>();
+
+    vector<float> actionQ;
+    vector<float> legalMoves;
+    for (int i = 0; i < 21; i++) {
+        actionQ.push_back(actionQReply[i].item<float_t>());
+        legalMoves.push_back(legalMovesReply[i].item<float_t>());
+    }
 
     auto move = state.ParentGame()->GetMove(action);
-    move = overrideMove(env, move, action_q);
+    if(PR)printf("Move before override: %s\n", move.ToString().c_str());
+    move = overrideMove(env, move, actionQ, exploreAction, legalMoves);
 
     if (shuffleColor_ && move.MoveType() == hle::HanabiMove::Type::kRevealColor) {
         int realColor = (*invColorPermute)[move.Color()];
@@ -447,7 +454,9 @@ void R2D2Actor::observeAfterAct(const HanabiEnv& env) {
 
     if (terminated) {
         lastEpisode_ = r2d2Buffer_->popTransition();
+        printf("before\n");
         auto input = lastEpisode_.toDict();
+        printf("after\n");
         if (useExperience_) {
             futPriority_ = runner_->call("compute_priority", input);
         }

@@ -209,10 +209,12 @@ class R2D2Agent(torch.jit.ScriptModule):
         rand = torch.rand(greedy_action.size(), device=greedy_action.device, dtype=torch.double)
 
         if self.greedy:
+            taking_exp_action = torch.tensor([0])
             action = greedy_action
-        else:
+        else: 
             assert rand.size() == eps.size()
-            action = torch.where(rand < eps, random_action, greedy_action).detach()
+            taking_exp_action = rand < eps
+            action = torch.where(taking_exp_action, random_action, greedy_action).detach()
 
         if self.vdn:
             action = action.view(bsize, num_player)
@@ -222,7 +224,9 @@ class R2D2Agent(torch.jit.ScriptModule):
         reply["a"] = action.detach().cpu()
         reply["h0"] = new_hid["h0"].detach().cpu()
         reply["c0"] = new_hid["c0"].detach().cpu()
-        reply["all_a"] = legal_act.detach().cpu()
+        reply["all_q"] = legal_act.detach().cpu()
+        reply["legal_moves"] = legal_move.detach().cpu()
+        reply["explore_a"] = taking_exp_action.detach().cpu()
 
         size = torch.prod(torch.tensor(legal_move.shape))
         ascending = torch.arange(0, size, legal_move.shape[1])

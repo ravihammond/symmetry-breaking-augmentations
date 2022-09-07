@@ -68,6 +68,7 @@ PYBIND11_MODULE(hanalearn, m) {
 
     py::class_<Actor, std::shared_ptr<Actor>>(m, "Actor")
         .def(py::init<
+                int, //seed
                 int, //playerIdx
                 std::vector<std::vector<std::vector<std::string>>>, // convention
                 int, // conventionIdx
@@ -118,23 +119,23 @@ PYBIND11_MODULE(hanalearn, m) {
         .def("set_belief_runner", &R2D2Actor::setBeliefRunner)
         .def("get_success_fict_rate", &R2D2Actor::getSuccessFictRate);
 
-    py::class_<RulebotActor, Actor, std::shared_ptr<RulebotActor>>(
-                m, "RulebotActor")
-        .def(py::init<
-                int, //playerIdx
-                std::vector<std::vector<std::vector<std::string>>>, // convention
-                int, // conventionIdx
-                int, // conventionOverride
-                bool>()); // recordStats
+    //py::class_<RulebotActor, Actor, std::shared_ptr<RulebotActor>>(
+                //m, "RulebotActor")
+        //.def(py::init<
+                //int, //playerIdx
+                //std::vector<std::vector<std::vector<std::string>>>, // convention
+                //int, // conventionIdx
+                //int, // conventionOverride
+                //bool>()); // recordStats
 
-    py::class_<Rulebot2Actor, Actor, std::shared_ptr<Rulebot2Actor>>(
-            m, "Rulebot2Actor")
-        .def(py::init<
-                int, //playerIdx
-                std::vector<std::vector<std::vector<std::string>>>, // convention
-                int, // conventionIdx
-                int, // conventionOverride
-                bool>()); // recordStats
+    //py::class_<Rulebot2Actor, Actor, std::shared_ptr<Rulebot2Actor>>(
+            //m, "Rulebot2Actor")
+        //.def(py::init<
+                //int, //playerIdx
+                //std::vector<std::vector<std::vector<std::string>>>, // convention
+                //int, // conventionIdx
+                //int, // conventionOverride
+                //bool>()); // recordStats
 
     m.def("observe", py::overload_cast<const hle::HanabiState&, int, bool>(&observe));
 

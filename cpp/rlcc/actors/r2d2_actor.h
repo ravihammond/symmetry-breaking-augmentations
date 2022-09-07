@@ -42,13 +42,13 @@ public:
             bool conventionFictitiousOverride,
             bool useExperience)
         : Actor(
+                seed,
                 playerIdx,
                 convention,
                 conventionIdx,
                 conventionOverride,
                 false)
           , runner_(std::move(runner))
-          , rng_(seed)
           , numPlayer_(numPlayer)
           , epsList_(epsList)
           , tempList_(tempList)
@@ -84,13 +84,13 @@ public:
             int conventionIdx,
             int conventionOverride)
         : Actor(
+                1, // seed not used in eval move
                 playerIdx,
                 convention,
                 conventionIdx,
                 conventionOverride,
                 true)
           , runner_(std::move(runner))
-          , rng_(1)  // not used in eval mode
           , numPlayer_(numPlayer)
           , epsList_({0})
           , vdn_(vdn)
@@ -149,7 +149,6 @@ protected:
 
     std::shared_ptr<rela::BatchRunner> runner_;
     std::shared_ptr<rela::BatchRunner> classifier_;
-    std::mt19937 rng_;
     const int numPlayer_;
     const std::vector<float> epsList_;
     const std::vector<float> tempList_;
