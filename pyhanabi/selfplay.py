@@ -130,22 +130,15 @@ def selfplay(args):
         belief_config = utils.get_train_config(args.belief_model)
         belief_model = []
         for device in belief_devices:
-            if belief_config is None:
-                if args.belief_model == "ConventionBelief":
-                    beliel_model_object = ConventionBelief(
-                        device,
-                        5,
-                        args.num_fict_sample
-                    )
-            else:
-                beliel_model_object = ARBeliefModel.load(
-                    args.belief_model,
-                    device,
-                    5,
-                    args.num_fict_sample,
-                    belief_config["fc_only"],
-                )
-            belief_model.append(beliel_model_object)
+            belief_model.append(ARBeliefModel.load(
+                args.belief_model,
+                device,
+                5,
+                args.num_fict_sample,
+                belief_config["fc_only"],
+                belief_config["parameterized_belief"],
+                belief_config["num_conventions"],
+            ))
 
     partner_agent = None
     partner_cfg = {"sad": False, "hide_action": False}
@@ -194,6 +187,8 @@ def selfplay(args):
         args.off_belief,
         belief_model,
         convention,
+        args.parameterized_act, # act_parameterized
+        args.parameterized_belief, # belief_parameterized
         convention_act_override,
         args.convention_fict_act_override,
         partner_agent,
@@ -304,6 +299,7 @@ def selfplay(args):
             device=args.train_device,
             convention=convention,
             override=convention_act_override,
+            act_parameterized=[args.parameterized_act, args.parameterized_act]
         )
         if args.wandb:
             log_wandb(score, perfect, scores, eval_actors, last_loss, convention)
@@ -416,6 +412,9 @@ def parse_args():
 
     parser.add_argument("--save_checkpoints", type=int, default=100)
     parser.add_argument("--convention", type=str, default="None")
+    parser.add_argument("--num_conventions", type=int, default=0)
+    parser.add_argument("--parameterized_act", type=int, default=0)
+    parser.add_argument("--parameterized_belief", type=int, default=0)
     parser.add_argument("--no_evaluation", type=int, default=0)
     parser.add_argument("--convention_act_override", type=int, default=0)
     parser.add_argument("--convention_fict_act_override", type=int, default=0)

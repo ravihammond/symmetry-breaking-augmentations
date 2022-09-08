@@ -32,6 +32,7 @@ def evaluate(
     device="cuda:0",
     convention=[],
     override=[0, 0],
+    act_parameterized=[0, 0],
 ):
     """
     evaluate agents as long as they have a "act" function
@@ -70,29 +71,19 @@ def evaluate(
             if len(convention) > 0:
                 convention_index = random.randint(0, len(convention) - 1)
             for i in range(num_player):
-                if agents[i] == "rulebot":
-                    actor = hanalearn.RulebotActor(
-                        i, 
-                        convention, 
-                        convention_index, 
-                        override[i])
-                elif agents[i] == "rulebot2":
-                    actor = hanalearn.Rulebot2Actor(
-                        i, 
-                        convention,
-                        convention_index,
-                        override[i])
-                else:
-                    actor = hanalearn.R2D2Actor(
-                        runners[i], # runner
-                        num_player, # numPlayer
-                        i, # playerIdx
-                        False, # vdn
-                        sad[i], # sad
-                        hide_action[i], # hideAction
-                        convention, # convention
-                        convention_index, # conventionIndex
-                        override[i]) # conventionOverride
+                actor = hanalearn.R2D2Actor(
+                    runners[i], # runner
+                    num_player, # numPlayer
+                    i, # playerIdx
+                    False, # vdn
+                    sad[i], # sad
+                    hide_action[i], # hideAction
+                    convention, # convention
+                    act_parameterized[i], # act parameterized
+                    0, # belief parameterized
+                    convention_index, # conventionIndex
+                    override[i] # conventionOverride
+                )
                 actors.append(actor)
                 all_actors.append(actor)
             thread_actors.append(actors)

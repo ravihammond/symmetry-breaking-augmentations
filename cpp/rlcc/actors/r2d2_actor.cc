@@ -258,6 +258,7 @@ void R2D2Actor::observeBeforeAct(HanabiEnv& env) {
                 rng_);
     } else {
         addHid(beliefInput, beliefHidden_);
+        beliefInput["convention_idx"] = torch::tensor(conventionIdx_);
         futBelief_ = beliefRunner_->call("sample", beliefInput);
     }
     
@@ -337,6 +338,11 @@ void R2D2Actor::act(HanabiEnv& env, const int curPlayer) {
             }
             addHid(partnerInput, partner->prevHidden_);
             assert(fictReply_.isNull());
+            //printf("act act called\n");
+            partnerInput["num_conventions"] = torch::tensor((float)convention_.size());
+            partnerInput["convention_idx"] = torch::tensor(conventionIdx_);
+            partnerInput["act_parameterized"] = torch::tensor(actParameterized_);
+            partnerInput["belief_parameterized"] = torch::tensor(actParameterized_);
             fictReply_ = partner->runner_->call("act", partnerInput);
         }
 

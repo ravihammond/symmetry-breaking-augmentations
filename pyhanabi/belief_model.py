@@ -145,6 +145,8 @@ class ARBeliefModel(torch.jit.ScriptModule):
             num_conventions):
         state_dict = torch.load(weight_file)
         hid_dim, in_dim = state_dict["net.0.weight"].size()
+        if belief_parameterized:
+            in_dim -= num_conventions
         out_dim = state_dict["fc.weight"].size(0)
         model = cls(
                 device, 
@@ -246,6 +248,14 @@ class ARBeliefModel(torch.jit.ScriptModule):
         c0 = obs["c0"].transpose(0, 1).flatten(1, 2).contiguous()
 
         s = obs[self.input_key].unsqueeze(0)
+
+        if self.belief_parameterized:
+            convention_idx = obs[self.convention_idx_key].unsqueeze(0)
+            # tensor_convention_index = torch.tensor(convention_idx)
+            one_hot = F.one_hot(convention_idx, 
+                    num_classes=self.num_conventions)
+            s = torch.cat((s, one_hot), 2)
+
         x = self.net(s)
         if self.fc_only:
             o, (h, c) = x, (h0, c0)
