@@ -454,9 +454,7 @@ void R2D2Actor::observeAfterAct(const HanabiEnv& env) {
 
     if (terminated) {
         lastEpisode_ = r2d2Buffer_->popTransition();
-        printf("before\n");
         auto input = lastEpisode_.toDict();
-        printf("after\n");
         if (useExperience_) {
             futPriority_ = runner_->call("compute_priority", input);
         }
