@@ -228,7 +228,7 @@ def create_rl_context(args):
         convention,
         args.parameterized_act, # act_parameterized
         args.parameterized_belief, # belief_parameterized
-        [3,3], # convention_act_override
+        [args.convention_act_override, args.convention_act_override], # convention_act_override
         False, # convention_fict_act_override
         None, # partner_agent
         "None", # partner_cfg
@@ -342,6 +342,7 @@ def parse_args():
     parser.add_argument("--num_conventions", type=int, default=0)
     parser.add_argument("--parameterized_belief", type=int, default=0)
     parser.add_argument("--parameterized_act", type=int, default=0)
+    parser.add_argument("--convention_act_override", type=int, default=0)
 
     args = parser.parse_args()
     return args

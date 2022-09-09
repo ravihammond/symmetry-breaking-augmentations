@@ -15,7 +15,7 @@ python selfplay.py \
        --burn_in_frames 1000 \
        --replay_buffer_size 100000 \
        --epoch_len 1000 \
-       --num_epoch 2 \
+       --num_epoch 501 \
        --num_player 2 \
        --rnn_hid_dim 512 \
        --multi_step 1 \
@@ -34,4 +34,4 @@ python selfplay.py \
        --convention conventions/CR-P0_CY-P1.json \
        --num_conventions 2 \
        --parameterized_act 1 \
-       --wandb 0 \
+       --wandb 1 \
