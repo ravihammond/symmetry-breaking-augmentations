@@ -430,6 +430,7 @@ void R2D2Actor::fictAct(const HanabiEnv& env) {
     if (playerTemp_.size() > 0) {
         fictInput["temperature"] = torch::tensor(playerTemp_);
     }
+    fictInput["convention_idx"] = torch::tensor(conventionIdx_);
     futTarget_ = runner_->call("compute_target", fictInput);
 }
 

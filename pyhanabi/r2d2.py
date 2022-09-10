@@ -7,6 +7,7 @@
 from collections import OrderedDict
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from typing import Tuple, Dict
 from net import FFWDNet, PublicLSTMNet, LSTMNet
 
@@ -41,8 +42,11 @@ class R2D2Agent(torch.jit.ScriptModule):
         nhead=None,
         nlayer=None,
         max_len=None,
+        parameterized=0,
+        num_conventions=0,
     ):
         super().__init__()
+
         if net == "ffwd":
             self.online_net = FFWDNet(in_dim, hid_dim, out_dim).to(device)
             self.target_net = FFWDNet(in_dim, hid_dim, out_dim).to(device)
@@ -86,6 +90,8 @@ class R2D2Agent(torch.jit.ScriptModule):
         self.nhead = nhead
         self.nlayer = nlayer
         self.max_len = max_len
+        self.parameterized = parameterized
+        self.num_conventions= num_conventions
 
     @torch.jit.script_method
     def get_h0(self, batchsize: int) -> Dict[str, torch.Tensor]:
@@ -112,6 +118,8 @@ class R2D2Agent(torch.jit.ScriptModule):
             nhead=self.nhead,
             nlayer=self.nlayer,
             max_len=self.max_len,
+            parameterized=self.parameterized,
+            num_conventions=self.num_conventions,
         )
         cloned.load_state_dict(self.state_dict())
         cloned.train(self.training)
@@ -162,7 +170,14 @@ class R2D2Agent(torch.jit.ScriptModule):
         priv_s = obs["priv_s"]
         publ_s = obs["publ_s"]
         legal_move = obs["legal_move"]
-        convention_index = obs["convention_index"]
+        convention_index = obs["convention_idx"]
+
+        if self.parameterized:
+            one_hot = F.one_hot(convention_index, 
+                    num_classes=self.num_conventions)
+            print(one_hot)
+            priv_s = torch.cat((priv_s, one_hot), 1)
+            publ_s = torch.cat((publ_s, one_hot), 1)
 
         if "eps" in obs:
             eps = obs["eps"].flatten(0, 1)
@@ -178,6 +193,7 @@ class R2D2Agent(torch.jit.ScriptModule):
             bsize, num_player = obs["priv_s"].size()[0], 1
 
         hid = {"h0": obs["h0"], "c0": obs["c0"]}
+
 
         if self.boltzmann:
             temp = obs["temperature"].flatten(0, 1)
@@ -257,6 +273,13 @@ class R2D2Agent(torch.jit.ScriptModule):
         }
         reward = input_["reward"]
         terminal = input_["terminal"]
+        convention_index = input_["convention_idx"]
+
+        if self.parameterized:
+            one_hot = F.one_hot(convention_index, 
+                    num_classes=self.num_conventions)
+            priv_s = torch.cat((priv_s, one_hot), 1)
+            publ_s = torch.cat((publ_s, one_hot), 1)
 
         if self.boltzmann:
             temp = input_["temperature"].flatten(0, 1)
@@ -289,6 +312,7 @@ class R2D2Agent(torch.jit.ScriptModule):
             "priv_s": input_["priv_s"],
             "publ_s": input_["publ_s"],
             "legal_move": input_["legal_move"],
+            "convention_idx": input_["convention_idx"]
         }
         if self.boltzmann:
             obs["temperature"] = input_["temperature"]
@@ -325,6 +349,13 @@ class R2D2Agent(torch.jit.ScriptModule):
         publ_s = obs["publ_s"]
         legal_move = obs["legal_move"]
         action = action["a"]
+        convention_index = obs["convention_idx"]
+
+        if self.parameterized:
+            one_hot = F.one_hot(convention_index, 
+                    num_classes=self.num_conventions)
+            priv_s = torch.cat((priv_s, one_hot), 2)
+            publ_s = torch.cat((publ_s, one_hot), 2)
 
         for k, v in hid.items():
             hid[k] = v.flatten(1, 2).contiguous()
@@ -421,7 +452,7 @@ class R2D2Agent(torch.jit.ScriptModule):
             batch.reward,
             batch.terminal,
             batch.bootstrap,
-            batch.seq_len,
+            batch.seq_len
         )
         rl_loss = nn.functional.smooth_l1_loss(
             err, torch.zeros_like(err), reduction="none"

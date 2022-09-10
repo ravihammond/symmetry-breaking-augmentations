@@ -73,13 +73,19 @@ def selfplay(args):
         args.max_len,
     )
 
+    agent_in_dim = games[0].feature_size(args.sad),
+    if args.parameterized_act:
+        agent_in_dim = tuple([x + args.num_conventions for x in agent_in_dim[0]])
+    else:
+        agent_in_dim = tuple([x for x in agent_in_dim[0]])
+
     agent = r2d2.R2D2Agent(
         (args.method == "vdn"),
         args.multi_step,
         args.gamma,
         args.eta,
         args.train_device,
-        games[0].feature_size(args.sad),
+        agent_in_dim,
         args.rnn_hid_dim,
         games[0].num_action(),
         args.net,
@@ -87,6 +93,8 @@ def selfplay(args):
         args.boltzmann_act,
         False,  # uniform priority
         args.off_belief,
+        parameterized=args.parameterized_act,
+        num_conventions=args.num_conventions,
     )
     agent.sync_target_with_online()
 
@@ -109,8 +117,6 @@ def selfplay(args):
     agent = agent.to(args.train_device)
     optim = torch.optim.Adam(agent.online_net.parameters(), lr=args.lr, eps=args.eps)
     print(agent)
-    if args.wandb:
-        wandb.watch(agent)
     eval_agent = agent.clone(args.train_device, {"vdn": False, "boltzmann_act": False})
 
     replay_buffer = rela.RNNPrioritizedReplay(
