@@ -86,7 +86,6 @@ std::tuple<std::vector<hle::HanabiCardValue>, bool> filterSample(
         const std::vector<int>& invColorPermute,
         const hle::HanabiGame& game,
         const hle::HanabiHand& hand) {
-    //std::cout << samples << std::endl;
     auto sampleAcc = samples.accessor<int64_t, 2>();
     int numSample = sampleAcc.size(0);
     int handSize = hand.Cards().size();
@@ -338,7 +337,6 @@ void R2D2Actor::act(HanabiEnv& env, const int curPlayer) {
             }
             addHid(partnerInput, partner->prevHidden_);
             assert(fictReply_.isNull());
-            //printf("act act called\n");
             partnerInput["num_conventions"] = torch::tensor((float)convention_.size());
             partnerInput["convention_idx"] = torch::tensor(conventionIdx_);
             partnerInput["act_parameterized"] = torch::tensor(actParameterized_);

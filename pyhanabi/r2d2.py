@@ -175,7 +175,6 @@ class R2D2Agent(torch.jit.ScriptModule):
         if self.parameterized:
             one_hot = F.one_hot(convention_index, 
                     num_classes=self.num_conventions)
-            print(one_hot)
             priv_s = torch.cat((priv_s, one_hot), 1)
             publ_s = torch.cat((publ_s, one_hot), 1)
 

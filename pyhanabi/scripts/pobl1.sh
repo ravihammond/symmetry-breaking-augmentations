@@ -1,43 +1,6 @@
 #!/bin/bash
-#python selfplay.py \
-       #--save_dir exps/poblf1_CR-P0_CY-P1 \
-       #--num_thread 24 \
-       #--num_game_per_thread 80 \
-       #--sad 0 \
-       #--act_base_eps 0.1 \
-       #--act_eps_alpha 7 \
-       #--lr 6.25e-05 \
-       #--eps 1.5e-05 \
-       #--grad_clip 5 \
-       #--gamma 0.999 \
-       #--seed 2254257 \
-       #--batchsize 128 \
-       #--burn_in_frames 1000 \
-       #--replay_buffer_size 100000 \
-       #--epoch_len 1000 \
-       #--num_epoch 501 \
-       #--num_player 2 \
-       #--rnn_hid_dim 512 \
-       #--multi_step 1 \
-       #--train_device cuda:0 \
-       #--act_device cuda:1,cuda:2 \
-       #--num_lstm_layer 2 \
-       #--boltzmann_act 0 \
-       #--min_t 0.01 \
-       #--max_t 0.1 \
-       #--off_belief 1 \
-       #--num_fict_sample 10 \
-       #--belief_device cuda:3 \
-       #--belief_model exps/pbelief_oblf_CR-P0_CY-P1/model0.pthw \
-       #--load_model None \
-       #--net publ-lstm \
-       #--convention conventions/CR-P0_CY-P1.json \
-       #--num_conventions 2 \
-       #--parameterized_act 1 \
-       #--wandb 0 \
-
 python selfplay.py \
-       --save_dir exps/poblf1_CR-P0_CY-P1 \
+       --save_dir exps/poblf1_CR-P0 \
        --num_thread 24 \
        --num_game_per_thread 80 \
        --sad 0 \
@@ -48,11 +11,11 @@ python selfplay.py \
        --grad_clip 5 \
        --gamma 0.999 \
        --seed 2254257 \
-       --batchsize 4 \
+       --batchsize 128 \
        --burn_in_frames 10000 \
        --replay_buffer_size 100000 \
        --epoch_len 1000 \
-       --num_epoch 101 \
+       --num_epoch 3001 \
        --num_player 2 \
        --rnn_hid_dim 512 \
        --multi_step 1 \
@@ -65,11 +28,10 @@ python selfplay.py \
        --off_belief 1 \
        --num_fict_sample 10 \
        --belief_device cuda:3 \
-       --belief_model exps/pbelief_oblf_CR-P0_CY-P1/model0.pthw \
+       --belief_model exps/pbelief_oblf0_CR-P0/model0.pthw \
        --load_model None \
        --net publ-lstm \
-       --convention conventions/CR-P0_CY-P1.json \
-       --num_conventions 2 \
-       --parameterized_act 0 \
-       --wandb 0 \
-
+       --convention conventions/CR-P0.json \
+       --num_conventions 1 \
+       --parameterized_act 1 \
+       --wandb 1 \
