@@ -238,6 +238,11 @@ def selfplay(args):
         stat.reset()
         stopwatch.reset()
 
+        print("Times")
+        time_stats_all = [np.array(x.get_time_stats()) for x in threads]
+        time_stats_avg = [np.mean(k) for k in zip(*time_stats_all)]
+        print(time_stats_avg)
+
         for batch_idx in range(args.epoch_len):
             num_update = batch_idx + epoch * args.epoch_len
             if num_update % args.num_update_between_sync == 0:

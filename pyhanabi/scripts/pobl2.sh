@@ -28,7 +28,7 @@ python selfplay.py \
        --off_belief 1 \
        --num_fict_sample 10 \
        --belief_device cuda:3 \
-       --belief_model exps/pbelief_oblf1_CR-P0/model0.pthw \
+       --belief_model exps/pbelief_oblf1_CR-P0/model_epoch2000.pthw \
        --load_model None \
        --net publ-lstm \
        --convention conventions/CR-P0.json \

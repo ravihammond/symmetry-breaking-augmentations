@@ -8,6 +8,7 @@
 
 #include <stdio.h>
 #include <iostream>
+#include <time.h>
 
 #include "rela/thread_loop.h"
 #include "rlcc/actors/actor.h"
@@ -17,22 +18,26 @@
 class HanabiThreadLoop : public rela::ThreadLoop {
     public:
         HanabiThreadLoop(
-                std::vector<std::shared_ptr<HanabiEnv>> envs,
-                std::vector<std::vector<std::shared_ptr<Actor>>> actors,
-                bool eval)
-            : envs_(std::move(envs))
-              , actors_(std::move(actors))
-              , done_(envs_.size(), -1)
-              , eval_(eval) {
-                  assert(envs_.size() == actors_.size());
-              }
+                    std::vector<std::shared_ptr<HanabiEnv>> envs,
+                    std::vector<std::vector<std::shared_ptr<Actor>>> actors,
+                    bool eval)
+                : envs_(std::move(envs))
+                , actors_(std::move(actors))
+                , done_(envs_.size(), -1)
+                , eval_(eval) 
+                , avgN_(400) {
+            assert(envs_.size() == actors_.size());
+        }
 
         virtual void mainLoop() override {
+            clock_t t;
             while (!terminated()) {
                 if(PR)printf("\n=======================================\n");
 
                 // go over each envs in sequential order
                 // call in seperate for-loops to maximize parallization
+                
+                t = clock();
                 for (size_t i = 0; i < envs_.size(); ++i) {
                     if (done_[i] == 1) {
                         continue;
@@ -59,6 +64,9 @@ class HanabiThreadLoop : public rela::ThreadLoop {
                         }
                     }
                 }
+                t = clock() - t;
+                timeStats_[0] = approxRollingAverage(
+                        timeStats_[0], ((double)t)/CLOCKS_PER_SEC);
 
                 if(PR)printf("\nScore: %d\n", envs_[0]->getScore());
                 if(PR)printf("Lives: %d\n", envs_[0]->getLife());
@@ -75,7 +83,7 @@ class HanabiThreadLoop : public rela::ThreadLoop {
                 int cp = envs_[0]->getCurrentPlayer();
                 for(unsigned long i = 0; i < hands.size(); i++) {
                     if(PR)printf("Actor %ld hand:%s\n", i,
-                        cp == (int)i ? " <-- current player" : ""); 
+                            cp == (int)i ? " <-- current player" : ""); 
                     auto hand = hands[i].ToString();
                     hand.pop_back();
                     if(PR)printf("%s\n", hand.c_str());
@@ -85,6 +93,7 @@ class HanabiThreadLoop : public rela::ThreadLoop {
 
                 // go over each envs in sequential order
                 // call in seperate for-loops to maximize parallization
+                t = clock();
                 for (size_t i = 0; i < envs_.size(); ++i) {
                     if (done_[i] == 1) {
                         continue;
@@ -93,14 +102,17 @@ class HanabiThreadLoop : public rela::ThreadLoop {
                     auto& actors = actors_[i];
                     int curPlayer = envs_[i]->getCurrentPlayer();
                     for (size_t j = 0; j < actors.size(); ++j) {
-                        if(PR)
-                            printf("\n[player %ld observe before acting]%s\n", j,
-                            curPlayer == (int)j ? " <-- current player" : "");
+                        if(PR) printf("\n[player %ld observe before acting]%s\n", j,
+                                    curPlayer == (int)j ? " <-- current player" : "");
                         actors[j]->observeBeforeAct(*envs_[i]);
                     }
                 }
+                t = clock() - t;
+                timeStats_[1] = approxRollingAverage(
+                        timeStats_[1], ((double)t)/CLOCKS_PER_SEC);
                 if(PR)printf("\n----\n");
 
+                t = clock();
                 for (size_t i = 0; i < envs_.size(); ++i) {
                     if (done_[i] == 1) {
                         continue;
@@ -114,8 +126,12 @@ class HanabiThreadLoop : public rela::ThreadLoop {
                         actors[j]->act(*envs_[i], curPlayer);
                     }
                 }
+                t = clock() - t;
+                timeStats_[2] = approxRollingAverage(
+                        timeStats_[2], ((double)t)/CLOCKS_PER_SEC);
                 if(PR)printf("\n----\n");
 
+                t = clock();
                 for (size_t i = 0; i < envs_.size(); ++i) {
                     if (done_[i] == 1) {
                         continue;
@@ -129,8 +145,12 @@ class HanabiThreadLoop : public rela::ThreadLoop {
                         actors[j]->fictAct(*envs_[i]);
                     }
                 }
+                t = clock() - t;
+                timeStats_[3] = approxRollingAverage(
+                        timeStats_[3], ((double)t)/CLOCKS_PER_SEC);
                 if(PR)printf("\n----\n");
 
+                t = clock();
                 for (size_t i = 0; i < envs_.size(); ++i) {
                     if (done_[i] == 1) {
                         continue;
@@ -144,7 +164,20 @@ class HanabiThreadLoop : public rela::ThreadLoop {
                         actors[j]->observeAfterAct(*envs_[i]);
                     }
                 }
+                t = clock() - t;
+                timeStats_[4] = approxRollingAverage(
+                        timeStats_[4], ((double)t)/CLOCKS_PER_SEC);
             }
+        }
+
+        double approxRollingAverage(double avg, double new_sample) {
+            avg -= avg / avgN_;
+            avg += new_sample / avgN_;
+            return avg;
+        }
+
+        std::vector<double> getTimeStats() {
+            return timeStats_;
         }
 
     private:
@@ -153,5 +186,7 @@ class HanabiThreadLoop : public rela::ThreadLoop {
         std::vector<int8_t> done_;
         const bool eval_;
         int numDone_ = 0;
+        std::vector<double> timeStats_ = std::vector<double>(5, 0);
+        double avgN_;
 };
 

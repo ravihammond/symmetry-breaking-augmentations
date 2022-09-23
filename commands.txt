@@ -1,5 +1,5 @@
 == OBL_1 ==
-python pyhanabi/tools/eval_model.py --weight1 rulebot --weight2 pyhanabi/exps/obl1/model_epoch1400.pthw --num_game 1
+python pyhanabi/tools/eval_model.py --weight1 pyhanabi/exps/obl1/model_epoch1400.pthw --num_game 1
 
 == TEST == 
 python pyhanabi/tools/eval_model.py --weight1 pyhanabi/exps/obl1/model_epoch1400.pthw --weight2 pyhanabi/exps/convention_only/model_epoch1400.pthw --override1 rulebot

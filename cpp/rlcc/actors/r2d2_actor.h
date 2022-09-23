@@ -67,7 +67,8 @@ public:
           , actParameterized_(actParameterized)
           , beliefParameterized_(beliefParameterized)
           , conventionFictitiousOverride_(conventionFictitiousOverride)
-          , useExperience_(useExperience) {
+          , useExperience_(useExperience)
+          , logStats_(false) {
     }
 
     // simpler constructor for eval mode
@@ -107,7 +108,8 @@ public:
           , actParameterized_(actParameterized)
           , beliefParameterized_(beliefParameterized)
           , conventionFictitiousOverride_(false)
-          , useExperience_(false) {
+          , useExperience_(false)
+          , logStats_(true) {
     }
 
     virtual void addHid(rela::TensorDict& to, rela::TensorDict& hid);
@@ -195,4 +197,5 @@ protected:
     bool beliefParameterized_;
     bool conventionFictitiousOverride_;
     bool useExperience_;
+    bool logStats_;
 };

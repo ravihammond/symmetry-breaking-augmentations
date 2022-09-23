@@ -208,18 +208,18 @@ class R2D2Agent(torch.jit.ScriptModule):
 
         random_action = legal_move.multinomial(1).squeeze(1)
 
-        while True:
-            legal_size = torch.prod(torch.tensor(legal_move.shape))
-            ascending = torch.arange(0, legal_size, legal_move.shape[1], device=random_action.device)
-            take_indices = random_action + ascending
-            take_result = torch.take(legal_move, take_indices)
+        # while True:
+            # legal_size = torch.prod(torch.tensor(legal_move.shape))
+            # ascending = torch.arange(0, legal_size, legal_move.shape[1], device=random_action.device)
+            # take_indices = random_action + ascending
+            # take_result = torch.take(legal_move, take_indices)
             
-            illegal_action_selected = torch.any(take_result == 0)
+            # illegal_action_selected = torch.any(take_result == 0)
             
-            if not illegal_action_selected:
-                break
+            # if not illegal_action_selected:
+                # break
 
-            random_action = legal_move.multinomial(1).squeeze(1)
+            # random_action = legal_move.multinomial(1).squeeze(1)
 
         rand = torch.rand(greedy_action.size(), device=greedy_action.device, dtype=torch.double)
 

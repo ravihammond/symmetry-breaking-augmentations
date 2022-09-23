@@ -158,7 +158,8 @@ PYBIND11_MODULE(hanalearn, m) {
         .def(py::init<
                 std::vector<std::shared_ptr<HanabiEnv>>,
                 std::vector<std::vector<std::shared_ptr<Actor>>>,
-                bool>());
+                bool>())
+        .def("get_time_stats", &HanabiThreadLoop::getTimeStats);
 
     // bind some hanabi util classes
     py::class_<HanabiCard>(m, "HanabiCard")

@@ -1,6 +1,12 @@
 PYTHON = python3
 PIP = pip3
 
+default:
+	@make -s build-cpp
+
+build-cpp:
+	sh scripts/build_cpp.sh
+
 build-cudaconda: 
 	docker build -t ravihammond/cudaconda -f dockerfiles/Dockerfile.cudaconda .
 

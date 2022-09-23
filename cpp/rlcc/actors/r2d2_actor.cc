@@ -207,10 +207,10 @@ void R2D2Actor::observeBeforeAct(HanabiEnv& env) {
     }
 
     // add convention index information for parameterization
-    input["num_conventions"] = torch::tensor((float)convention_.size());
+    //input["num_conventions"] = torch::tensor((float)convention_.size());
     input["convention_idx"] = torch::tensor(conventionIdx_);
-    input["act_parameterized"] = torch::tensor(actParameterized_);
-    input["belief_parameterized"] = torch::tensor(actParameterized_);
+    //input["act_parameterized"] = torch::tensor(actParameterized_);
+    //input["belief_parameterized"] = torch::tensor(actParameterized_);
 
     // push before we add hidden
     if (replayBuffer_ != nullptr) {
@@ -337,10 +337,10 @@ void R2D2Actor::act(HanabiEnv& env, const int curPlayer) {
             }
             addHid(partnerInput, partner->prevHidden_);
             assert(fictReply_.isNull());
-            partnerInput["num_conventions"] = torch::tensor((float)convention_.size());
+            //partnerInput["num_conventions"] = torch::tensor((float)convention_.size());
             partnerInput["convention_idx"] = torch::tensor(conventionIdx_);
-            partnerInput["act_parameterized"] = torch::tensor(actParameterized_);
-            partnerInput["belief_parameterized"] = torch::tensor(actParameterized_);
+            //partnerInput["act_parameterized"] = torch::tensor(actParameterized_);
+            //partnerInput["belief_parameterized"] = torch::tensor(actParameterized_);
             fictReply_ = partner->runner_->call("act", partnerInput);
         }
 
@@ -369,7 +369,9 @@ void R2D2Actor::act(HanabiEnv& env, const int curPlayer) {
     }
 
     incrementPlayedCardKnowledgeCount(env, move);
-    incrementStatsBeforeMove(env, move);
+    if (logStats_) {
+        incrementStatsBeforeMove(env, move);
+    }
 
     if(PR)printf("Playing move: %s\n", move.ToString().c_str());
     env.step(move);
