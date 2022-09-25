@@ -33,6 +33,7 @@ def evaluate(
     convention=[],
     override=[0, 0],
     act_parameterized=[0, 0],
+    belief_stats=False,
 ):
     """
     evaluate agents as long as they have a "act" function
@@ -80,9 +81,9 @@ def evaluate(
                     hide_action[i], # hideAction
                     convention, # convention
                     act_parameterized[i], # act parameterized
-                    0, # belief parameterized
                     convention_index, # conventionIndex
-                    override[i] # conventionOverride
+                    override[i], # conventionOverride
+                    False, # beliefStats
                 )
                 actors.append(actor)
                 all_actors.append(actor)
@@ -120,6 +121,7 @@ def evaluate_saved_model(
     device="cuda:0",
     convention="None",
     override=[0, 0],
+    belief_stats=False,
 ):
     agents = []
     sad = []

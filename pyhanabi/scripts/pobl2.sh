@@ -1,6 +1,6 @@
 #!/bin/bash
 python selfplay.py \
-       --save_dir exps/poblf2_CR-P0 \
+       --save_dir exps/pobl2_CR-P1_CB-P1 \
        --num_thread 24 \
        --num_game_per_thread 80 \
        --sad 0 \
@@ -28,10 +28,10 @@ python selfplay.py \
        --off_belief 1 \
        --num_fict_sample 10 \
        --belief_device cuda:3 \
-       --belief_model exps/pbelief_oblf1_CR-P0/model_epoch2000.pthw \
+       --belief_model exps/pbelief_obl1f_CR-P0/model0.pthw \
        --load_model None \
        --net publ-lstm \
        --convention conventions/CR-P0.json \
        --num_conventions 1 \
-       --parameterized_act 1 \
+       --parameterized 1 \
        --wandb 1 \

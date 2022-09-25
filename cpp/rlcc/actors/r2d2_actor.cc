@@ -231,7 +231,7 @@ void R2D2Actor::observeBeforeAct(HanabiEnv& env) {
     // no-blocking async call to neural network
     futReply_ = runner_->call("act", input);
 
-    if (!offBelief_) {
+    if (!offBelief_ && !beliefStats_) {
         return;
     }
 
@@ -276,7 +276,7 @@ void R2D2Actor::act(HanabiEnv& env, const int curPlayer) {
     }
 
     rela::TensorDict beliefReply;
-    if (offBelief_ && beliefRunner_ != nullptr) {
+    if ((offBelief_ || beliefStats_) && beliefRunner_ != nullptr) {
         beliefReply = futBelief_.get();
         moveHid(beliefReply, beliefHidden_);
         // if it is not our turn, then this is all we need for belief
@@ -292,7 +292,7 @@ void R2D2Actor::act(HanabiEnv& env, const int curPlayer) {
         invColorPermute = &(invColorPermutes_[0]);
     }
 
-    if (offBelief_) {
+    if (offBelief_ || beliefStats_) {
         const auto& hand = fictState_->Hands()[playerIdx_];
         bool success = true;
         if (beliefRunner_ != nullptr) {
@@ -303,6 +303,10 @@ void R2D2Actor::act(HanabiEnv& env, const int curPlayer) {
                     *invColorPermute,
                     env.getHleGame(),  // *fictGame_,
                     hand);
+
+            if (success && beliefStats_) {
+                incrementBeliefStatsConvention(env, sampledCards_);
+            }
         }
         if (success) {
             auto& deck = fictState_->Deck();

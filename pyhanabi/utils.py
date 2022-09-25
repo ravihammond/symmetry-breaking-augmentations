@@ -10,6 +10,8 @@ from collections import OrderedDict
 import json
 import torch
 import numpy as np
+import pprint
+pprint = pprint.pprint
 
 import r2d2
 import r2d2_sad
@@ -164,13 +166,20 @@ def load_agent(weight_file, overwrite):
         hand_size=hand_size,
     )[0]
 
+    cfg["parameterized"] = cfg["parameterized"] if "parameterized" in cfg else False
+    cfg["num_conventions"] = cfg["num_conventions"] if "num_conventions" in cfg else 0
+
+    in_dim = game.feature_size(cfg["sad"])
+    if cfg["parameterized"]:
+        in_dim = tuple([x + cfg["num_conventions"] for x in in_dim])
+
     config = {
         "vdn": overwrite["vdn"] if "vdn" in overwrite else cfg["method"] == "vdn",
         "multi_step": overwrite.get("multi_step", cfg["multi_step"]),
         "gamma": overwrite.get("gamma", cfg["gamma"]),
         "eta": 0.9,
         "device": overwrite["device"],
-        "in_dim": game.feature_size(cfg["sad"]),
+        "in_dim": in_dim,
         "hid_dim": cfg["hid_dim"] if "hid_dim" in cfg else cfg["rnn_hid_dim"],
         "out_dim": game.num_action(),
         "num_lstm_layer": cfg.get("num_lstm_layer", overwrite.get("num_lstm_layer", 2)),
@@ -180,6 +189,8 @@ def load_agent(weight_file, overwrite):
         "uniform_priority": overwrite.get("uniform_priority", False),
         "net": cfg.get("net", "publ-lstm"),
         "off_belief": overwrite.get("off_belief", cfg.get("off_belief", False)),
+        "parameterized": cfg["parameterized"],
+        "num_conventions": cfg["num_conventions"],
     }
     if cfg.get("net", None) == "transformer":
         config["nhead"] = cfg["nhead"]
