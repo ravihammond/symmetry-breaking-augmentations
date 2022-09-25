@@ -98,7 +98,6 @@ PYBIND11_MODULE(hanalearn, m) {
                 float,  // gamma
                 std::vector<std::vector<std::vector<std::string>>>, // convention
                 bool, // actParameterized
-                bool, // beliefParameterized
                 int, // conventionIdx
                 int, // conventionOverride
                 bool, // conventionFictitiousOverride
@@ -112,11 +111,12 @@ PYBIND11_MODULE(hanalearn, m) {
                 bool,  // hideAction
                 std::vector<std::vector<std::vector<std::string>>>, // convention
                 bool, // actParameterized
-                bool, // beliefParameterized
                 int, // conventionIdx
-                int>()) // conventionOverride
+                int, // conventionOverride
+                bool>()) // beliefStats
         .def("set_partners", &R2D2Actor::setPartners)
         .def("set_belief_runner", &R2D2Actor::setBeliefRunner)
+        .def("set_belief_runner_stats", &R2D2Actor::setBeliefRunnerStats)
         .def("get_success_fict_rate", &R2D2Actor::getSuccessFictRate);
 
     //py::class_<RulebotActor, Actor, std::shared_ptr<RulebotActor>>(

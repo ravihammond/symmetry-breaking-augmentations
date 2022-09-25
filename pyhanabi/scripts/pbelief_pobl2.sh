@@ -1,6 +1,6 @@
 #!/bin/bash
 python train_belief.py \
-       --save_dir exps/pbelief_oblf0_CR-P0 \
+       --save_dir exps/pbelief_pobl2_CR-P0 \
        --num_thread 24 \
        --num_game_per_thread 80 \
        --batchsize 128 \
@@ -15,11 +15,10 @@ python train_belief.py \
        --train_device cuda:0 \
        --act_device cuda:1 \
        --explore 1 \
-       --policy ../training_models/obl1/model0.pthw \
+       --policy exps/pobl2_CR-P0/model0.pthw \
        --seed 2254257 \
        --num_player 2 \
-       --shuffle_color 0 \
+       --load_model 1 \
        --convention conventions/CR-P0.json \
        --num_conventions 1 \
-       --convention_act_override 3 \
        --parameterized_belief 1 \

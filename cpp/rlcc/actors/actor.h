@@ -81,6 +81,9 @@ protected:
 
     hle::HanabiMove strToMove(std::string key);
 
+    virtual void incrementBeliefStatsConvention(const HanabiEnv& env,
+        std::vector<hle::HanabiCardValue> sampledCards);
+
     std::mt19937 rng_;
     const int playerIdx_;
 

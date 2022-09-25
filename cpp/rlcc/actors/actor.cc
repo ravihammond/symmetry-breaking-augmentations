@@ -419,3 +419,103 @@ void Actor::incrementStatsAfterMove(
     }
 }
 
+void Actor::incrementBeliefStatsConvention(const HanabiEnv& env,
+        std::vector<hle::HanabiCardValue> sampledCards) {
+    (void)env;
+    (void)sampledCards;
+    //if (convention_.size() == 0 || convention_[conventionIdx_].size() == 0) {
+        //return;
+    //}
+
+    //printf("Sampled cards\n");
+    //string colours[5] = {"R","Y","G","W","B"};
+    //int ranks[5] = {1,2,3,4,5};
+    //for (auto cardValue: sampledCards) {
+        //printf("%s\n", cardValue.ToString().c_str());
+    //}
+
+    //auto partnerLastMove = env.getMove(env.getLastAction());
+    //auto myLastMove = env.getMove(env.getSecondLastAction());
+    //auto signalMove = strToMove(convention_[conventionIdx_][0][0]);
+    //auto responseMove = strToMove(convention_[conventionIdx_][0][1]);
+
+    //if ((myLastMove.MoveType() == hle::HanabiMove::kPlay 
+            //|| myLastMove.MoveType() == hle::HanabiMove::kDiscard) 
+            //&& signalReceived_
+            //&& myLastMove.CardIndex() <= responseMove.CardIndex()) {
+        //signalReceived_ = false;
+        //if(CV)printf("BELIEF STATS --- signal received reset\n");
+    //}
+
+    //if (partnerLastMove == signalMove) {
+        //signalReceived_ = true;
+    //}
+
+    //if (signalReceived_) {
+        //incrementStat("response_should_be_playable");
+    //} else {
+        //incrementStat("response_should_not_be_playable");
+    //}
+
+    //if (movePlayableOnFireworks(env, responseMove, playerIdx_)) {
+
+    //}
+
+    //auto& state = env.getHleState();
+    //auto obs = env.getObsShowCards();
+    //auto& allHands = obs.Hands();
+    //auto partnerCards = allHands[playerIdx_].Cards();
+    //auto focusCard = partnerCards[responseMove.CardIndex()];
+
+    //printf("focusCard: %s, id: %d\n", focusCard.ToString().c_str(), focusCard.Id());
+
+
+    //if (state.CardPlayableOnFireworks(focusCard))
+        //return true;
+
+    //return false;
+
+    //auto& state = env.getHleState();
+    //auto cardValue = sampledCards[responseMove.CardIndex()];
+    //auto focusCard = hle::HanabiCard(cardValue, );
+
+    //if (state.CardPlayableOnFireworks(focusCard))
+
+}
+
+
+    //if (conventionOverride_ == 2 || conventionOverride_ == 3 ) {
+        //if (lastMove == signalMove) {
+            //if(CV)printf("play response =================================\n");
+            //return responseMove;
+        //} else if (move == responseMove) {
+            //vector<hle::HanabiMove> exclude = {responseMove};
+            //if (conventionOverride_ == 3) {
+                //exclude.push_back(signalMove);
+                //if (!sentSignal_ 
+                        //&& movePlayableOnFireworks(env, responseMove, nextPlayer) 
+                        //&& state.MoveIsLegal(signalMove)) {
+                    //sentSignal_ = true;
+                    //if(CV)printf("play signal (move was response) **********************************\n");
+                    //return signalMove;
+                //}
+            //}
+            //if(CV)printf("playing new move (move was response) =================================\n");
+            //return different_action(env, exclude, actionQ, exploreAction, legalMoves);
+        //}
+    //}
+
+    //if (conventionOverride_ == 1 || conventionOverride_ == 3) {
+        //if (!sentSignal_ && movePlayableOnFireworks(env, responseMove, nextPlayer) 
+                //&& state.MoveIsLegal(signalMove)) {
+            //sentSignal_ = true;
+            //if(CV)printf("play signal ========================================\n");
+            //return signalMove;
+        //} else if (move == signalMove) {
+            //vector<hle::HanabiMove> exclude = {signalMove};
+            //if (conventionOverride_ == 3) exclude.push_back(responseMove);
+            //if(CV)printf("playing new move (move was signal) *********************************\n");
+            //return different_action(env, exclude, actionQ, exploreAction, legalMoves);
+        //}
+    //}
+

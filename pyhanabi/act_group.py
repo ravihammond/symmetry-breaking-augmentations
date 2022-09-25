@@ -39,7 +39,6 @@ class ActGroup:
         belief_model,
         convention,
         act_parameterized,
-        belief_parameterized,
         convention_act_override,
         convention_fict_act_override,
         partner_agent,
@@ -93,7 +92,6 @@ class ActGroup:
                 )
         self.convention = convention
         self.act_parameterized = act_parameterized
-        self.belief_parameterized = belief_parameterized
         self.convention_act_override = convention_act_override
         self.convention_fict_act_override = convention_fict_act_override
         self.partner_agent = partner_agent
@@ -129,7 +127,6 @@ class ActGroup:
                         self.gamma,
                         self.convention,
                         0, # act paramaterized
-                        0, # belief paramaterized
                         0, # convention index
                         0, # convention act override
                         0, # convention fict act override
@@ -169,7 +166,6 @@ class ActGroup:
                             self.gamma,
                             self.convention,
                             self.act_parameterized,
-                            self.belief_parameterized,
                             convention_index,
                             self.convention_act_override[k],
                             self.convention_fict_act_override,

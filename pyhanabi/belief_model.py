@@ -74,7 +74,7 @@ class ARBeliefModel(torch.jit.ScriptModule):
         out_dim, 
         num_sample, 
         fc_only, 
-        belief_parameterized,
+        parameterized,
         num_conventions,
     ):
         """
@@ -97,10 +97,10 @@ class ARBeliefModel(torch.jit.ScriptModule):
         self.num_sample = num_sample
         self.fc_only = fc_only
 
-        self.belief_parameterized = belief_parameterized
+        self.parameterized = parameterized
         self.num_conventions = num_conventions
 
-        if self.belief_parameterized:
+        if self.parameterized:
             self.in_dim += self.num_conventions
 
         self.net = nn.Sequential(
@@ -141,11 +141,11 @@ class ARBeliefModel(torch.jit.ScriptModule):
             hand_size, 
             num_sample, 
             fc_only,
-            belief_parameterized,
+            parameterized,
             num_conventions):
         state_dict = torch.load(weight_file)
         hid_dim, in_dim = state_dict["net.0.weight"].size()
-        if belief_parameterized:
+        if parameterized:
             in_dim -= num_conventions
         out_dim = state_dict["fc.weight"].size(0)
         model = cls(
@@ -156,7 +156,7 @@ class ARBeliefModel(torch.jit.ScriptModule):
                 out_dim, 
                 num_sample, 
                 fc_only,
-                belief_parameterized,
+                parameterized,
                 num_conventions)
         model.load_state_dict(state_dict)
         model = model.to(device)
@@ -191,7 +191,7 @@ class ARBeliefModel(torch.jit.ScriptModule):
         x = batch.obs[self.input_key]
 
         # Append convention one-hot vectors if model is parameterized
-        if self.belief_parameterized:
+        if self.parameterized:
             # Concatenate convention one-hot vectors to x
             convention_indexes = batch.obs[self.convention_idx_key]
             one_hot = F.one_hot(convention_indexes, num_classes=self.num_conventions)
@@ -249,7 +249,7 @@ class ARBeliefModel(torch.jit.ScriptModule):
 
         s = obs[self.input_key].unsqueeze(0)
 
-        if self.belief_parameterized:
+        if self.parameterized:
             convention_idx = obs[self.convention_idx_key].unsqueeze(0)
             # tensor_convention_index = torch.tensor(convention_idx)
             one_hot = F.one_hot(convention_idx, 

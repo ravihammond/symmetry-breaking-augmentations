@@ -26,6 +26,7 @@ class HanabiEnv {
       , verbose_(verbose)
       , lastActivePlayer_(-1)
       , lastMove_(hle::HanabiMove::kInvalid, -1, -1, -1, -1)
+      , secondLastMove_(hle::HanabiMove::kInvalid, -1, -1, -1, -1)
       , lastEpisodeScore_(-1) {
     auto params = game_.Parameters();
 
@@ -69,6 +70,10 @@ class HanabiEnv {
     return game_.GetMoveUid(lastMove_);
   }
 
+  int getSecondLastAction() const {
+    return game_.GetMoveUid(secondLastMove_);
+  }
+
   hle::HanabiMove getMove(int uid) const {
     return game_.GetMove(uid);
   }
@@ -106,6 +111,7 @@ class HanabiEnv {
 
     ++numStep_;
     lastActivePlayer_ = state_->CurPlayer();
+    secondLastMove_ = lastMove_;
     lastMove_ = move;
 
     auto [r, t] = applyMove(*state_, move, numStep_ == maxLen_);
@@ -131,6 +137,10 @@ class HanabiEnv {
 
   hle::HanabiMove lastMove() const {
     return lastMove_;
+  }
+
+  hle::HanabiMove secondLastMove() const {
+    return secondLastMove_;
   }
 
   int numStep() const {
@@ -205,6 +215,7 @@ class HanabiEnv {
   float stepReward_;
   int lastActivePlayer_;
   hle::HanabiMove lastMove_;
+  hle::HanabiMove secondLastMove_;
   int lastEpisodeScore_;
 
   float colorReward_ = -1;

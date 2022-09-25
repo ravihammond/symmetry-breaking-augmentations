@@ -74,7 +74,7 @@ def selfplay(args):
     )
 
     agent_in_dim = games[0].feature_size(args.sad),
-    if args.parameterized_act:
+    if args.parameterized:
         agent_in_dim = tuple([x + args.num_conventions for x in agent_in_dim[0]])
     else:
         agent_in_dim = tuple([x for x in agent_in_dim[0]])
@@ -93,7 +93,7 @@ def selfplay(args):
         args.boltzmann_act,
         False,  # uniform priority
         args.off_belief,
-        parameterized=args.parameterized_act,
+        parameterized=args.parameterized,
         num_conventions=args.num_conventions,
     )
     agent.sync_target_with_online()
@@ -193,8 +193,7 @@ def selfplay(args):
         args.off_belief,
         belief_model,
         convention,
-        args.parameterized_act, # act_parameterized
-        args.parameterized_belief, # belief_parameterized
+        args.parameterized, # act_parameterized
         convention_act_override,
         args.convention_fict_act_override,
         partner_agent,
@@ -310,7 +309,7 @@ def selfplay(args):
             device=args.train_device,
             convention=convention,
             override=convention_act_override,
-            act_parameterized=[args.parameterized_act, args.parameterized_act]
+            act_parameterized=[args.parameterized, args.parameterized]
         )
         if args.wandb:
             log_wandb(score, perfect, scores, eval_actors, last_loss, convention)
@@ -424,8 +423,7 @@ def parse_args():
     parser.add_argument("--save_checkpoints", type=int, default=100)
     parser.add_argument("--convention", type=str, default="None")
     parser.add_argument("--num_conventions", type=int, default=0)
-    parser.add_argument("--parameterized_act", type=int, default=0)
-    parser.add_argument("--parameterized_belief", type=int, default=0)
+    parser.add_argument("--parameterized", type=int, default=0)
     parser.add_argument("--no_evaluation", type=int, default=0)
     parser.add_argument("--convention_act_override", type=int, default=0)
     parser.add_argument("--convention_fict_act_override", type=int, default=0)

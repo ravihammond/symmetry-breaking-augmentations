@@ -70,7 +70,7 @@ def train_belief(args):
             5,
             0,
             belief_config["fc_only"],
-            belief_config["parameterized_belief"],
+            belief_config["parameterized"],
             belief_config["num_conventions"],
         )
     else:
@@ -82,7 +82,7 @@ def train_belief(args):
             25,  # bits per card
             0,  # num_sample
             fc_only=args.fc_only,
-            belief_parameterized=args.parameterized_belief,
+            parameterized=args.parameterized,
             num_conventions=args.num_conventions,
         ).to(args.train_device)
 
@@ -226,8 +226,7 @@ def create_rl_context(args):
         False,  # turn off off-belief rewardless of how it is trained
         None,  # belief_model
         convention,
-        args.parameterized_act, # act_parameterized
-        args.parameterized_belief, # belief_parameterized
+        cfgs["parameterized"], # act_parameterized
         [args.convention_act_override, args.convention_act_override], # convention_act_override
         False, # convention_fict_act_override
         None, # partner_agent
@@ -340,8 +339,7 @@ def parse_args():
     # conventions
     parser.add_argument("--convention", type=str, default="None")
     parser.add_argument("--num_conventions", type=int, default=0)
-    parser.add_argument("--parameterized_belief", type=int, default=0)
-    parser.add_argument("--parameterized_act", type=int, default=0)
+    parser.add_argument("--parameterized", type=int, default=0)
     parser.add_argument("--convention_act_override", type=int, default=0)
 
     args = parser.parse_args()

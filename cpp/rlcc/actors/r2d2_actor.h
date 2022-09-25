@@ -36,7 +36,6 @@ public:
             float gamma,
             std::vector<std::vector<std::vector<std::string>>> convention,
             bool actParameterized,
-            bool beliefParameterized,
             int conventionIdx,
             int conventionOverride,
             bool conventionFictitiousOverride,
@@ -65,10 +64,10 @@ public:
           , replayBuffer_(std::move(replayBuffer))
           , r2d2Buffer_(std::make_unique<rela::R2D2Buffer>(multiStep, seqLen, gamma))
           , actParameterized_(actParameterized)
-          , beliefParameterized_(beliefParameterized)
           , conventionFictitiousOverride_(conventionFictitiousOverride)
           , useExperience_(useExperience)
-          , logStats_(false) {
+          , logStats_(false) 
+          , beliefStats_(false) {
     }
 
     // simpler constructor for eval mode
@@ -81,9 +80,9 @@ public:
             bool hideAction,
             std::vector<std::vector<std::vector<std::string>>> convention,
             bool actParameterized,
-            bool beliefParameterized,
             int conventionIdx,
-            int conventionOverride)
+            int conventionOverride,
+            bool beliefStats)
         : Actor(
                 1, // seed not used in eval move
                 playerIdx,
@@ -106,10 +105,10 @@ public:
           , replayBuffer_(nullptr)
           , r2d2Buffer_(nullptr)
           , actParameterized_(actParameterized)
-          , beliefParameterized_(beliefParameterized)
           , conventionFictitiousOverride_(false)
           , useExperience_(false)
-          , logStats_(true) {
+          , logStats_(true) 
+          , beliefStats_(beliefStats) {
     }
 
     virtual void addHid(rela::TensorDict& to, rela::TensorDict& hid);
@@ -129,6 +128,13 @@ public:
         assert(!vdn_ && batchsize_ == 1);
         beliefRunner_ = beliefModel;
         offBelief_ = true;
+        // OBL does not need Other-Play, and does not support Other-Play
+        assert(!shuffleColor_);
+    }
+
+    void setBeliefRunnerStats(std::shared_ptr<rela::BatchRunner>& beliefModel) {
+        assert(!vdn_ && batchsize_ == 1);
+        beliefRunner_ = beliefModel;
         // OBL does not need Other-Play, and does not support Other-Play
         assert(!shuffleColor_);
     }
@@ -194,8 +200,8 @@ protected:
     std::vector<std::shared_ptr<R2D2Actor>> partners_;
 
     bool actParameterized_;
-    bool beliefParameterized_;
     bool conventionFictitiousOverride_;
     bool useExperience_;
     bool logStats_;
+    bool beliefStats_;
 };
