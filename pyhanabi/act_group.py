@@ -4,6 +4,9 @@
 # This source code is licensed under the license found in the
 # LICENSE file in the root directory of this source tree.
 #
+import pprint
+pprint = pprint.pprint
+
 import set_path
 
 set_path.append_sys_path()
@@ -143,13 +146,14 @@ class ActGroup:
                     convention_index = -1 if len(self.convention) == 0 \
                             else convention_index_count % len(self.convention)
                     for k in range(self.num_player):
+                        runners = self.model_runners
                         if k > 0 and self.static_partner:
-                            self.model_runners = self.partner_runners
+                            runners = self.partner_runners
                             self.sad = self.partner_cfg["sad"]
                             self.hide_action = self.partner_cfg["hide_action"]
 
                         actor = hanalearn.R2D2Actor(
-                            self.model_runners[i % self.num_runners],
+                            runners[i % self.num_runners],
                             self.seed,
                             self.num_player,
                             k,

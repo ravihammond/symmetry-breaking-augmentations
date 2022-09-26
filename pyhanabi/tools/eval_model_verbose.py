@@ -36,7 +36,6 @@ def evaluate_model(args):
         print_actor_stats(stats, 0, convention_string)
         print_actor_stats(stats, 1, convention_string)
 
-
 def load_weights(args):
     weight_files = []
     if args.num_player == 2:
