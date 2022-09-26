@@ -423,21 +423,21 @@ void Actor::incrementBeliefStatsConvention(const HanabiEnv& env,
         std::vector<hle::HanabiCardValue> sampledCards) {
     (void)env;
     (void)sampledCards;
-    //if (convention_.size() == 0 || convention_[conventionIdx_].size() == 0) {
-        //return;
-    //}
+    if (convention_.size() == 0 || convention_[conventionIdx_].size() == 0) {
+        return;
+    }
 
-    //printf("Sampled cards\n");
-    //string colours[5] = {"R","Y","G","W","B"};
-    //int ranks[5] = {1,2,3,4,5};
-    //for (auto cardValue: sampledCards) {
-        //printf("%s\n", cardValue.ToString().c_str());
-    //}
+    printf("Sampled cards\n");
+    string colours[5] = {"R","Y","G","W","B"};
+    int ranks[5] = {1,2,3,4,5};
+    for (auto cardValue: sampledCards) {
+        printf("%s\n", cardValue.ToString().c_str());
+    }
 
-    //auto partnerLastMove = env.getMove(env.getLastAction());
-    //auto myLastMove = env.getMove(env.getSecondLastAction());
-    //auto signalMove = strToMove(convention_[conventionIdx_][0][0]);
-    //auto responseMove = strToMove(convention_[conventionIdx_][0][1]);
+    auto partnerLastMove = env.getMove(env.getLastAction());
+    auto myLastMove = env.getMove(env.getSecondLastAction());
+    auto signalMove = strToMove(convention_[conventionIdx_][0][0]);
+    auto responseMove = strToMove(convention_[conventionIdx_][0][1]);
 
     //if ((myLastMove.MoveType() == hle::HanabiMove::kPlay 
             //|| myLastMove.MoveType() == hle::HanabiMove::kDiscard) 
@@ -461,13 +461,13 @@ void Actor::incrementBeliefStatsConvention(const HanabiEnv& env,
 
     //}
 
-    //auto& state = env.getHleState();
-    //auto obs = env.getObsShowCards();
-    //auto& allHands = obs.Hands();
-    //auto partnerCards = allHands[playerIdx_].Cards();
-    //auto focusCard = partnerCards[responseMove.CardIndex()];
+    auto& state = env.getHleState();
+    auto obs = env.getObsShowCards();
+    auto& allHands = obs.Hands();
+    auto partnerCards = allHands[playerIdx_].Cards();
+    auto focusCard = partnerCards[responseMove.CardIndex()];
 
-    //printf("focusCard: %s, id: %d\n", focusCard.ToString().c_str(), focusCard.Id());
+    printf("focusCard: %s, id: %d\n", focusCard.ToString().c_str(), focusCard.Id());
 
 
     //if (state.CardPlayableOnFireworks(focusCard))

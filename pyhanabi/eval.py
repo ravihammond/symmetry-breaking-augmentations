@@ -48,61 +48,96 @@ def evaluate(
         sad = [sad for _ in range(num_player)]
 
     # Create Batch Runners only if agent is a learned r2d2 agent.
-    runners = [
-        rela.BatchRunner(agent.clone(device), device, 1000, ["act"]) 
-        if isinstance(agent, r2d2.R2D2Agent)
-        else None
-        for agent in agents
-    ]
+    runners = [rela.BatchRunner(agent.clone(device), device, 1000, ["act"])
+            for agent in agents]
 
-    context = rela.Context()
-    games = create_envs(num_game, seed, num_player, bomb, max_len)
-    threads = []
+    # context = rela.Context()
+    # threads = []
 
     assert num_game % num_thread == 0
     game_per_thread = num_game // num_thread
-    all_actors = []
+    # all_actors = []
 
-    for t_idx in range(num_thread):
-        thread_games = []
+    # for t_idx in range(num_thread):
+        # thread_games = []
+        # thread_actors = []
+        # for g_idx in range(t_idx * game_per_thread, (t_idx + 1) * game_per_thread):
+            # actors = []
+            # convention_index = 0
+            # if len(convention) > 0:
+                # convention_index = random.randint(0, len(convention) - 1)
+            # for i in range(num_player):
+                # actor = hanalearn.R2D2Actor(
+                    # runners[i], # runner
+                    # num_player, # numPlayer
+                    # i, # playerIdx
+                    # False, # vdn
+                    # sad[i], # sad
+                    # hide_action[i], # hideAction
+                    # convention, # convention
+                    # act_parameterized[i], # act parameterized
+                    # convention_index, # conventionIndex
+                    # override[i], # conventionOverride
+                    # belief_stats, # beliefStats
+                # )
+                # actors.append(actor)
+                # all_actors.append(actor)
+            # thread_actors.append(actors)
+            # thread_games.append(games[g_idx])
+        # thread = hanalearn.HanabiThreadLoop(thread_games, thread_actors, True)
+        # threads.append(thread)
+        # context.push_thread_loop(thread)
+
+    games = create_envs(num_game, seed, num_player, bomb, max_len)
+
+    actors = []
+    for i in range(num_thread):
         thread_actors = []
-        for g_idx in range(t_idx * game_per_thread, (t_idx + 1) * game_per_thread):
-            actors = []
+        for j in range(game_per_thread):
+            game_actors = []
             convention_index = 0
             if len(convention) > 0:
                 convention_index = random.randint(0, len(convention) - 1)
-            for i in range(num_player):
+            for k in range(num_player):
                 actor = hanalearn.R2D2Actor(
-                    runners[i], # runner
+                    runners[k], # runner
                     num_player, # numPlayer
-                    i, # playerIdx
+                    k, # playerIdx
                     False, # vdn
-                    sad[i], # sad
-                    hide_action[i], # hideAction
+                    sad[k], # sad
+                    hide_action[k], # hideAction
                     convention, # convention
-                    act_parameterized[i], # act parameterized
+                    act_parameterized[k], # act parameterized
                     convention_index, # conventionIndex
-                    override[i], # conventionOverride
-                    False, # beliefStats
+                    override[k], # conventionOverride
+                    belief_stats, # beliefStats
                 )
-                actors.append(actor)
-                all_actors.append(actor)
-            thread_actors.append(actors)
-            thread_games.append(games[g_idx])
-        thread = hanalearn.HanabiThreadLoop(thread_games, thread_actors, True)
-        threads.append(thread)
-        context.push_thread_loop(thread)
+
+                if belief_stats:
+                    if belief_runner is None:
+                        actor.set_belief_runner_stats(None)
+                    else:
+                        actor.set_belief_runner_stats(belief_runner)
+
+                game_actors.append(actor)
+            thread_actors.append(game_actors)
+        actors.append(thread_actors)
+
+    context, threads = create_threads(
+        num_thread,
+        game_per_thread,
+        actors,
+        games,
+    )
 
     for runner in runners:
-        if isinstance(runner, rela.BatchRunner):
-            runner.start()
+        runner.start()
 
     context.start()
     context.join()
 
     for runner in runners:
-        if isinstance(runner, rela.BatchRunner):
-            runner.stop()
+        runner.stop()
 
     scores = [g.last_episode_score() for g in games]
     num_perfect = np.sum([1 for s in scores if s == 25])
@@ -171,6 +206,7 @@ def evaluate_saved_model(
             device=device,
             convention=load_convention(convention),
             override=override,
+            belief_stats=belief_stats
         )
         scores.extend(score)
         perfect += p
