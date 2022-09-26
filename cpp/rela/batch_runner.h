@@ -50,6 +50,10 @@ class BatchRunner {
     methods_.push_back(method);
   }
 
+  std::vector<std::string> getMethods() {
+      return methods_;
+  }
+
   FutureReply call(const std::string& method, const TensorDict& t) const;
 
   void start();

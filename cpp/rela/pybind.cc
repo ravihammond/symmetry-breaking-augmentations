@@ -74,6 +74,7 @@ PYBIND11_MODULE(rela, m) {
            const std::vector<std::string>&>())
       .def(py::init<py::object, const std::string&>())
       .def("add_method", &BatchRunner::addMethod)
+      .def("get_methods", &BatchRunner::getMethods)
       .def("start", &BatchRunner::start)
       .def("stop", &BatchRunner::stop)
       .def("update_model", &BatchRunner::updateModel)

@@ -1,6 +1,6 @@
 python selfplay.py \
-       --save_dir exps/sad_1 \
-       --seed 1 \
+       --save_dir exps/sad_1000 \
+       --seed 1000 \
        --num_thread 40 \
        --num_game_per_thread 80 \
        --method iql \
@@ -13,7 +13,7 @@ python selfplay.py \
        --replay_buffer_size 100000 \
        --batchsize 128 \
        --epoch_len 1000 \
-       --num_epoch 3001 \
+       --num_epoch 2001 \
        --num_player 2 \
        --net lstm \
        --num_lstm_layer 1 \
