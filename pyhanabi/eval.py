@@ -11,6 +11,8 @@ import numpy as np
 import torch
 import sys
 import random
+import pprint
+pprint = pprint.pprint
 
 from create import *
 import rela
@@ -34,6 +36,7 @@ def evaluate(
     override=[0, 0],
     act_parameterized=[0, 0],
     belief_stats=False,
+    belief_model_path="None",
 ):
     """
     evaluate agents as long as they have a "act" function
@@ -51,87 +54,60 @@ def evaluate(
     runners = [rela.BatchRunner(agent.clone(device), device, 1000, ["act"])
             for agent in agents]
 
-    # context = rela.Context()
-    # threads = []
+    belief_runner = None
+    if belief_stats:
+        belief_runner = create_belief_runner(belief_model_path, device)
 
-    assert num_game % num_thread == 0
-    game_per_thread = num_game // num_thread
-    # all_actors = []
 
-    # for t_idx in range(num_thread):
-        # thread_games = []
-        # thread_actors = []
-        # for g_idx in range(t_idx * game_per_thread, (t_idx + 1) * game_per_thread):
-            # actors = []
-            # convention_index = 0
-            # if len(convention) > 0:
-                # convention_index = random.randint(0, len(convention) - 1)
-            # for i in range(num_player):
-                # actor = hanalearn.R2D2Actor(
-                    # runners[i], # runner
-                    # num_player, # numPlayer
-                    # i, # playerIdx
-                    # False, # vdn
-                    # sad[i], # sad
-                    # hide_action[i], # hideAction
-                    # convention, # convention
-                    # act_parameterized[i], # act parameterized
-                    # convention_index, # conventionIndex
-                    # override[i], # conventionOverride
-                    # belief_stats, # beliefStats
-                # )
-                # actors.append(actor)
-                # all_actors.append(actor)
-            # thread_actors.append(actors)
-            # thread_games.append(games[g_idx])
-        # thread = hanalearn.HanabiThreadLoop(thread_games, thread_actors, True)
-        # threads.append(thread)
-        # context.push_thread_loop(thread)
+    context = rela.Context()
+    threads = []
 
     games = create_envs(num_game, seed, num_player, bomb, max_len)
 
-    actors = []
-    for i in range(num_thread):
+    assert num_game % num_thread == 0
+    game_per_thread = num_game // num_thread
+    all_actors = []
+
+    for t_idx in range(num_thread):
+        thread_games = []
         thread_actors = []
-        for j in range(game_per_thread):
-            game_actors = []
+        for g_idx in range(t_idx * game_per_thread, (t_idx + 1) * game_per_thread):
+            actors = []
             convention_index = 0
             if len(convention) > 0:
                 convention_index = random.randint(0, len(convention) - 1)
-            for k in range(num_player):
+            for i in range(num_player):
                 actor = hanalearn.R2D2Actor(
-                    runners[k], # runner
+                    runners[i], # runner
                     num_player, # numPlayer
-                    k, # playerIdx
+                    i, # playerIdx
                     False, # vdn
-                    sad[k], # sad
-                    hide_action[k], # hideAction
+                    sad[i], # sad
+                    hide_action[i], # hideAction
                     convention, # convention
-                    act_parameterized[k], # act parameterized
+                    act_parameterized[i], # act parameterized
                     convention_index, # conventionIndex
-                    override[k], # conventionOverride
+                    override[i], # conventionOverride
                     belief_stats, # beliefStats
                 )
-
                 if belief_stats:
                     if belief_runner is None:
                         actor.set_belief_runner_stats(None)
                     else:
                         actor.set_belief_runner_stats(belief_runner)
-
-                game_actors.append(actor)
-            thread_actors.append(game_actors)
-        actors.append(thread_actors)
-
-    context, threads = create_threads(
-        num_thread,
-        game_per_thread,
-        actors,
-        games,
-    )
+                actors.append(actor)
+                all_actors.append(actor)
+            thread_actors.append(actors)
+            thread_games.append(games[g_idx])
+        thread = hanalearn.HanabiThreadLoop(thread_games, thread_actors, True)
+        threads.append(thread)
+        context.push_thread_loop(thread)
 
     for runner in runners:
         runner.start()
+
+    if belief_runner is not None:
+        belief_runner.start()
 
     context.start()
     context.join()
@@ -139,9 +115,40 @@ def evaluate(
     for runner in runners:
         runner.stop()
 
+    if belief_runner is not None:
+        belief_runner.stop()
+
     scores = [g.last_episode_score() for g in games]
     num_perfect = np.sum([1 for s in scores if s == 25])
     return np.mean(scores), num_perfect / len(scores), scores, num_perfect, all_actors
+
+
+def create_belief_runner(belief_model_path, device):
+    belief_model = None
+
+    if belief_model_path != "None":
+        from belief_model import ARBeliefModel
+
+        belief_config = utils.get_train_config(belief_model_path)
+
+        belief_model = ARBeliefModel.load(
+            belief_model_path,
+            device,
+            5,
+            10,
+            belief_config["fc_only"],
+            belief_config["parameterized_belief"],
+            belief_config["num_conventions"],
+        )
+
+    belief_runner = None
+
+    if belief_model is not None:
+        belief_runner = rela.BatchRunner(
+                belief_model, belief_model.device, 5000, ["sample"])
+
+
+    return belief_runner
 
 
 def evaluate_saved_model(
@@ -161,6 +168,7 @@ def evaluate_saved_model(
     agents = []
     sad = []
     hide_action = []
+    belief_model_path="None"
     if overwrite is None:
         overwrite = {}
     overwrite["vdn"] = False
@@ -185,6 +193,8 @@ def evaluate_saved_model(
             agents.append(agent)
             sad.append(cfg["sad"] if "sad" in cfg else cfg["greedy_extra"])
             hide_action.append(bool(cfg["hide_action"]))
+            if belief_stats:
+                belief_model_path = cfg["belief_model"]
         else:
             agent = utils.load_supervised_agent(weight_file, "cuda:0")
             agents.append(["r2d2", agent])
@@ -206,7 +216,8 @@ def evaluate_saved_model(
             device=device,
             convention=load_convention(convention),
             override=override,
-            belief_stats=belief_stats
+            belief_stats=belief_stats,
+            belief_model_path=belief_model_path,
         )
         scores.extend(score)
         perfect += p

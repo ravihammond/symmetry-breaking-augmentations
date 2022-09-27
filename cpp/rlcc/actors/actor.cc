@@ -7,6 +7,7 @@
 using namespace std;
 
 #define CV false
+#define BF false
 
 Actor::Actor(
         int seed,
@@ -24,13 +25,15 @@ Actor::Actor(
     , sentSignalStats_(false)
     , recordStats_(recordStats)
     , livesBeforeMove_(-1) 
-    , currentTwoStep_("X") {
+    , currentTwoStep_("X") 
+    , signalReceived_(false) {
 }
 
 void Actor::reset(const HanabiEnv& env) {
     (void)env;
     sentSignal_ = false;
     sentSignalStats_ = false;
+    signalReceived_ = false;
 }
 
 tuple<bool, bool> Actor::analyzeCardBelief(const vector<float>& b) {
@@ -83,6 +86,7 @@ hle::HanabiMove Actor::overrideMove(const HanabiEnv& env, hle::HanabiMove move,
             convention_[conventionIdx_].size() == 0) {
         return move;
     }
+    if(CV)printf("Move before override: %s\n", move.ToString().c_str());
 
     auto lastMove = env.getMove(env.getLastAction());
     auto signalMove = strToMove(convention_[conventionIdx_][0][0]);
@@ -101,7 +105,7 @@ hle::HanabiMove Actor::overrideMove(const HanabiEnv& env, hle::HanabiMove move,
 
     if (conventionOverride_ == 2 || conventionOverride_ == 3 ) {
         if (lastMove == signalMove) {
-            if(CV)printf("play response =================================\n");
+            if(CV)printf("play response\n");
             return responseMove;
         } else if (move == responseMove) {
             vector<hle::HanabiMove> exclude = {responseMove};
@@ -111,11 +115,11 @@ hle::HanabiMove Actor::overrideMove(const HanabiEnv& env, hle::HanabiMove move,
                         && movePlayableOnFireworks(env, responseMove, nextPlayer) 
                         && state.MoveIsLegal(signalMove)) {
                     sentSignal_ = true;
-                    if(CV)printf("play signal (move was response) **********************************\n");
+                    if(CV)printf("play signal (move was response)\n");
                     return signalMove;
                 }
             }
-            if(CV)printf("playing new move (move was response) =================================\n");
+            if(CV)printf("playing new move (move was response)\n");
             return different_action(env, exclude, actionQ, exploreAction, legalMoves);
         }
     }
@@ -124,12 +128,12 @@ hle::HanabiMove Actor::overrideMove(const HanabiEnv& env, hle::HanabiMove move,
         if (!sentSignal_ && movePlayableOnFireworks(env, responseMove, nextPlayer) 
                 && state.MoveIsLegal(signalMove)) {
             sentSignal_ = true;
-            if(CV)printf("play signal ========================================\n");
+            if(CV)printf("play signal\n");
             return signalMove;
         } else if (move == signalMove) {
             vector<hle::HanabiMove> exclude = {signalMove};
             if (conventionOverride_ == 3) exclude.push_back(responseMove);
-            if(CV)printf("playing new move (move was signal) *********************************\n");
+            if(CV)printf("playing new move (move was signal)\n");
             return different_action(env, exclude, actionQ, exploreAction, legalMoves);
         }
     }
@@ -420,102 +424,41 @@ void Actor::incrementStatsAfterMove(
 }
 
 void Actor::incrementBeliefStatsConvention(const HanabiEnv& env,
-        std::vector<hle::HanabiCardValue> sampledCards) {
-    (void)env;
-    (void)sampledCards;
-    if (convention_.size() == 0 || convention_[conventionIdx_].size() == 0) {
+        std::vector<hle::HanabiCardValue> sampledCards, int curPlayer) {
+    if (curPlayer != playerIdx_ 
+            || convention_.size() == 0 
+            || convention_[conventionIdx_].size() == 0) {
         return;
     }
 
-    printf("Sampled cards\n");
-    string colours[5] = {"R","Y","G","W","B"};
-    int ranks[5] = {1,2,3,4,5};
-    for (auto cardValue: sampledCards) {
-        printf("%s\n", cardValue.ToString().c_str());
-    }
-
+    auto& state = env.getHleState();
     auto partnerLastMove = env.getMove(env.getLastAction());
     auto myLastMove = env.getMove(env.getSecondLastAction());
     auto signalMove = strToMove(convention_[conventionIdx_][0][0]);
     auto responseMove = strToMove(convention_[conventionIdx_][0][1]);
 
-    //if ((myLastMove.MoveType() == hle::HanabiMove::kPlay 
-            //|| myLastMove.MoveType() == hle::HanabiMove::kDiscard) 
-            //&& signalReceived_
-            //&& myLastMove.CardIndex() <= responseMove.CardIndex()) {
-        //signalReceived_ = false;
-        //if(CV)printf("BELIEF STATS --- signal received reset\n");
-    //}
+    if ((myLastMove.MoveType() == hle::HanabiMove::kPlay 
+            || myLastMove.MoveType() == hle::HanabiMove::kDiscard) 
+            && signalReceived_
+            && myLastMove.CardIndex() <= responseMove.CardIndex()) {
+        signalReceived_ = false;
+        if(BF)printf("Signalled card moved\n");
+    }
 
-    //if (partnerLastMove == signalMove) {
-        //signalReceived_ = true;
-    //}
+    if (partnerLastMove == signalMove) {
+        signalReceived_ = true;
+        if(BF)printf("partner signal seen\n");
+    }
 
-    //if (signalReceived_) {
-        //incrementStat("response_should_be_playable");
-    //} else {
-        //incrementStat("response_should_not_be_playable");
-    //}
+    auto cardValue = sampledCards[responseMove.CardIndex()];
+    auto focusCard = hle::HanabiCard(cardValue, -1);
 
-    //if (movePlayableOnFireworks(env, responseMove, playerIdx_)) {
-
-    //}
-
-    auto& state = env.getHleState();
-    auto obs = env.getObsShowCards();
-    auto& allHands = obs.Hands();
-    auto partnerCards = allHands[playerIdx_].Cards();
-    auto focusCard = partnerCards[responseMove.CardIndex()];
-
-    printf("focusCard: %s, id: %d\n", focusCard.ToString().c_str(), focusCard.Id());
-
-
-    //if (state.CardPlayableOnFireworks(focusCard))
-        //return true;
-
-    //return false;
-
-    //auto& state = env.getHleState();
-    //auto cardValue = sampledCards[responseMove.CardIndex()];
-    //auto focusCard = hle::HanabiCard(cardValue, );
-
-    //if (state.CardPlayableOnFireworks(focusCard))
-
+    if (signalReceived_) {
+        incrementStat("belief_should_be_playable");
+        if(BF)printf("Card should be playable\n");
+        if (state.CardPlayableOnFireworks(focusCard)) {
+            incrementStat("belief_playable_correct");
+            if(BF)printf("Card playable corrent\n");
+        }
+    }
 }
-
-
-    //if (conventionOverride_ == 2 || conventionOverride_ == 3 ) {
-        //if (lastMove == signalMove) {
-            //if(CV)printf("play response =================================\n");
-            //return responseMove;
-        //} else if (move == responseMove) {
-            //vector<hle::HanabiMove> exclude = {responseMove};
-            //if (conventionOverride_ == 3) {
-                //exclude.push_back(signalMove);
-                //if (!sentSignal_ 
-                        //&& movePlayableOnFireworks(env, responseMove, nextPlayer) 
-                        //&& state.MoveIsLegal(signalMove)) {
-                    //sentSignal_ = true;
-                    //if(CV)printf("play signal (move was response) **********************************\n");
-                    //return signalMove;
-                //}
-            //}
-            //if(CV)printf("playing new move (move was response) =================================\n");
-            //return different_action(env, exclude, actionQ, exploreAction, legalMoves);
-        //}
-    //}
-
-    //if (conventionOverride_ == 1 || conventionOverride_ == 3) {
-        //if (!sentSignal_ && movePlayableOnFireworks(env, responseMove, nextPlayer) 
-                //&& state.MoveIsLegal(signalMove)) {
-            //sentSignal_ = true;
-            //if(CV)printf("play signal ========================================\n");
-            //return signalMove;
-        //} else if (move == signalMove) {
-            //vector<hle::HanabiMove> exclude = {signalMove};
-            //if (conventionOverride_ == 3) exclude.push_back(responseMove);
-            //if(CV)printf("playing new move (move was signal) *********************************\n");
-            //return different_action(env, exclude, actionQ, exploreAction, legalMoves);
-        //}
-    //}
-
