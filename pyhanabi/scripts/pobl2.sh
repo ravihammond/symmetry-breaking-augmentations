@@ -31,7 +31,7 @@ python selfplay.py \
        --belief_model exps/pbelief_obl1f_CR-P0/model0.pthw \
        --load_model None \
        --net publ-lstm \
-       --convention conventions/CR-P0.json \
-       --num_conventions 1 \
+       --convention conventions/all_colours.json \
+       --num_conventions 25 \
        --parameterized 1 \
        --wandb 1 \

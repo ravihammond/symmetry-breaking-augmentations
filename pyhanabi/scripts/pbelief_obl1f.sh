@@ -1,6 +1,6 @@
 #!/bin/bash
 python train_belief.py \
-       --save_dir exps/pbelief_obl1f_CR-P1_CB-P1 \
+       --save_dir exps/pbelief_obl1f_all_colours \
        --num_thread 24 \
        --num_game_per_thread 80 \
        --batchsize 128 \
@@ -11,14 +11,14 @@ python train_belief.py \
        --burn_in_frames 10000 \
        --replay_buffer_size 100000 \
        --epoch_len 1000 \
-       --num_epoch 2001 \
+       --num_epoch 5001 \
        --train_device cuda:0 \
        --act_device cuda:1 \
        --explore 1 \
        --policy ../training_models/obl1/model0.pthw \
-       --seed 2254257 \
+       --seed 1298329 \
        --num_player 2 \
-       --convention conventions/CR-P1_CB-P1.json \
-       --num_conventions 2 \
+       --convention conventions/all_colours.json \
+       --num_conventions 25 \
        --convention_act_override 3 \
        --parameterized 1 \

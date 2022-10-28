@@ -150,7 +150,6 @@ class ActGroup:
 
                     if len(self.convention) > 0:
                         convention_index = (convention_index + 1) % len(self.convention)
-                    print("partner runner len:", len(self.partner_runners))
 
                     if len(self.partner_runners) > 0:
                         partner_idx = (partner_idx + 1) % len(self.partner_runners)
@@ -165,9 +164,6 @@ class ActGroup:
                             sad = self.partner_cfgs[partner_idx]["sad"]
                             hide_action = self.partner_cfgs[partner_idx]["hide_action"]
                             weight = self.partner_cfgs[partner_idx]["weight"]
-                        print(f"convention index: {convention_index}, " + \
-                                f"sad index: {partner_idx}, " + \
-                                f"sad: {sad}, player: {k}, weight: {weight}")
 
                         actor = hanalearn.R2D2Actor(
                             runner,
