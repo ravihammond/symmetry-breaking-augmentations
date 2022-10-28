@@ -8,6 +8,7 @@ import argparse
 import os
 import sys
 import pprint
+pprint = pprint.pprint
 import itertools
 from collections import defaultdict
 import numpy as np
@@ -24,13 +25,12 @@ from tools import model_zoo
 def filter_include(entries, includes):
     if not isinstance(includes, list):
         includes = [includes]
+
     keep = []
     for entry in entries:
         for include in includes:
-            if include not in entry:
-                break
-        else:
-            keep.append(entry)
+            if include in entry:
+                keep.append(entry)
     return keep
 
 
@@ -63,19 +63,22 @@ def cross_play(models, num_player, num_game, seed):
         )
 
 
-parser = argparse.ArgumentParser()
-parser.add_argument("--root", default=None, type=str, required=True)
-parser.add_argument("--num_player", default=None, type=int, required=True)
-parser.add_argument("--include", default=None, type=str, nargs="+")
-parser.add_argument("--exclude", default=None, type=str, nargs="+")
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--root", default=None, type=str)
+    parser.add_argument("--num_player", default=None, type=int, required=True)
+    parser.add_argument("--include", default=None, type=str, nargs="+")
+    parser.add_argument("--exclude", default=None, type=str, nargs="+")
 
-args = parser.parse_args()
+    args = parser.parse_args()
 
-models = common_utils.get_all_files(args.root, "model0.pthw")
-if args.include is not None:
-    models = filter_include(models, args.include)
-if args.exclude is not None:
-    models = filter_exclude(models, args.exclude)
+    models = common_utils.get_all_files(args.root, "model0.pthw")
+    if args.include is not None:
+        models = filter_include(models, args.include)
+    if args.exclude is not None:
+        models = filter_exclude(models, args.exclude)
 
-pprint.pprint(models)
-cross_play(models, args.num_player, 1000, 1)
+    models = sorted(models, key=str.lower)
+
+    pprint(models)
+    cross_play(models, args.num_player, 1000, 1)
