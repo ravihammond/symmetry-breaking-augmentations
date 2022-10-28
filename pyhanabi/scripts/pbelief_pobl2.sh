@@ -16,9 +16,9 @@ python train_belief.py \
        --act_device cuda:1 \
        --explore 1 \
        --policy exps/pobl2_CR-P0/model0.pthw \
-       --seed 2254257 \
+       --seed 233249 \
        --num_player 2 \
        --load_model 1 \
        --convention conventions/CR-P0.json \
        --num_conventions 1 \
-       --parameterized_belief 1 \
+       --parameterized 1 \

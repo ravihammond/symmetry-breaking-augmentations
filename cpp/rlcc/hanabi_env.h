@@ -15,208 +15,207 @@
 namespace hle = hanabi_learning_env;
 
 class HanabiEnv {
- public:
-  HanabiEnv(
-      const std::unordered_map<std::string, std::string>& gameParams,
-      int maxLen,
-      bool verbose)
-      : game_(gameParams)
-      , state_(nullptr)
-      , maxLen_(maxLen)
-      , verbose_(verbose)
-      , lastActivePlayer_(-1)
-      , lastMove_(hle::HanabiMove::kInvalid, -1, -1, -1, -1)
-      , secondLastMove_(hle::HanabiMove::kInvalid, -1, -1, -1, -1)
-      , lastEpisodeScore_(-1) {
-    auto params = game_.Parameters();
+public:
+    HanabiEnv(
+            const std::unordered_map<std::string, std::string>& gameParams,
+            int maxLen,
+            bool verbose)
+        : game_(gameParams)
+          , state_(nullptr)
+          , maxLen_(maxLen)
+          , verbose_(verbose)
+          , lastActivePlayer_(-1)
+          , lastMove_(hle::HanabiMove::kInvalid, -1, -1, -1, -1)
+          , secondLastMove_(hle::HanabiMove::kInvalid, -1, -1, -1, -1)
+          , lastEpisodeScore_(-1) {
+        auto params = game_.Parameters();
 
-    if (verbose_) {
-      std::cout << "Hanabi game created, with parameters:\n";
-      for (const auto& item : params) {
-        std::cout << "  " << item.first << "=" << item.second << "\n";
-      }
-    }
-  }
-
-
-  //HanabiEnv(const HanabiEnv& state) = default;
-
-  std::tuple<int, int, int> featureSize(bool sad) const {
-    auto encoder = hle::CanonicalObservationEncoder(&game_);
-    int size = encoder.Shape()[0];
-    if (sad) {
-      size += hle::LastActionSectionLength(game_);
+        if (verbose_) {
+            std::cout << "Hanabi game created, with parameters:\n";
+            for (const auto& item : params) {
+                std::cout << "  " << item.first << "=" << item.second << "\n";
+            }
+        }
     }
 
-    int priv = size - handFeatureSize();
-    int publ = size - game_.NumPlayers() * handFeatureSize();
-    // TODO: remove the "size" part of the return value
-    return std::make_tuple(size, priv, publ);
-  }
+    //HanabiEnv(const HanabiEnv& state) = default;
 
-  int numAction() const {
-    return game_.MaxMoves() + 1;
-  }
+    std::tuple<int, int, int> featureSize(bool sad) const {
+        auto encoder = hle::CanonicalObservationEncoder(&game_);
+        int size = encoder.Shape()[0];
+        if (sad) {
+            size += hle::LastActionSectionLength(game_);
+        }
 
-  int noOpUid() const {
-    return numAction() - 1;
-  }
-
-  int handFeatureSize() const {
-    return game_.HandSize() * game_.NumColors() * game_.NumRanks();
-  }
-
-  int getLastAction() const {
-    return game_.GetMoveUid(lastMove_);
-  }
-
-  int getSecondLastAction() const {
-    return game_.GetMoveUid(secondLastMove_);
-  }
-
-  hle::HanabiMove getMove(int uid) const {
-    return game_.GetMove(uid);
-  }
-
-  hle::HanabiObservation getObsShowCards() const {
-    int player = 0;
-    bool show = true;
-    auto obs = hle::HanabiObservation(*state_, player, show);
-    return obs;
-  }
-
-  void reset() {
-    assert(terminated());
-    state_ = std::make_unique<hle::HanabiState>(&game_);
-    // chance player
-    while (state_->CurPlayer() == hle::kChancePlayerId) {
-      state_->ApplyRandomChance();
-    }
-    numStep_ = 0;
-  }
-
-  void resetWithDeck(const std::vector<hle::HanabiCardValue>& deck) {
-    assert(terminated());
-    state_ = std::make_unique<hle::HanabiState>(&game_);
-    state_->SetDeckOrder(deck);
-    // chance player
-    while (state_->CurPlayer() == hle::kChancePlayerId) {
-      state_->ApplyRandomChance();
-    }
-    numStep_ = 0;
-  }
-
-  void step(hle::HanabiMove move) {
-    assert(maxLen_ < 0 || numStep_ < maxLen_);
-
-    ++numStep_;
-    lastActivePlayer_ = state_->CurPlayer();
-    secondLastMove_ = lastMove_;
-    lastMove_ = move;
-
-    auto [r, t] = applyMove(*state_, move, numStep_ == maxLen_);
-    if (t) {
-      lastEpisodeScore_ = state_->Score();
+        int priv = size - handFeatureSize();
+        int publ = size - game_.NumPlayers() * handFeatureSize();
+        // TODO: remove the "size" part of the return value
+        return std::make_tuple(size, priv, publ);
     }
 
-    if (colorReward_ > 0 && move.MoveType() == hle::HanabiMove::kRevealColor) {
-      r += colorReward_;
+    int numAction() const {
+        return game_.MaxMoves() + 1;
     }
 
-    stepReward_ = r;
-  }
-
-  float stepReward() const {
-    return stepReward_;
-  }
-
-  int lastActivePlayer() const {
-    assert(lastActivePlayer_ != -1);
-    return lastActivePlayer_;
-  }
-
-  hle::HanabiMove lastMove() const {
-    return lastMove_;
-  }
-
-  hle::HanabiMove secondLastMove() const {
-    return secondLastMove_;
-  }
-
-  int numStep() const {
-    return numStep_;
-  }
-
-  bool terminated() const {
-    if (state_ == nullptr) {
-      return true;
+    int noOpUid() const {
+        return numAction() - 1;
     }
 
-    if (state_->IsTerminal() || (maxLen_ > 0 && numStep_ == maxLen_)) {
-      return true;
+    int handFeatureSize() const {
+        return game_.HandSize() * game_.NumColors() * game_.NumRanks();
     }
 
-    return false;
-  }
+    int getLastAction() const {
+        return game_.GetMoveUid(lastMove_);
+    }
 
-  int getCurrentPlayer() const {
-    assert(state_ != nullptr);
-    return state_->CurPlayer();
-  }
+    int getSecondLastAction() const {
+        return game_.GetMoveUid(secondLastMove_);
+    }
 
-  int lastEpisodeScore() const {
-    return lastEpisodeScore_;
-  }
+    hle::HanabiMove getMove(int uid) const {
+        return game_.GetMove(uid);
+    }
 
-  std::vector<std::string> deckHistory() const {
-    return state_->DeckHistory();
-  }
+    hle::HanabiObservation getObsShowCards() const {
+        int player = 0;
+        bool show = true;
+        auto obs = hle::HanabiObservation(*state_, player, show);
+        return obs;
+    }
 
-  const hle::HanabiState& getHleState() const {
-    assert(state_ != nullptr);
-    return *state_;
-  }
+    void reset() {
+        assert(terminated());
+        state_ = std::make_unique<hle::HanabiState>(&game_);
+        // chance player
+        while (state_->CurPlayer() == hle::kChancePlayerId) {
+            state_->ApplyRandomChance();
+        }
+        numStep_ = 0;
+    }
 
-  const hle::HanabiGame& getHleGame() const {
-    return game_;
-  }
+    void resetWithDeck(const std::vector<hle::HanabiCardValue>& deck) {
+        assert(terminated());
+        state_ = std::make_unique<hle::HanabiState>(&game_);
+        state_->SetDeckOrder(deck);
+        // chance player
+        while (state_->CurPlayer() == hle::kChancePlayerId) {
+            state_->ApplyRandomChance();
+        }
+        numStep_ = 0;
+    }
 
-  int getNumPlayers() const {
-    return game_.NumPlayers();
-  }
+    void step(hle::HanabiMove move) {
+        assert(maxLen_ < 0 || numStep_ < maxLen_);
 
-  int getScore() const {
-    return state_->Score();
-  }
+        ++numStep_;
+        lastActivePlayer_ = state_->CurPlayer();
+        secondLastMove_ = lastMove_;
+        lastMove_ = move;
 
-  int getLife() const {
-    return state_->LifeTokens();
-  }
+        auto [r, t] = applyMove(*state_, move, numStep_ == maxLen_);
+        if (t) {
+            lastEpisodeScore_ = state_->Score();
+        }
 
-  int getInfo() const {
-    return state_->InformationTokens();
-  }
+        if (colorReward_ > 0 && move.MoveType() == hle::HanabiMove::kRevealColor) {
+            r += colorReward_;
+        }
 
-  std::vector<int> getFireworks() const {
-    return state_->Fireworks();
-  }
+        stepReward_ = r;
+    }
 
-  void setColorReward(float colorReward) {
-    colorReward_ = colorReward;
-  }
+    float stepReward() const {
+        return stepReward_;
+    }
 
- protected:
-  const hle::HanabiGame game_;
-  std::unique_ptr<hle::HanabiState> state_;
-  const int maxLen_;
-  const bool verbose_;
+    int lastActivePlayer() const {
+        assert(lastActivePlayer_ != -1);
+        return lastActivePlayer_;
+    }
 
-  int numStep_;
-  float stepReward_;
-  int lastActivePlayer_;
-  hle::HanabiMove lastMove_;
-  hle::HanabiMove secondLastMove_;
-  int lastEpisodeScore_;
+    hle::HanabiMove lastMove() const {
+        return lastMove_;
+    }
 
-  float colorReward_ = -1;
+    hle::HanabiMove secondLastMove() const {
+        return secondLastMove_;
+    }
+
+    int numStep() const {
+        return numStep_;
+    }
+
+    bool terminated() const {
+        if (state_ == nullptr) {
+            return true;
+        }
+
+        if (state_->IsTerminal() || (maxLen_ > 0 && numStep_ == maxLen_)) {
+            return true;
+        }
+
+        return false;
+    }
+
+    int getCurrentPlayer() const {
+        assert(state_ != nullptr);
+        return state_->CurPlayer();
+    }
+
+    int lastEpisodeScore() const {
+        return lastEpisodeScore_;
+    }
+
+    std::vector<std::string> deckHistory() const {
+        return state_->DeckHistory();
+    }
+
+    const hle::HanabiState& getHleState() const {
+        assert(state_ != nullptr);
+        return *state_;
+    }
+
+    const hle::HanabiGame& getHleGame() const {
+        return game_;
+    }
+
+    int getNumPlayers() const {
+        return game_.NumPlayers();
+    }
+
+    int getScore() const {
+        return state_->Score();
+    }
+
+    int getLife() const {
+        return state_->LifeTokens();
+    }
+
+    int getInfo() const {
+        return state_->InformationTokens();
+    }
+
+    std::vector<int> getFireworks() const {
+        return state_->Fireworks();
+    }
+
+    void setColorReward(float colorReward) {
+        colorReward_ = colorReward;
+    }
+
+protected:
+    const hle::HanabiGame game_;
+    std::unique_ptr<hle::HanabiState> state_;
+    const int maxLen_;
+    const bool verbose_;
+
+    int numStep_;
+    float stepReward_;
+    int lastActivePlayer_;
+    hle::HanabiMove lastMove_;
+    hle::HanabiMove secondLastMove_;
+    int lastEpisodeScore_;
+
+    float colorReward_ = -1;
 };

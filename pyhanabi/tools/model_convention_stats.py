@@ -36,6 +36,7 @@ def convention_data(args):
 
     model_name = os.path.basename(os.path.dirname(args.weight1))
     create_figures(stats, conventions, model_name, args)
+    pprint(stats)
     # create_plots(stats, conventions)
 
 def load_convention_strings(convention_path):

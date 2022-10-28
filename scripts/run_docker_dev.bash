@@ -7,5 +7,3 @@ docker run --rm -it \
     --env WANDB_TOKEN=$(cat wandb_api_key.txt) \
     ravihammond/hanabi-project:dev \
     ${@:-bash}
-
-
