@@ -207,10 +207,7 @@ void R2D2Actor::observeBeforeAct(HanabiEnv& env) {
     }
 
     // add convention index information for parameterization
-    //input["num_conventions"] = torch::tensor((float)convention_.size());
     input["convention_idx"] = torch::tensor(conventionIdx_);
-    //input["act_parameterized"] = torch::tensor(actParameterized_);
-    //input["belief_parameterized"] = torch::tensor(actParameterized_);
 
     // push before we add hidden
     if (replayBuffer_ != nullptr) {
@@ -305,7 +302,7 @@ void R2D2Actor::act(HanabiEnv& env, const int curPlayer) {
                     hand);
 
             if (success && beliefStats_) {
-                incrementBeliefStatsConvention(env, sampledCards_);
+                incrementBeliefStatsConvention(env, sampledCards_, curPlayer);
             }
         }
         if (success) {
@@ -341,10 +338,7 @@ void R2D2Actor::act(HanabiEnv& env, const int curPlayer) {
             }
             addHid(partnerInput, partner->prevHidden_);
             assert(fictReply_.isNull());
-            //partnerInput["num_conventions"] = torch::tensor((float)convention_.size());
             partnerInput["convention_idx"] = torch::tensor(conventionIdx_);
-            //partnerInput["act_parameterized"] = torch::tensor(actParameterized_);
-            //partnerInput["belief_parameterized"] = torch::tensor(actParameterized_);
             fictReply_ = partner->runner_->call("act", partnerInput);
         }
 
@@ -364,7 +358,6 @@ void R2D2Actor::act(HanabiEnv& env, const int curPlayer) {
     }
 
     auto move = state.ParentGame()->GetMove(action);
-    if(PR)printf("Move before override: %s\n", move.ToString().c_str());
     move = overrideMove(env, move, actionQ, exploreAction, legalMoves);
 
     if (shuffleColor_ && move.MoveType() == hle::HanabiMove::Type::kRevealColor) {

@@ -11,6 +11,8 @@ import numpy as np
 import torch
 import sys
 import random
+import pprint
+pprint = pprint.pprint
 
 from create import *
 import rela
@@ -34,6 +36,7 @@ def evaluate(
     override=[0, 0],
     act_parameterized=[0, 0],
     belief_stats=False,
+    belief_model_path="None",
 ):
     """
     evaluate agents as long as they have a "act" function
@@ -48,16 +51,18 @@ def evaluate(
         sad = [sad for _ in range(num_player)]
 
     # Create Batch Runners only if agent is a learned r2d2 agent.
-    runners = [
-        rela.BatchRunner(agent.clone(device), device, 1000, ["act"]) 
-        if isinstance(agent, r2d2.R2D2Agent)
-        else None
-        for agent in agents
-    ]
+    runners = [rela.BatchRunner(agent.clone(device), device, 1000, ["act"])
+            for agent in agents]
+
+    belief_runner = None
+    if belief_stats:
+        belief_runner = create_belief_runner(belief_model_path, device)
+
 
     context = rela.Context()
-    games = create_envs(num_game, seed, num_player, bomb, max_len)
     threads = []
+
+    games = create_envs(num_game, seed, num_player, bomb, max_len)
 
     assert num_game % num_thread == 0
     game_per_thread = num_game // num_thread
@@ -83,8 +88,13 @@ def evaluate(
                     act_parameterized[i], # act parameterized
                     convention_index, # conventionIndex
                     override[i], # conventionOverride
-                    False, # beliefStats
+                    belief_stats, # beliefStats
                 )
+                if belief_stats:
+                    if belief_runner is None:
+                        actor.set_belief_runner_stats(None)
+                    else:
+                        actor.set_belief_runner_stats(belief_runner)
                 actors.append(actor)
                 all_actors.append(actor)
             thread_actors.append(actors)
@@ -94,19 +104,51 @@ def evaluate(
         context.push_thread_loop(thread)
 
     for runner in runners:
-        if isinstance(runner, rela.BatchRunner):
-            runner.start()
+        runner.start()
+
+    if belief_runner is not None:
+        belief_runner.start()
 
     context.start()
     context.join()
 
     for runner in runners:
-        if isinstance(runner, rela.BatchRunner):
-            runner.stop()
+        runner.stop()
+
+    if belief_runner is not None:
+        belief_runner.stop()
 
     scores = [g.last_episode_score() for g in games]
     num_perfect = np.sum([1 for s in scores if s == 25])
     return np.mean(scores), num_perfect / len(scores), scores, num_perfect, all_actors
+
+
+def create_belief_runner(belief_model_path, device):
+    belief_model = None
+
+    if belief_model_path != "None":
+        from belief_model import ARBeliefModel
+
+        belief_config = utils.get_train_config(belief_model_path)
+
+        belief_model = ARBeliefModel.load(
+            belief_model_path,
+            device,
+            5,
+            10,
+            belief_config["fc_only"],
+            belief_config["parameterized_belief"],
+            belief_config["num_conventions"],
+        )
+
+    belief_runner = None
+
+    if belief_model is not None:
+        belief_runner = rela.BatchRunner(
+                belief_model, belief_model.device, 5000, ["sample"])
+
+
+    return belief_runner
 
 
 def evaluate_saved_model(
@@ -126,6 +168,7 @@ def evaluate_saved_model(
     agents = []
     sad = []
     hide_action = []
+    belief_model_path="None"
     if overwrite is None:
         overwrite = {}
     overwrite["vdn"] = False
@@ -150,6 +193,8 @@ def evaluate_saved_model(
             agents.append(agent)
             sad.append(cfg["sad"] if "sad" in cfg else cfg["greedy_extra"])
             hide_action.append(bool(cfg["hide_action"]))
+            if belief_stats:
+                belief_model_path = cfg["belief_model"]
         else:
             agent = utils.load_supervised_agent(weight_file, "cuda:0")
             agents.append(["r2d2", agent])
@@ -171,6 +216,8 @@ def evaluate_saved_model(
             device=device,
             convention=load_convention(convention),
             override=override,
+            belief_stats=belief_stats,
+            belief_model_path=belief_model_path,
         )
         scores.extend(score)
         perfect += p

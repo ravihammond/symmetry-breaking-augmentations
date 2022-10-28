@@ -325,7 +325,6 @@ def selfplay(args):
             % (epoch, score, perfect * 100, model_saved)
         )
 
-
         if clone_bot is not None:
             score, perfect, _, scores, eval_actors = evaluate(
                 [clone_bot] + [eval_agent for _ in range(args.num_player - 1)],

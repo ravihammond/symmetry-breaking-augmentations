@@ -43,6 +43,7 @@ def record_total_scores(stats, score, perfect, scores):
     stats["non_zero_mean"] = non_zero_mean
     stats["bomb_out_rate"] = bomb_out_rate
 
+
 def calculate_scores(stats, conventions, convention_scores):
     for convention in conventions:
         scores = convention_scores[convention]
@@ -78,6 +79,7 @@ def record_actor_stats(stats, actor_stats, convention_str, player):
     convention_stats(stats, actor_stats, player, convention_str, "signal")
     convention_stats(stats, actor_stats, player, convention_str, "response")
     convention_lose_life_stats(stats, actor_stats, player, convention_str)
+    # belief_sample_stats(stats, actor_stats)
 
  
 def move_stats(stats, actor_stats, player, convention=None):
@@ -125,6 +127,18 @@ def convention_lose_life_stats(stats, actor_stats, player, convention_str):
     stats[f"{prefix}_{stat_name}"] += int(actor_stats[stat_name])
 
 
+def belief_sample_stats(stats, actor_stats):
+    should_be_playable = "belief_should_be_playable"
+    playable_correct = "belief_playable_correct"
+    should_not_be_playable = "belief_should_not_be_playable"
+    not_playable_correct = "belief_not_playable_correct"
+
+    stats[should_be_playable] += int(actor_stats[should_be_playable])
+    stats[playable_correct] += int(actor_stats[playable_correct])
+    stats[should_not_be_playable] += int(actor_stats[should_not_be_playable])
+    stats[not_playable_correct] += int(actor_stats[not_playable_correct])
+
+
 def evaluate_percentages(stats, conventions):
     for player in range(2):
         move_percentages(stats, player)
@@ -133,12 +147,15 @@ def evaluate_percentages(stats, conventions):
             move_percentages(stats, player, convention)
             convention_percentages(stats, player, convention, "signal")
             convention_percentages(stats, player, convention, "response")
+    # belief_percentages(stats)
+
 
 def move_percentages(stats, player, convention=None):
     percent_move_type(stats, player, CARD_INDEX_MAP, "play", convention)
     percent_move_type(stats, player, CARD_INDEX_MAP, "discard", convention)
     percent_move_type(stats, player, COLOUR_MOVE_MAP, "hint", convention, "_colour")
     percent_move_type(stats, player, RANK_MOVE_MAP, "hint", convention, "_rank")
+
 
 def percent_move_type(stats, player, move_map, move_type, 
         convention, move_type_suffix=""):
@@ -176,7 +193,20 @@ def record_percent(stats, player, move_type, move_total):
     stat_total = stats[f"actor{player}_{move_total}"]
     stats[f"actor{player}_{move_type}%"] = percent(stat, stat_total)
 
+
+def belief_percentages(stats):
+    should_be_playable = "belief_should_be_playable"
+    playable_correct = "belief_playable_correct"
+    should_not_be_playable = "belief_should_not_be_playable"
+    not_playable_correct = "belief_not_playable_correct"
+
+    stats[f"{playable_correct}%"] = percent(
+            stats[playable_correct], stats[should_be_playable])
+    stats[f"{not_playable_correct}%"] = percent(
+            stats[not_playable_correct], stats[should_not_be_playable])
+
 def percent(n, total):
     if total == 0:
         return 0
     return (n / total)
+

@@ -82,7 +82,7 @@ protected:
     hle::HanabiMove strToMove(std::string key);
 
     virtual void incrementBeliefStatsConvention(const HanabiEnv& env,
-        std::vector<hle::HanabiCardValue> sampledCards);
+        std::vector<hle::HanabiCardValue> sampledCards, int curPlayer);
 
     std::mt19937 rng_;
     const int playerIdx_;
@@ -107,4 +107,5 @@ protected:
         {'1', 0}, {'2', 1}, {'3', 2}, {'4', 3}, {'5', 4} };
     int livesBeforeMove_;
     std::string currentTwoStep_;
+    bool signalReceived_;
 };
