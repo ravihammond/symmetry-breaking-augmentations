@@ -44,8 +44,8 @@ class ActGroup:
         act_parameterized,
         convention_act_override,
         convention_fict_act_override,
-        partner_agent,
-        partner_cfg,
+        partner_agents,
+        partner_cfgs,
         static_partner,
         use_experience,
     ):
@@ -67,7 +67,7 @@ class ActGroup:
         self.gamma = gamma
 
         self.model_runners = []
-        for i, dev in enumerate(self.devices):
+        for dev in self.devices:
             runner = rela.BatchRunner(agent.clone(dev), dev)
             runner.add_method("act", 5000)
             runner.add_method("compute_priority", 100)
@@ -77,11 +77,13 @@ class ActGroup:
         self.num_runners = len(self.model_runners)
 
         self.partner_runners = []
-        if static_partner:
-            for i, dev in enumerate(self.devices):
-                runner = rela.BatchRunner(partner_agent.clone(dev), dev)
-                runner.add_method("act", 5000)
-                self.partner_runners.append(runner)
+        if static_partner and partner_agents is not None:
+            for dev in self.devices:
+                runners = []
+                for agent in partner_agents:
+                    runners.append(
+                            rela.BatchRunner(agent.clone(dev), dev, 5000, ["act"]))
+                self.partner_runners.append(runners)
 
         self.off_belief = off_belief
         self.belief_model = belief_model
@@ -91,14 +93,13 @@ class ActGroup:
             for bm in belief_model:
                 print("add belief model to: ", bm.device)
                 self.belief_runner.append(
-                    rela.BatchRunner(bm, bm.device, 5000, ["sample"])
-                )
+                    rela.BatchRunner(bm, bm.device, 5000, ["sample"]))
+
         self.convention = convention
         self.act_parameterized = act_parameterized
         self.convention_act_override = convention_act_override
         self.convention_fict_act_override = convention_fict_act_override
-        self.partner_agent = partner_agent
-        self.partner_cfg = partner_cfg
+        self.partner_cfgs = partner_cfgs
         self.static_partner = static_partner
         self.use_experience = use_experience
 
@@ -139,30 +140,46 @@ class ActGroup:
                     thread_actors.append([actor])
                 actors.append(thread_actors)
         elif self.method == "iql":
+
+            partner_idx = -1
+            convention_index = -1
             for i in range(self.num_thread):
                 thread_actors = []
                 for j in range(self.num_game_per_thread):
                     game_actors = []
-                    convention_index = -1 if len(self.convention) == 0 \
-                            else convention_index_count % len(self.convention)
+
+                    if len(self.convention) > 0:
+                        convention_index = (convention_index + 1) % len(self.convention)
+                    print("partner runner len:", len(self.partner_runners))
+
+                    if len(self.partner_runners) > 0:
+                        partner_idx = (partner_idx + 1) % len(self.partner_runners)
+
                     for k in range(self.num_player):
-                        runners = self.model_runners
+                        runner = self.model_runners[i % self.num_runners]
+                        sad = self.sad
+                        hide_action = self.hide_action
+                        weight = "cosca"
                         if k > 0 and self.static_partner:
-                            runners = self.partner_runners
-                            self.sad = self.partner_cfg["sad"]
-                            self.hide_action = self.partner_cfg["hide_action"]
+                            runner = self.partner_runners[i % self.num_runners][partner_idx]
+                            sad = self.partner_cfgs[partner_idx]["sad"]
+                            hide_action = self.partner_cfgs[partner_idx]["hide_action"]
+                            weight = self.partner_cfgs[partner_idx]["weight"]
+                        print(f"convention index: {convention_index}, " + \
+                                f"sad index: {partner_idx}, " + \
+                                f"sad: {sad}, player: {k}, weight: {weight}")
 
                         actor = hanalearn.R2D2Actor(
-                            runners[i % self.num_runners],
+                            runner,
                             self.seed,
                             self.num_player,
                             k,
                             self.explore_eps,
                             self.boltzmann_t,
                             False,
-                            self.sad,
+                            sad,
                             self.shuffle_color,
-                            self.hide_action,
+                            hide_action,
                             self.trinary,
                             self.replay_buffer,
                             self.multi_step,
@@ -185,13 +202,18 @@ class ActGroup:
                                 )
                         self.seed += 1
                         game_actors.append(actor)
+
                     for k in range(self.num_player):
                         partners = game_actors[:]
                         partners[k] = None
                         game_actors[k].set_partners(partners)
+
+
                     thread_actors.append(game_actors)
                     convention_index_count += 1
+
                 actors.append(thread_actors)
+
         self.actors = actors
         print("ActGroup created")
 
@@ -199,8 +221,9 @@ class ActGroup:
         for runner in self.model_runners:
             runner.start()
 
-        for runner in self.partner_runners:
-            runner.start()
+        for runners in self.partner_runners:
+            for runner in runners:
+                runner.start()
 
         if self.belief_runner is not None:
             for runner in self.belief_runner:

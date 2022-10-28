@@ -28,11 +28,6 @@ import utils
 from convention_belief import ConventionBelief
 from tools.wandb_logger import log_wandb
 
-def load_convention(convention_path):
-    if convention_path == "None":
-        return []
-    convention_file = open(convention_path)
-    return json.load(convention_file)
 
 def selfplay(args):
     if not os.path.exists(args.save_dir):
@@ -146,28 +141,9 @@ def selfplay(args):
                 belief_config["num_conventions"],
             ))
 
-    partner_agent = None
-    partner_cfg = {"sad": False, "hide_action": False}
-    if args.static_partner and args.partner_model != "None":
-        overwrite = {}
-        overwrite["vdn"] = False
-        overwrite["device"] = "cuda:0"
-        overwrite["boltzmann_act"] = False
-        try: 
-            state_dict = torch.load(args.partner_model)
-        except:
-            sys.exit(f"weight_file {args.partner_agent} can't be loaded")
+    partner_agents, partner_cfgs = load_partner_agents(args.partner_models)
 
-        if "fc_v.weight" in state_dict.keys():
-            partner_agent, cfg = utils.load_agent(
-                    args.partner_model, overwrite)
-            partner_cfg["sad"] = cfg["sad"] if "sad" in cfg else cfg["greedy_extra"]
-            partner_cfg["hide_action"] = bool(cfg["hide_action"])
-        else:
-            partner_agent = utils.load_supervised_agent(
-                    args.partner_agent, args.act_device)
-
-    convention = load_convention(args.convention)
+    convention = load_json_list(args.convention)
 
     convention_act_override = [0, args.convention_act_override]
     use_experience = [1, 0] 
@@ -196,8 +172,8 @@ def selfplay(args):
         args.parameterized, # act_parameterized
         convention_act_override,
         args.convention_fict_act_override,
-        partner_agent,
-        partner_cfg,
+        partner_agents,
+        partner_cfgs,
         args.static_partner,
         use_experience,
     )
@@ -293,10 +269,6 @@ def selfplay(args):
         eval_seed = (9917 + epoch * 999999) % 7777777
         eval_agent.load_state_dict(agent.state_dict())
         eval_agents = [eval_agent for _ in range(args.num_player)]
-        if args.static_partner:
-            eval_agents = [eval_agent] + [
-                partner_agent for _ in range(args.num_player - 1)
-            ]
 
         score, perfect, scores, _, eval_actors = evaluate(
             eval_agents,
@@ -309,8 +281,11 @@ def selfplay(args):
             device=args.train_device,
             convention=convention,
             override=convention_act_override,
-            act_parameterized=[args.parameterized, args.parameterized]
+            act_parameterized=[args.parameterized, args.parameterized],
+            partner_agents=partner_agents,
+            partner_cfgs=partner_cfgs,
         )
+
         if args.wandb:
             log_wandb(score, perfect, scores, eval_actors, last_loss, convention)
 
@@ -345,7 +320,55 @@ def selfplay(args):
                 % (epoch, 100 * np.mean(success_fict))
             )
 
-        print("==========")
+        print("==========", flush=True)
+
+
+def load_json_list(convention_path):
+    if convention_path == "None":
+        return []
+    convention_file = open(convention_path)
+    return json.load(convention_file)
+
+
+def load_partner_agents(partner_models):
+    if partner_models is "None":
+        return None, None
+
+    partner_model_paths = load_json_list(partner_models)
+
+    partner_agents = []
+    partner_cfgs = []
+
+    for partner_model_path in partner_model_paths:
+        partner_cfg = {"sad": False, "hide_action": False}
+
+        overwrite = {}
+        overwrite["vdn"] = False
+        overwrite["device"] = "cuda:0"
+        overwrite["boltzmann_act"] = False
+        try: 
+            state_dict = torch.load(partner_model_path)
+        except:
+            sys.exit(f"weight_file {partner_model_path} can't be loaded")
+
+        if "fc_v.weight" in state_dict.keys():
+            partner_agent, cfg = utils.load_agent(
+                    partner_model_path, overwrite)
+            partner_cfg["sad"] = cfg["sad"] if "sad" in cfg else cfg["greedy_extra"]
+            partner_cfg["hide_action"] = bool(cfg["hide_action"])
+            partner_cfg["parameterized"] = bool(cfg["parameterized"])
+            partner_cfg["weight"] = partner_model_path
+        else:
+            partner_agent = utils.load_supervised_agent(
+                    args.partner_agent, args.act_device)
+            partner_cfg["sad"] = False
+            partner_cfg["hide_action"] = False
+            partner_cfg["parameterized"] = False
+
+        partner_agents.append(partner_agent)
+        partner_cfgs.append(partner_cfg)
+
+    return partner_agents, partner_cfgs
 
 def parse_args():
     parser = argparse.ArgumentParser(description="train dqn on hanabi")
@@ -429,6 +452,7 @@ def parse_args():
     parser.add_argument("--partner_model", type=str, default=0)
     parser.add_argument("--static_partner", type=int, default=0)
     parser.add_argument("--wandb", type=int, default=0)
+    parser.add_argument("--partner_models", type=str, default="None")
 
     args = parser.parse_args()
     if args.off_belief == 1:
@@ -483,6 +507,7 @@ def setup_wandb(args):
         "convention_override": args.convention_act_override,
         "partner_model": args.partner_model,
         "static_partner": args.static_partner,
+        "partner_models": args.partner_models,
     }
     run_name = os.path.basename(os.path.normpath(args.save_dir))
     wandb.init(

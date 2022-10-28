@@ -68,6 +68,7 @@ def run_evaluation(args, weight_files):
         override=[args.override0, args.override1],
         verbose=False,
         belief_stats=args.belief_stats,
+        partner_models_path=args.partner_models,
     )
 
     return score, perfect, scores, actors
@@ -182,6 +183,7 @@ if __name__ == "__main__":
     parser.add_argument("--override0", default=0, type=int)
     parser.add_argument("--override1", default=0, type=int)
     parser.add_argument("--belief_stats", default=0, type=int)
+    parser.add_argument("--partner_models", default="None", type=str)
     args = parser.parse_args()
 
     evaluate_model(args)
