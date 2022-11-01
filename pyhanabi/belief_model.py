@@ -235,6 +235,47 @@ class ARBeliefModel(torch.jit.ScriptModule):
                     convention_index_override=convention_index_override)
         return result
 
+    def loss_semantic(self, batch, convention_index_override=None):
+        x = batch.obs[self.input_key]
+        print("x shape")
+        print(x.shape)
+        print("x")
+        print(x)
+
+        # Append convention one-hot vectors if model is parameterized
+        if self.parameterized:
+            # Concatenate convention one-hot vectors to x
+            convention_indexes = batch.obs[self.convention_idx_key].clone()
+            if convention_index_override is not None:
+                convention_indexes[:,:] = convention_index_override
+            one_hot = F.one_hot(convention_indexes, num_classes=self.num_conventions)
+            cat_x = torch.cat((x, one_hot), 2)
+
+            # Create mask to zero out one-hot vectors after sequences finish
+            seq_list = torch.arange(cat_x.size(0)).to(batch.seq_len.get_device())
+            mask = (seq_list < batch.seq_len[..., None])
+            mask_t = torch.transpose(mask, 0, 1)
+            seq_mask = mask_t.unsqueeze(2).repeat(1, 1, cat_x.size(2))
+
+            # Zero out one-hot vectors
+            x = cat_x * seq_mask
+
+        logit = self.forward(x, batch.obs[self.ar_input_key])
+        logit = logit * beta
+        logp = nn.functional.log_softmax(logit, 3)
+        gtruth = batch.obs[self.ar_target_key]
+        gtruth = gtruth.view(logp.size())
+        seq_len = batch.seq_len
+        xent, avg_xent, nll_per_card = pred_loss(logp, gtruth, seq_len)
+
+        # v0: [seq, batch, hand_size, bit_per_card]
+        v0 = batch.obs["priv_ar_v0"]
+        v0 = v0.view(v0.size(0), v0.size(1), self.hand_size, 35)[:, :, :, :25]
+        logv0 = v0.clamp(min=1e-6).log()
+        _, avg_xent_v0, _ = pred_loss(logv0, gtruth, seq_len)
+
+        return xent, avg_xent, avg_xent_v0, nll_per_card
+
     @torch.jit.script_method
     def observe(self, obs: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
         bsize, num_lstm_layer, num_player, dim = obs["h0"].size()

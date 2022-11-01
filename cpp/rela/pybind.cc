@@ -40,7 +40,8 @@ PYBIND11_MODULE(rela, m) {
       .def("num_add", &RNNPrioritizedReplay::numAdd)
       .def("sample", &RNNPrioritizedReplay::sample)
       .def("update_priority", &RNNPrioritizedReplay::updatePriority)
-      .def("get", &RNNPrioritizedReplay::get);
+      .def("get", &RNNPrioritizedReplay::get)
+      .def("sample_from_list", &RNNPrioritizedReplay::sampleFromList);
 
   py::class_<TensorDictReplay, std::shared_ptr<TensorDictReplay>>(m, "TensorDictReplay")
       .def(py::init<

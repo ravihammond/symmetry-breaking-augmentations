@@ -21,7 +21,7 @@ import utils
 
 def run_belief_xent_cross_play(args):
     plot_data = belief_xent_cross_play(args)
-    create_figures(plot_data)
+    create_figures(plot_data, args)
 
 
 def load_json_list(convention_path):
@@ -69,6 +69,7 @@ def belief_xent_cross_play(args):
             args.num_game, 
             args.seed, 
             0,
+            device=args.device,
             convention=args.convention,
             convention_index=act_convention_index,
             override=[3, 3],
@@ -76,13 +77,20 @@ def belief_xent_cross_play(args):
         row = []
 
         for belief_convention_index in range(len(conventions)):
-            result = belief_model.loss_no_grad(batch, 
-                convention_index_override=belief_convention_index)
-            (xent, avg_xent, avg_xent_v0, nll_per_card) = result
+            value = 0
 
-            avg_xent = avg_xent.mean().item()
+            if args.xentropy_type == "per_card":
+                loss = belief_model.loss_no_grad(batch, 
+                    convention_index_override=belief_convention_index)
+                (_, avg_xent, _, _) = loss
+                value = avg_xent.mean().item()
 
-            row.append(avg_xent)
+            elif args.xentropy_type == "semantic":
+                loss = belief_model.loss_semantic(batch, 
+                    convention_index_override=belief_convention_index)
+                value = loss.item()
+
+            row.append(value)
 
         labels.append(f"{act_convention}")
         data.append(row)
@@ -92,10 +100,10 @@ def belief_xent_cross_play(args):
         "labels": labels,
     }
 
-def create_figures(plot_data, colour_max=3):
+def create_figures(plot_data, args, colour_max=3):
     print("creating figures")
     data = plot_data["data"]
-    title = "XEntropy: obl1f vs pbelief1_obl1f"
+    title = f"{args.xentropy_type} xentropy: obl1f vs pbelief1_obl1f"
     ylabel = "Ground Truth Convention"
     xlabel = "Belief Convention"
     xticklabels = plot_data["labels"]
@@ -132,6 +140,7 @@ if __name__ == "__main__":
     parser.add_argument("--seed", default=0, type=int)
     parser.add_argument("--replay_buffer_size", type=int, default=2 ** 20)
     parser.add_argument("--device", type=str, default="cuda:0")
+    parser.add_argument("--xentropy_type", type=str, default="per_card")
 
     args = parser.parse_args()
 

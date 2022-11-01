@@ -37,6 +37,7 @@ class HanabiThreadLoop : public rela::ThreadLoop {
                 // call in seperate for-loops to maximize parallization
                 
                 t = clock();
+                bool returning = false;
                 for (size_t i = 0; i < envs_.size(); ++i) {
                     if (done_[i] == 1) {
                         continue;
@@ -48,7 +49,6 @@ class HanabiThreadLoop : public rela::ThreadLoop {
                         // we only run 1 game for evaluation
                         if (eval_) {
                             ++done_[i];
-                            bool returning = false;
                             if (done_[i] == 1) {
                                 numDone_ += 1;
                                 if (numDone_ == (int)envs_.size()) {
@@ -56,12 +56,6 @@ class HanabiThreadLoop : public rela::ThreadLoop {
                                 }
                             }
 
-                            if (returning) {
-                                for (size_t j = 0; j < actors.size(); ++j) {
-                                    actors[j]->pushToReplayBuffer();
-                                }
-                                return;
-                            }
                         }
 
                         envs_[i]->reset();
@@ -71,6 +65,17 @@ class HanabiThreadLoop : public rela::ThreadLoop {
                         }
                     }
                 }
+
+                if (returning) {
+                    for (size_t i = 0; i < envs_.size(); ++i) {
+                        auto& actors = actors_[i];
+                        for (size_t j = 0; j < actors.size(); ++j) {
+                            actors[j]->pushToReplayBuffer();
+                        }
+                    }
+                    return;
+                }
+
                 t = clock() - t;
                 timeStats_[0] = approxRollingAverage(
                         timeStats_[0], ((double)t)/CLOCKS_PER_SEC);
