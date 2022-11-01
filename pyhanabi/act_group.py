@@ -48,6 +48,7 @@ class ActGroup:
         partner_cfgs,
         static_partner,
         use_experience,
+        belief_stats,
     ):
         self.devices = devices.split(",")
         self.method = method
@@ -102,6 +103,7 @@ class ActGroup:
         self.partner_cfgs = partner_cfgs
         self.static_partner = static_partner
         self.use_experience = use_experience
+        self.belief_stats = belief_stats
 
         self.create_r2d2_actors()
 
@@ -150,7 +152,6 @@ class ActGroup:
 
                     if len(self.convention) > 0:
                         convention_index = (convention_index + 1) % len(self.convention)
-                    print("partner runner len:", len(self.partner_runners))
 
                     if len(self.partner_runners) > 0:
                         partner_idx = (partner_idx + 1) % len(self.partner_runners)
@@ -165,9 +166,6 @@ class ActGroup:
                             sad = self.partner_cfgs[partner_idx]["sad"]
                             hide_action = self.partner_cfgs[partner_idx]["hide_action"]
                             weight = self.partner_cfgs[partner_idx]["weight"]
-                        print(f"convention index: {convention_index}, " + \
-                                f"sad index: {partner_idx}, " + \
-                                f"sad: {sad}, player: {k}, weight: {weight}")
 
                         actor = hanalearn.R2D2Actor(
                             runner,
@@ -191,6 +189,7 @@ class ActGroup:
                             self.convention_act_override[k],
                             self.convention_fict_act_override,
                             self.use_experience[k],
+                            self.belief_stats,
                         )
 
                         if self.off_belief:
@@ -228,6 +227,18 @@ class ActGroup:
         if self.belief_runner is not None:
             for runner in self.belief_runner:
                 runner.start()
+
+    def stop(self):
+        for runner in self.model_runners:
+            runner.stop()
+
+        for runners in self.partner_runners:
+            for runner in runners:
+                runner.stop()
+
+        if self.belief_runner is not None:
+            for runner in self.belief_runner:
+                runner.stop()
 
     def update_model(self, agent):
         for runner in self.model_runners:

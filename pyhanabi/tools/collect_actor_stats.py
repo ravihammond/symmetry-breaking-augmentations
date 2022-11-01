@@ -47,12 +47,14 @@ def record_total_scores(stats, score, perfect, scores):
 def calculate_scores(stats, conventions, convention_scores):
     for convention in conventions:
         scores = convention_scores[convention]
+        if len(scores) == 0:
+            continue
         score = np.mean(scores)
         num_perfect = sum([1 for s in scores if s == 25])
-        perfect = num_perfect / len(scores)
+        perfect = percent(num_perfect, len(scores))
         non_zero_scores = [s for s in scores if s > 0]
         non_zero_mean = 0 if len(non_zero_scores) == 0 else np.mean(non_zero_scores)
-        bomb_out_rate = (1 - len(non_zero_scores) / len(scores))
+        bomb_out_rate = (1 - percent(len(non_zero_scores), len(scores)))
 
         stats[f"{convention}_score"] = score
         stats[f"{convention}_perfect"] = perfect
@@ -143,6 +145,8 @@ def evaluate_percentages(stats, conventions):
     for player in range(2):
         move_percentages(stats, player)
     for convention in conventions:
+        if not any(convention in key for key in stats.keys()):
+            continue
         for player in range(2):
             move_percentages(stats, player, convention)
             convention_percentages(stats, player, convention, "signal")

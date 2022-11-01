@@ -101,7 +101,8 @@ PYBIND11_MODULE(hanalearn, m) {
                 int, // conventionIdx
                 int, // conventionOverride
                 bool, // conventionFictitiousOverride
-                bool>()) // useExperience
+                bool, // useExperience
+                bool>()) // beliefStats
         .def(py::init<
                 std::shared_ptr<rela::BatchRunner>,
                 int,  // numPlayer
