@@ -34,6 +34,7 @@ from belief_model import ARBeliefModel
 
 def run_belief_xent_cross_play(args):
     plot_data = belief_xent_cross_play(args)
+    pprint(plot_data)
     create_figures(plot_data, args)
 
 
@@ -44,9 +45,11 @@ def conv_str(conv):
 
 def belief_xent_cross_play(args):
     data = []
-    labels = []
+    xlabels = []
+    ylabels = []
 
-    conventions = load_json_list(args.convention)
+    policy_conventions = load_json_list(args.policy_conventions)
+    belief_conventions = load_json_list(args.belief_conventions)
 
     loaded_agent = utils.load_agent(args.policy, {
         "vdn": False,
@@ -70,25 +73,25 @@ def belief_xent_cross_play(args):
     assert((args.num_game * 2) % args.batch_size == 0)
     num_batches = (int)((args.num_game * 2) / args.batch_size)
 
-    for act_convention_index in range(len(conventions)):
-        act_convention = conv_str(conventions[act_convention_index])
-        print(f"collecting data: {act_convention}")
+    for i, policy_convention_index in enumerate(range(len(policy_conventions))):
+        policy_convention_str = conv_str(policy_conventions[policy_convention_index])
+        print(f"collecting data: {policy_convention_str}")
         replay_buffer = generate_replay_data(
             loaded_agent,
             args.num_game, 
             args.seed, 
             0,
             device=args.device,
-            convention=args.convention,
-            convention_index=act_convention_index,
+            convention=args.policy_conventions,
+            convention_index=policy_convention_index,
             override=[3, 3],
         )
         row = []
 
-        for belief_convention_index in range(len(conventions)):
-            for i in range(num_batches):
-                range_start = i * args.batch_size
-                range_end = i * args.batch_size + args.batch_size
+        for belief_convention_index in range(len(belief_conventions)):
+            for batch_index in range(num_batches):
+                range_start = batch_index * args.batch_size
+                range_end = batch_index * args.batch_size + args.batch_size
                 sample_id_list = [*range(range_start, range_end, 1)]
 
                 batch, _ = replay_buffer.sample_from_list(
@@ -108,12 +111,18 @@ def belief_xent_cross_play(args):
 
             row.append(np.mean(values))
 
-        labels.append(f"{act_convention}")
+            if i == 0:
+                belief_convention_str = conv_str(
+                        belief_conventions[belief_convention_index])
+                xlabels.append(belief_convention_str)
+
+        ylabels.append(policy_convention_str)
         data.append(row)
 
     return {
         "data": data,
-        "labels": labels,
+        "xlabels": xlabels,
+        "ylabels": ylabels,
     }
 
 
@@ -222,7 +231,6 @@ def generate_replay_data(
 
     runner.stop()
 
-
     return replay_buffer
 
 
@@ -235,11 +243,11 @@ def load_json_list(convention_path):
 def create_figures(plot_data, args, colour_max=3):
     print("creating figures")
     data = plot_data["data"]
-    title = f"{args.xentropy_type} xentropy: obl1f vs pbelief1_obl1f"
+    title = f"{args.xentropy_type} xentropy: obl1f_all_colours vs pbelief1_obl1f_CRP0"
     ylabel = "Ground Truth Convention"
     xlabel = "Belief Convention"
-    xticklabels = plot_data["labels"]
-    yticklabels = plot_data["labels"]
+    xticklabels = plot_data["xlabels"]
+    yticklabels = plot_data["ylabels"]
 
     norm = mcolors.Normalize(vmin=0., vmax=colour_max)
     # see note above: this makes all pcolormesh calls consistent:
@@ -267,7 +275,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--policy", type=str, required=True)
     parser.add_argument("--belief_model", type=str, required=True)
-    parser.add_argument("--convention", default="None", type=str)
+    parser.add_argument("--policy_conventions", default="None", type=str)
+    parser.add_argument("--belief_conventions", default="None", type=str)
     parser.add_argument("--num_game", default=1000, type=int)
     parser.add_argument("--seed", default=0, type=int)
     parser.add_argument("--batch_size", type=int, default=100)
