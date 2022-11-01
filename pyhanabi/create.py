@@ -23,7 +23,7 @@ def create_envs(
     max_len,
     *,
     hand_size=5,
-    random_start_player=1,
+    random_start_player=1
 ):
     games = []
     for game_idx in range(num_env):

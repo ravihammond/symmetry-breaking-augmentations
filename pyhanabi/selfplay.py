@@ -137,7 +137,7 @@ def selfplay(args):
                 5,
                 args.num_fict_sample,
                 belief_config["fc_only"],
-                belief_config["parameterized_belief"],
+                belief_config["parameterized"],
                 belief_config["num_conventions"],
             ))
 
@@ -176,6 +176,7 @@ def selfplay(args):
         partner_cfgs,
         args.static_partner,
         use_experience,
+        args.belief_stats,
     )
 
     context, threads = create_threads(
@@ -453,6 +454,7 @@ def parse_args():
     parser.add_argument("--static_partner", type=int, default=0)
     parser.add_argument("--wandb", type=int, default=0)
     parser.add_argument("--partner_models", type=str, default="None")
+    parser.add_argument("--belief_stats", type=int, default=0)
 
     args = parser.parse_args()
     if args.off_belief == 1:

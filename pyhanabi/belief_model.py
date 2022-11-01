@@ -10,6 +10,11 @@ import torch.nn.functional as F
 from typing import Tuple, Dict
 import numpy as np
 
+torch.set_printoptions(
+    profile="full",
+    linewidth=200,
+)
+
 
 class V0BeliefModel(torch.jit.ScriptModule):
     def __init__(self, device, num_sample):
@@ -187,13 +192,15 @@ class ARBeliefModel(torch.jit.ScriptModule):
         logit = logit.view(seq, bsize, self.hand_size, -1)
         return logit
 
-    def loss(self, batch, beta=1):
+    def loss(self, batch, beta=1, convention_index_override=None):
         x = batch.obs[self.input_key]
 
         # Append convention one-hot vectors if model is parameterized
         if self.parameterized:
             # Concatenate convention one-hot vectors to x
-            convention_indexes = batch.obs[self.convention_idx_key]
+            convention_indexes = batch.obs[self.convention_idx_key].clone()
+            if convention_index_override is not None:
+                convention_indexes[:,:] = convention_index_override
             one_hot = F.one_hot(convention_indexes, num_classes=self.num_conventions)
             cat_x = torch.cat((x, one_hot), 2)
 
@@ -219,7 +226,14 @@ class ARBeliefModel(torch.jit.ScriptModule):
         v0 = v0.view(v0.size(0), v0.size(1), self.hand_size, 35)[:, :, :, :25]
         logv0 = v0.clamp(min=1e-6).log()
         _, avg_xent_v0, _ = pred_loss(logv0, gtruth, seq_len)
+
         return xent, avg_xent, avg_xent_v0, nll_per_card
+
+    def loss_no_grad(self, batch, beta=1, convention_index_override=None):
+        with torch.no_grad():
+            result =  self.loss(batch, beta=beta, 
+                    convention_index_override=convention_index_override)
+        return result
 
     @torch.jit.script_method
     def observe(self, obs: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
@@ -257,6 +271,7 @@ class ARBeliefModel(torch.jit.ScriptModule):
             s = torch.cat((s, one_hot), 2)
 
         x = self.net(s)
+
         if self.fc_only:
             o, (h, c) = x, (h0, c0)
         else:
@@ -278,9 +293,11 @@ class ARBeliefModel(torch.jit.ScriptModule):
         sample_list = []
         for i in range(self.hand_size):
             ar_in = torch.cat([in_t, o], 2).view(bsize * self.num_sample, 1, -1)
+
             ar_out, ar_hid = self.auto_regress(ar_in, ar_hid)
             logit = self.fc(ar_out.squeeze(1))
             prob = nn.functional.softmax(logit, 1)
+
             sample_t = prob.multinomial(1)
             sample_t = sample_t.view(bsize, self.num_sample)
             onehot_sample_t = torch.zeros(
@@ -291,6 +308,7 @@ class ARBeliefModel(torch.jit.ScriptModule):
             sample_list.append(sample_t)
 
         sample = torch.stack(sample_list, 2)
+
 
         h = h.view(num_lstm_layer, bsize, num_player, dim)
         c = c.view(num_lstm_layer, bsize, num_player, dim)

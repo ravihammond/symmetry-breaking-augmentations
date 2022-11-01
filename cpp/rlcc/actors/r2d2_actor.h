@@ -39,7 +39,8 @@ public:
             int conventionIdx,
             int conventionOverride,
             bool conventionFictitiousOverride,
-            bool useExperience)
+            bool useExperience,
+            bool beliefStats)
         : Actor(
                 seed,
                 playerIdx,
@@ -67,7 +68,7 @@ public:
           , conventionFictitiousOverride_(conventionFictitiousOverride)
           , useExperience_(useExperience)
           , logStats_(false) 
-          , beliefStats_(false) {
+          , beliefStats_(beliefStats) {
     }
 
     // simpler constructor for eval mode
@@ -145,6 +146,8 @@ public:
         totalFict_ = 0;
         return rate;
     }
+
+    void pushToReplayBuffer() override;
 
 protected:
     rela::TensorDict getH0(int numPlayer, std::shared_ptr<rela::BatchRunner>& runner) {

@@ -35,6 +35,8 @@ public:
         return {conventionIdx_};
     }
 
+    virtual void pushToReplayBuffer() {}
+
 protected:
     std::tuple<bool, bool> analyzeCardBelief(const std::vector<float>& b);
 

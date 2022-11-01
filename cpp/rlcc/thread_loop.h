@@ -33,7 +33,6 @@ class HanabiThreadLoop : public rela::ThreadLoop {
             clock_t t;
             while (!terminated()) {
                 if(PR)printf("\n=======================================\n");
-
                 // go over each envs in sequential order
                 // call in seperate for-loops to maximize parallization
                 
@@ -49,11 +48,19 @@ class HanabiThreadLoop : public rela::ThreadLoop {
                         // we only run 1 game for evaluation
                         if (eval_) {
                             ++done_[i];
+                            bool returning = false;
                             if (done_[i] == 1) {
                                 numDone_ += 1;
                                 if (numDone_ == (int)envs_.size()) {
-                                    return;
+                                    returning = true;
                                 }
+                            }
+
+                            if (returning) {
+                                for (size_t j = 0; j < actors.size(); ++j) {
+                                    actors[j]->pushToReplayBuffer();
+                                }
+                                return;
                             }
                         }
 

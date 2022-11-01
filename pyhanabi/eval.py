@@ -33,6 +33,7 @@ def evaluate(
     max_len=80,
     device="cuda:0",
     convention=[],
+    convention_indexes=None,
     override=[0, 0],
     act_parameterized=[0, 0],
     belief_stats=False,
@@ -101,6 +102,9 @@ def evaluate(
                     sad_setting = partner_cfgs[partner_idx]["sad"]
                     hide_action_setting = partner_cfgs[partner_idx]["hide_action"]
                     act_parameterized_setting = partner_cfgs[partner_idx]["parameterized"]
+
+                if convention_indexes is not None:
+                    convention_index = convention_indexes[i]
                 
                 actor = hanalearn.R2D2Actor(
                     runner, # runner
@@ -129,7 +133,7 @@ def evaluate(
             thread_games.append(games[g_idx])
             if len(partner_runners) > 0:
                 partner_idx = (partner_idx + 1) % len(partner_runners)
-            if len(convention) > 0:
+            if convention_indexes is None and len(convention) > 0:
                 convention_index = (convention_index + 1) % len(convention)
 
         thread = hanalearn.HanabiThreadLoop(thread_games, thread_actors, True)
@@ -178,7 +182,7 @@ def create_belief_runner(belief_model_path, device):
             5,
             10,
             belief_config["fc_only"],
-            belief_config["parameterized_belief"],
+            belief_config["parameterized"],
             belief_config["num_conventions"],
         )
 
@@ -203,7 +207,71 @@ def evaluate_saved_model(
     verbose=True,
     device="cuda:0",
     convention="None",
+    convention_indexes=None,
     override=[0, 0],
+    belief_stats=False,
+    belief_model="None",
+    partner_models_path="None",
+    pre_loaded_data=None,
+):
+    if pre_loaded_data is None:
+        pre_loaded_data = load_agents(
+            weight_files,
+            overwrite=overwrite,
+            device=device,
+            belief_stats=belief_stats,
+            partner_models_path=partner_models_path
+        )
+
+    agents = pre_loaded_data["agents"]
+    sad = pre_loaded_data["sad"]
+    hide_action = pre_loaded_data["hide_action"]
+    parameterized = pre_loaded_data["parameterized"]
+    belief_model_path = pre_loaded_data["belief_model_path"]
+
+    if belief_model != "None" and belief_stats:
+        belief_model_path = belief_model
+
+    partner_agents, partner_cfgs = load_partner_agents(partner_models_path)
+
+    scores = []
+    perfect = 0
+    for i in range(num_run):
+        _, _, score, p, games = evaluate(
+            agents,
+            num_game,
+            num_game * i + seed,
+            bomb,
+            0,  # eps
+            sad,
+            hide_action,
+            device=device,
+            convention=load_json_list(convention),
+            convention_indexes=convention_indexes,
+            override=override,
+            belief_stats=belief_stats,
+            belief_model_path=belief_model_path,
+            partner_agents=partner_agents,
+            partner_cfgs=partner_cfgs,
+            act_parameterized=parameterized,
+        )
+        scores.extend(score)
+        perfect += p
+
+    mean = np.mean(scores)
+    sem = np.std(scores) / np.sqrt(len(scores))
+    perfect_rate = perfect / (num_game * num_run)
+    if verbose:
+        print(
+            "score: %.3f +/- %.3f" % (mean, sem),
+            "; perfect: %.2f%%" % (100 * perfect_rate),
+        )
+    return mean, sem, perfect_rate, scores, games
+
+def load_agents(
+    weight_files,
+    overwrite=None,
+    device="cuda:0",
     belief_stats=False,
     partner_models_path="None",
 ):
@@ -254,40 +322,13 @@ def evaluate_saved_model(
             parameterized.append(False)
         agent.train(False)
 
-    partner_agents, partner_cfgs = load_partner_agents(partner_models_path)
-
-    scores = []
-    perfect = 0
-    for i in range(num_run):
-        _, _, score, p, games = evaluate(
-            agents,
-            num_game,
-            num_game * i + seed,
-            bomb,
-            0,  # eps
-            sad,
-            hide_action,
-            device=device,
-            convention=load_json_list(convention),
-            override=override,
-            belief_stats=belief_stats,
-            belief_model_path=belief_model_path,
-            partner_agents=partner_agents,
-            partner_cfgs=partner_cfgs,
-            act_parameterized=parameterized,
-        )
-        scores.extend(score)
-        perfect += p
-
-    mean = np.mean(scores)
-    sem = np.std(scores) / np.sqrt(len(scores))
-    perfect_rate = perfect / (num_game * num_run)
-    if verbose:
-        print(
-            "score: %.3f +/- %.3f" % (mean, sem),
-            "; perfect: %.2f%%" % (100 * perfect_rate),
-        )
-    return mean, sem, perfect_rate, scores, games
+    return {
+        "agents": agents, 
+        "sad": sad,
+        "hide_action": hide_action,
+        "parameterized": parameterized,
+        "belief_model_path": belief_model_path,
+    }
 
 def load_json_list(convention_path):
     if convention_path == "None":
