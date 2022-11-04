@@ -43,13 +43,13 @@ public:
             bool beliefStats)
         : Actor(
                 seed,
+                numPlayer,
                 playerIdx,
                 convention,
                 conventionIdx,
                 conventionOverride,
                 false)
           , runner_(std::move(runner))
-          , numPlayer_(numPlayer)
           , epsList_(epsList)
           , tempList_(tempList)
           , vdn_(vdn)
@@ -57,7 +57,7 @@ public:
           , shuffleColor_(shuffleColor)
           , hideAction_(hideAction)
           , trinary_(trinary)
-          , batchsize_(vdn_ ? numPlayer_ : 1)
+          , batchsize_(vdn_ ? numPlayer : 1)
           , playerEps_(batchsize_)
           , playerTemp_(batchsize_)
           , colorPermutes_(batchsize_)
@@ -86,20 +86,20 @@ public:
             bool beliefStats)
         : Actor(
                 1, // seed not used in eval move
+                numPlayer,
                 playerIdx,
                 convention,
                 conventionIdx,
                 conventionOverride,
                 true)
           , runner_(std::move(runner))
-          , numPlayer_(numPlayer)
           , epsList_({0})
           , vdn_(vdn)
           , sad_(sad)
           , shuffleColor_(false)
           , hideAction_(hideAction)
           , trinary_(true)
-          , batchsize_(vdn_ ? numPlayer_ : 1)
+          , batchsize_(vdn_ ? numPlayer : 1)
           , playerEps_(batchsize_)
           , colorPermutes_(batchsize_)
           , invColorPermutes_(batchsize_)
@@ -118,12 +118,6 @@ public:
     void act(HanabiEnv& env, const int curPlayer) override;
     void fictAct(const HanabiEnv& env) override;
     void observeAfterAct(const HanabiEnv& env) override;
-
-    void setPartners(std::vector<std::shared_ptr<R2D2Actor>> partners) {
-        partners_ = std::move(partners);
-        assert((int)partners_.size() == numPlayer_);
-        assert(partners_[playerIdx_] == nullptr);
-    }
 
     void setBeliefRunner(std::shared_ptr<rela::BatchRunner>& beliefModel) {
         assert(!vdn_ && batchsize_ == 1);
@@ -149,7 +143,15 @@ public:
 
     void pushToReplayBuffer() override;
 
-protected:
+    void setPartners(std::vector<std::shared_ptr<R2D2Actor>> partners) {
+        for (auto&& partner: partners) {
+            partners_.push_back(std::dynamic_pointer_cast<Actor>(std::move(partner)));
+        }
+        assert((int)partners_.size() == numPlayer_);
+        assert(partners_[playerIdx_] == nullptr);
+    }
+
+private:
     rela::TensorDict getH0(int numPlayer, std::shared_ptr<rela::BatchRunner>& runner) {
         std::vector<torch::jit::IValue> input{numPlayer};
         auto model = runner->jitModel();
@@ -160,7 +162,6 @@ protected:
 
     std::shared_ptr<rela::BatchRunner> runner_;
     std::shared_ptr<rela::BatchRunner> classifier_;
-    const int numPlayer_;
     const std::vector<float> epsList_;
     const std::vector<float> tempList_;
     const bool vdn_;
@@ -200,7 +201,6 @@ protected:
     int successFict_ = 0;
     bool validFict_ = false;
     std::unique_ptr<hle::HanabiState> fictState_ = nullptr;
-    std::vector<std::shared_ptr<R2D2Actor>> partners_;
 
     bool actParameterized_;
     bool conventionFictitiousOverride_;

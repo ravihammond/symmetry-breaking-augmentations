@@ -207,7 +207,6 @@ class ActGroup:
                         partners[k] = None
                         game_actors[k].set_partners(partners)
 
-
                     thread_actors.append(game_actors)
                     convention_index_count += 1
 

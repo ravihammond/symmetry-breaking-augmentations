@@ -6,6 +6,7 @@ class Actor{
 public:
     Actor(
             int seed,
+            int numPlayer,
             int playerIdx,
             std::vector<std::vector<std::vector<std::string>>> convention,
             int conventionIdx,
@@ -36,6 +37,22 @@ public:
     }
 
     virtual void pushToReplayBuffer() {}
+
+    void setPartners(std::vector<std::shared_ptr<Actor>> partners) {
+        partners_ = std::move(partners);
+        assert((int)partners_.size() == numPlayer_);
+        assert(partners_[playerIdx_] == nullptr);
+    }
+
+    [[nodiscard]]constexpr auto getNumPlayer() const {
+        return numPlayer_;
+    }
+
+    [[nodiscard]]constexpr auto getPlayerIdx() const {
+        return playerIdx_;
+    }
+
+
 
 protected:
     std::tuple<bool, bool> analyzeCardBelief(const std::vector<float>& b);
@@ -83,10 +100,16 @@ protected:
 
     hle::HanabiMove strToMove(std::string key);
 
-    virtual void incrementBeliefStatsConvention(const HanabiEnv& env,
-        std::vector<hle::HanabiCardValue> sampledCards, int curPlayer);
+    std::tuple<int,int,std::vector<int>> beliefConventionPlayable(
+            const HanabiEnv& env);
+
+    bool playedCardPossiblySignalledCard(hle::HanabiMove playedMove,
+            std::shared_ptr<hle::HanabiHand> playedHand);
+
+    void possibleResponseCards(std::vector<int> playableCards);
 
     std::mt19937 rng_;
+    const int numPlayer_;
     const int playerIdx_;
 
     std::vector<std::vector<float>> perCardPrivV0_;
@@ -110,4 +133,8 @@ protected:
     int livesBeforeMove_;
     std::string currentTwoStep_;
     bool signalReceived_;
+    bool beliefStatsSignalReceived_;
+    int beliefStatsResponsePosition_;
+    std::shared_ptr<hle::HanabiHand> previousHand_ = nullptr;
+    std::vector<std::shared_ptr<Actor>> partners_;
 };

@@ -84,6 +84,8 @@ class HanabiHand {
     void ApplyIsRankHint(int rank) { rank_.ApplyIsValueHint(rank); }
     void ApplyIsNotRankHint(int rank) { rank_.ApplyIsNotValueHint(rank); }
     std::string ToString() const;
+    std::string ColorKnowledgeRangeString() const;
+    std::string RankKnowledgeRangeString() const;
 
     bool IsCardPlausible(int color, int rank) const {
       return color_.IsPlausible(color) && rank_.IsPlausible(rank);

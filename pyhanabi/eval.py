@@ -129,43 +129,58 @@ def evaluate(
                 actors.append(actor)
                 all_actors.append(actor)
 
-            thread_actors.append(actors)
-            thread_games.append(games[g_idx])
-            if len(partner_runners) > 0:
-                partner_idx = (partner_idx + 1) % len(partner_runners)
-            if convention_indexes is None and len(convention) > 0:
-                convention_index = (convention_index + 1) % len(convention)
+            # for i in range(num_player):
+                # partners = actors[:]
+                # partners[i] = None
+                # actors[i].set_partners(partners)
 
-        thread = hanalearn.HanabiThreadLoop(thread_games, thread_actors, True)
-        threads.append(thread)
-        context.push_thread_loop(thread)
+            for i in range(num_player):
+                # partners = actors[:]
+                # partners[i] = None
+                # for partner in partners:
+                partners = [None, None]
 
-    for runner in runners:
-        if runner is not None:
-            runner.start()
+                actors[i].set_partners(partners)
 
-    for runner in partner_runners:
-        runner.start()
 
-    if belief_runner is not None:
-        belief_runner.start()
+            # thread_actors.append(actors)
+            # thread_games.append(games[g_idx])
+            # if len(partner_runners) > 0:
+                # partner_idx = (partner_idx + 1) % len(partner_runners)
+            # if convention_indexes is None and len(convention) > 0:
+                # convention_index = (convention_index + 1) % len(convention)
 
-    context.start()
-    context.join()
+        # thread = hanalearn.HanabiThreadLoop(thread_games, thread_actors, True)
+        # threads.append(thread)
+        # context.push_thread_loop(thread)
 
-    for runner in runners:
-        if runner is not None:
-            runner.stop()
+    # for runner in runners:
+        # if runner is not None:
+            # runner.start()
 
-    for runner in partner_runners:
-        runner.stop()
+    # for runner in partner_runners:
+        # runner.start()
 
-    if belief_runner is not None:
-        belief_runner.stop()
+    # if belief_runner is not None:
+        # belief_runner.start()
 
-    scores = [g.last_episode_score() for g in games]
-    num_perfect = np.sum([1 for s in scores if s == 25])
-    return np.mean(scores), num_perfect / len(scores), scores, num_perfect, all_actors
+    # context.start()
+    # context.join()
+
+    # for runner in runners:
+        # if runner is not None:
+            # runner.stop()
+
+    # for runner in partner_runners:
+        # runner.stop()
+
+    # if belief_runner is not None:
+        # belief_runner.stop()
+
+    # scores = [g.last_episode_score() for g in games]
+    # num_perfect = np.sum([1 for s in scores if s == 25])
+    # return np.mean(scores), num_perfect / len(scores), scores, num_perfect, all_actors
+    return 0, 0, 0, 0, 0
 
 
 def create_belief_runner(belief_model_path, device):
@@ -255,18 +270,25 @@ def evaluate_saved_model(
             partner_cfgs=partner_cfgs,
             act_parameterized=parameterized,
         )
-        scores.extend(score)
-        perfect += p
+        # scores.extend(score)
+        # perfect += p
 
-    mean = np.mean(scores)
-    sem = np.std(scores) / np.sqrt(len(scores))
-    perfect_rate = perfect / (num_game * num_run)
-    if verbose:
-        print(
-            "score: %.3f +/- %.3f" % (mean, sem),
-            "; perfect: %.2f%%" % (100 * perfect_rate),
-        )
-    return mean, sem, perfect_rate, scores, games
+    # for agent in agents:
+        # agent.to("cpu")
+        # del agent
+    # torch.cuda.empty_cache()
+    # gc.collect()
+
+    # mean = np.mean(scores)
+    # sem = np.std(scores) / np.sqrt(len(scores))
+    # perfect_rate = perfect / (num_game * num_run)
+    # if verbose:
+        # print(
+            # "score: %.3f +/- %.3f" % (mean, sem),
+            # "; perfect: %.2f%%" % (100 * perfect_rate),
+        # )
+    # return mean, sem, perfect_rate, scores, games
+    return (0, 0, 0, 0, 0)
 
 def load_agents(
     weight_files,

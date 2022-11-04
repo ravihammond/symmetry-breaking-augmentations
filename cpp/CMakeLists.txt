@@ -8,10 +8,15 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DPYBIND11_COMPILER_TYPE=\\\"_gcc\\\" -D
 
 find_program(CCACHE ccache)
 
-if(CCACHE)
-    message("Found ccache: ${CCACHE}")
-    set(FOUND_CCACHE ON)
-    set(CMAKE_CXX_COMPILER_LAUNCHER ${CCACHE})
+#if(CCACHE)
+    #message("Found ccache: ${CCACHE}")
+    #set(FOUND_CCACHE ON)
+    #set(CMAKE_CXX_COMPILER_LAUNCHER ${CCACHE})
+#endif()
+
+if(FALSE)
+    add_compile_options(-fsanitize=address)
+    add_link_options(-fsanitize=address)
 endif()
 
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/rela)

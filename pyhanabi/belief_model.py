@@ -193,6 +193,10 @@ class ARBeliefModel(torch.jit.ScriptModule):
         return logit
 
     def loss(self, batch, beta=1, convention_index_override=None):
+        # print("belief loss")
+        # for key in batch.obs.keys():
+            # print(key)
+
         x = batch.obs[self.input_key]
 
         # Append convention one-hot vectors if model is parameterized
@@ -237,10 +241,10 @@ class ARBeliefModel(torch.jit.ScriptModule):
 
     def loss_semantic(self, batch, convention_index_override=None):
         x = batch.obs[self.input_key]
-        print("x shape")
-        print(x.shape)
-        print("x")
-        print(x)
+        # print("x shape")
+        # print(x.shape)
+        # print("x")
+        # print(x)
 
         # Append convention one-hot vectors if model is parameterized
         if self.parameterized:
@@ -275,6 +279,12 @@ class ARBeliefModel(torch.jit.ScriptModule):
         _, avg_xent_v0, _ = pred_loss(logv0, gtruth, seq_len)
 
         return xent, avg_xent, avg_xent_v0, nll_per_card
+
+    def loss_response_playable(self, batch, beta=1, convention_index_override=None):
+        with torch.no_grad():
+            result =  self.loss(batch, beta=beta, 
+                    convention_index_override=convention_index_override)
+        return result
 
     @torch.jit.script_method
     def observe(self, obs: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:

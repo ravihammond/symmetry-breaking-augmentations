@@ -32,10 +32,11 @@ from eval_belief import *
 from eval import load_agents
 from belief_model import ARBeliefModel
 
+
 def run_belief_xent_cross_play(args):
     plot_data = belief_xent_cross_play(args)
     pprint(plot_data)
-    create_figures(plot_data, args)
+    # create_figures(plot_data, args)
 
 
 def conv_str(conv):
@@ -108,6 +109,11 @@ def belief_xent_cross_play(args):
                     loss = belief_model.loss_semantic(batch, 
                         convention_index_override=belief_convention_index)
                     values.append(loss.item())
+
+                elif args.xentropy_type == "response_playable":
+                    loss = belief_model.loss_response_playable(batch,
+                        convention_index_override=belief_convention_index)
+                    values.append(loss)
 
             row.append(np.mean(values))
 
@@ -217,11 +223,19 @@ def generate_replay_data(
                 )
                 actors.append(actor)
                 all_actors.append(actor)
+
+            for i in range(num_player):
+                partners = actors[:]
+                partners[i] = None
+                actors[i].set_partners(partners)
+
             thread_actors.append(actors)
             thread_games.append(games[g_idx])
             seed += 1
+
         thread = hanalearn.HanabiThreadLoop(thread_games, thread_actors, True)
         threads.append(thread)
+        print(thread)
         context.push_thread_loop(thread)
 
     runner.start()

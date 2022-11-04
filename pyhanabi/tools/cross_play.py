@@ -15,6 +15,7 @@ from collections import defaultdict
 import numpy as np
 import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
+import copy
 
 
 lib_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -123,9 +124,12 @@ def cross_play_conventions(model, args, seed):
                     convention=args.convention,
                     override=[3, 3],
                     convention_indexes=[i, j],
+                    device="cuda:1",
                     pre_loaded_data=pre_loaded_data,
             )[0]
-            row.append(np.mean(scores))
+            row.append(copy.copy(np.mean(scores)))
+            del scores
+
         labels.append(f"{conv_str(conventions[i])}")
         all_scores.append(row)
 
@@ -136,7 +140,7 @@ def cross_play_conventions(model, args, seed):
 
 def create_figures(plot_data, colour_max=25):
     data = plot_data["scores"]
-    title = "OBL1f All Conventions"
+    title = "POBL2 All Conventions"
     ylabel = "Player 1 Agent"
     xlabel = "Player 2 Agent"
     xticklabels = plot_data["labels"]

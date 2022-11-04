@@ -81,6 +81,7 @@ def record_actor_stats(stats, actor_stats, convention_str, player):
     convention_stats(stats, actor_stats, player, convention_str, "signal")
     convention_stats(stats, actor_stats, player, convention_str, "response")
     convention_lose_life_stats(stats, actor_stats, player, convention_str)
+    convention_playable_stats(stats, actor_stats, player, convention_str)
     # belief_sample_stats(stats, actor_stats)
 
  
@@ -141,6 +142,15 @@ def belief_sample_stats(stats, actor_stats):
     stats[not_playable_correct] += int(actor_stats[not_playable_correct])
 
 
+def convention_playable_stats(stats, actor_stats, player, convention_str):
+    prefix = f"{convention_str}_actor{player}"
+    should_be_playable = "response_should_be_playable"
+    playable = "response_is_playable"
+
+    stats[f"{prefix}_{should_be_playable}"] += int(actor_stats[should_be_playable])
+    stats[f"{prefix}_{playable}"] += int(actor_stats[playable])
+
+
 def evaluate_percentages(stats, conventions):
     for player in range(2):
         move_percentages(stats, player)
@@ -151,6 +161,7 @@ def evaluate_percentages(stats, conventions):
             move_percentages(stats, player, convention)
             convention_percentages(stats, player, convention, "signal")
             convention_percentages(stats, player, convention, "response")
+            convention_playable_percentages(stats, player, convention)
     # belief_percentages(stats)
 
 
@@ -208,6 +219,16 @@ def belief_percentages(stats):
             stats[playable_correct], stats[should_be_playable])
     stats[f"{not_playable_correct}%"] = percent(
             stats[not_playable_correct], stats[should_not_be_playable])
+
+
+def convention_playable_percentages(stats, player, convention_str):
+    prefix = f"{convention_str}_actor{player}"
+    should_be_playable = f"{prefix}_response_should_be_playable"
+    playable = f"{prefix}_response_is_playable"
+
+    stats[f"{playable}%"] = percent(
+            stats[playable], stats[should_be_playable])
+
 
 def percent(n, total):
     if total == 0:

@@ -208,6 +208,13 @@ void R2D2Actor::observeBeforeAct(HanabiEnv& env) {
 
     // add convention index information for parameterization
     input["convention_idx"] = torch::tensor(conventionIdx_);
+    int responseShouldBePlayable, responseCardPosition;
+    vector<int> playableCards;
+    tie(responseShouldBePlayable, responseCardPosition, playableCards) = 
+            beliefConventionPlayable(env);
+    input["response_should_be_playable"] = torch::tensor(responseShouldBePlayable);
+    input["response_card_position"] = torch::tensor(responseCardPosition);
+    input["playable_cards"] = torch::tensor(playableCards);
 
     // push before we add hidden
     if (replayBuffer_ != nullptr) {
@@ -300,10 +307,6 @@ void R2D2Actor::act(HanabiEnv& env, const int curPlayer) {
                     *invColorPermute,
                     env.getHleGame(),  // *fictGame_,
                     hand);
-
-            if (success && beliefStats_) {
-                incrementBeliefStatsConvention(env, sampledCards_, curPlayer);
-            }
         }
         if (success) {
             auto& deck = fictState_->Deck();
@@ -324,8 +327,8 @@ void R2D2Actor::act(HanabiEnv& env, const int curPlayer) {
             // the fictitious transition
             auto partnerInput = observe(
                     *fictState_,
-                    partner->playerIdx_,
-                    partner->shuffleColor_,
+                    partner->getNumPlayer(),
+                    partner->getPlayerIdx(),
                     partner->colorPermutes_[0],
                     partner->invColorPermutes_[0],
                     partner->hideAction_,
@@ -369,6 +372,11 @@ void R2D2Actor::act(HanabiEnv& env, const int curPlayer) {
     if (logStats_) {
         incrementStatsBeforeMove(env, move);
     }
+
+    auto obs = env.getObsShowCards();
+    auto& all_hands = obs.Hands();
+    auto hand = all_hands[playerIdx_];
+    previousHand_ = std::make_shared<hle::HanabiHand>(hand);
 
     if(PR)printf("Playing move: %s\n", move.ToString().c_str());
     env.step(move);

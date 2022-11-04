@@ -25,7 +25,7 @@ def evaluate_model(args):
 
     stats = collect_stats(score, perfect, scores, actors, conventions)
 
-    pprint(stats)
+    # pprint(stats)
 
     print()
     print_scores(stats)
@@ -89,6 +89,7 @@ def print_actor_stats(stats, player, convention_string):
     print_convention_stats(stats, player, convention_string, "signal")
     print_convention_stats(stats, player, convention_string, "response")
     print_convention_lose_life_stats(stats, player, convention_string)
+    print_convention_should_be_playable_stats(stats, player, convention_string)
 
 
 def print_scores(stats, convention=""):
@@ -150,6 +151,19 @@ def print_convention_stats(stats, player, convention_string, role):
 def print_convention_lose_life_stats(stats, player, convention_string):
     stat = f"{convention_string}_actor{player}_response_played_life_lost"
     print(f"{stat}: {stats[stat]}")
+
+
+def print_convention_should_be_playable_stats(stats, player, convention_string):
+    prefix = f"{convention_string}_actor{player}"
+
+    should_be_playable = f"{prefix}_response_should_be_playable"
+    playable = f"{prefix}_response_is_playable"
+    playable_percent_str = f"{playable}%"
+
+    playable_percent = stats[playable_percent_str] * 100
+
+    print(f"{should_be_playable}: {stats[should_be_playable]}")
+    print(f"{playable}: {stats[playable]} ({playable_percent:.1f}%)")
 
 
 def load_convention(convention_path):

@@ -10,30 +10,36 @@ using namespace std;
 #define BF false
 
 Actor::Actor(
-        int seed,
-        int playerIdx,
-        std::vector<std::vector<std::vector<std::string>>> convention,
-        int conventionIdx,
-        int conventionOverride,
-        bool recordStats)
-    : rng_(seed)
-    , playerIdx_(playerIdx) 
-    , convention_(convention) 
-    , conventionIdx_(conventionIdx) 
-    , conventionOverride_(conventionOverride) 
-    , sentSignal_(false)
-    , sentSignalStats_(false)
-    , recordStats_(recordStats)
-    , livesBeforeMove_(-1) 
-    , currentTwoStep_("X") 
-    , signalReceived_(false) {
+            int seed,
+            int numPlayer,
+            int playerIdx,
+            std::vector<std::vector<std::vector<std::string>>> convention,
+            int conventionIdx,
+            int conventionOverride,
+            bool recordStats)
+        : rng_(seed)
+        , numPlayer_(numPlayer) 
+        , playerIdx_(playerIdx) 
+        , convention_(convention) 
+        , conventionIdx_(conventionIdx) 
+        , conventionOverride_(conventionOverride) 
+        , sentSignal_(false)
+        , sentSignalStats_(false)
+        , recordStats_(recordStats)
+        , livesBeforeMove_(-1) 
+        , currentTwoStep_("X") 
+        , beliefStatsSignalReceived_(false) {
+    auto responseMove = strToMove(convention_[conventionIdx_][0][1]);
+    beliefStatsResponsePosition_ = responseMove.CardIndex();
 }
 
 void Actor::reset(const HanabiEnv& env) {
     (void)env;
     sentSignal_ = false;
     sentSignalStats_ = false;
-    signalReceived_ = false;
+    beliefStatsSignalReceived_ = false;
+    auto responseMove = strToMove(convention_[conventionIdx_][0][1]);
+    beliefStatsResponsePosition_ = responseMove.CardIndex();
 }
 
 tuple<bool, bool> Actor::analyzeCardBelief(const vector<float>& b) {
@@ -100,12 +106,10 @@ hle::HanabiMove Actor::overrideMove(const HanabiEnv& env, hle::HanabiMove move,
             && sentSignal_
             && lastMove.CardIndex() <= responseMove.CardIndex()) {
         sentSignal_ = false;
-        if(CV)printf("signal reset\n");
     }
 
     if (conventionOverride_ == 2 || conventionOverride_ == 3 ) {
         if (lastMove == signalMove) {
-            if(CV)printf("play response\n");
             return responseMove;
         } else if (move == responseMove) {
             vector<hle::HanabiMove> exclude = {responseMove};
@@ -115,11 +119,9 @@ hle::HanabiMove Actor::overrideMove(const HanabiEnv& env, hle::HanabiMove move,
                         && movePlayableOnFireworks(env, responseMove, nextPlayer) 
                         && state.MoveIsLegal(signalMove)) {
                     sentSignal_ = true;
-                    if(CV)printf("play signal (move was response)\n");
                     return signalMove;
                 }
             }
-            if(CV)printf("playing new move (move was response)\n");
             return different_action(env, exclude, actionQ, exploreAction, legalMoves);
         }
     }
@@ -128,12 +130,10 @@ hle::HanabiMove Actor::overrideMove(const HanabiEnv& env, hle::HanabiMove move,
         if (!sentSignal_ && movePlayableOnFireworks(env, responseMove, nextPlayer) 
                 && state.MoveIsLegal(signalMove)) {
             sentSignal_ = true;
-            if(CV)printf("play signal\n");
             return signalMove;
         } else if (move == signalMove) {
             vector<hle::HanabiMove> exclude = {signalMove};
             if (conventionOverride_ == 3) exclude.push_back(responseMove);
-            if(CV)printf("playing new move (move was signal)\n");
             return different_action(env, exclude, actionQ, exploreAction, legalMoves);
         }
     }
@@ -286,13 +286,11 @@ void Actor::incrementStatsConvention(
             && sentSignalStats_
             && lastMove.CardIndex() <= responseMove.CardIndex()) {
         sentSignalStats_ = false;
-        if(CV)printf("stats seen signal\n");
     }
 
     // Should play the response move
     if (lastMove == signalMove && state.MoveIsLegal(responseMove)) {
         shouldHavePlayedResponse = true;
-        if(CV)printf("stats should play response\n");
     }
     
     // Should play the signal move
@@ -301,12 +299,10 @@ void Actor::incrementStatsConvention(
             && movePlayableOnFireworks(env, responseMove, nextPlayer)
             && state.MoveIsLegal(signalMove)) {
         shouldHavePlayedSignal = true;
-        if(CV)printf("stats should play signal\n");
     } 
     
     // Signal move has been played
     if (move == signalMove) {
-        if(CV)printf("stats signal move played\n");
         sentSignalStats_ = true;
     }
 
@@ -314,7 +310,6 @@ void Actor::incrementStatsConvention(
     if (shouldHavePlayedResponse 
             && move == responseMove 
             && !movePlayableOnFireworks(env, move, playerIdx_)) {
-        if(CV)printf("response played losing a life\n");
         incrementStat("response_played_life_lost");
     }
 
@@ -328,17 +323,14 @@ void Actor::incrementStatsConventionRole(bool shouldHavePlayed, string role,
 
     if (shouldHavePlayed) {
         incrementStat(roleStr + "_available");
-        if(CV)printf("stats %s available\n", role.c_str());
     }
 
     if (movePlayed == moveRole) {
         incrementStat(roleStr + "_played");
         if (shouldHavePlayed) {
             incrementStat(roleStr + "_played_correct");
-            if(CV)printf("stats %s played correct\n", role.c_str());
         } else {
             incrementStat(roleStr + "_played_incorrect");
-            if(CV)printf("stats %s played incorrect\n", role.c_str());
         }
     }
 
@@ -423,12 +415,18 @@ void Actor::incrementStatsAfterMove(
     }
 }
 
-void Actor::incrementBeliefStatsConvention(const HanabiEnv& env,
-        std::vector<hle::HanabiCardValue> sampledCards, int curPlayer) {
+tuple<int, int, vector<int>> Actor::beliefConventionPlayable(const HanabiEnv& env) {
+    int curPlayer = env.getCurrentPlayer();
+    auto partner = partners_[(playerIdx_ + 1) % 2];
+    vector<int> playableCards(25, 0);
+    if (true) {
+        return make_tuple(0, beliefStatsResponsePosition_, playableCards);
+    }
     if (curPlayer != playerIdx_ 
             || convention_.size() == 0 
-            || convention_[conventionIdx_].size() == 0) {
-        return;
+            || convention_[conventionIdx_].size() == 0
+            || partner->previousHand_ == nullptr) {
+        return make_tuple(0, beliefStatsResponsePosition_, playableCards);
     }
 
     auto& state = env.getHleState();
@@ -437,28 +435,100 @@ void Actor::incrementBeliefStatsConvention(const HanabiEnv& env,
     auto signalMove = strToMove(convention_[conventionIdx_][0][0]);
     auto responseMove = strToMove(convention_[conventionIdx_][0][1]);
 
-    if ((myLastMove.MoveType() == hle::HanabiMove::kPlay 
-            || myLastMove.MoveType() == hle::HanabiMove::kDiscard) 
-            && signalReceived_
-            && myLastMove.CardIndex() <= responseMove.CardIndex()) {
-        signalReceived_ = false;
-        if(BF)printf("Signalled card moved\n");
+    // Reset if partners play may be the signal card 
+    if (beliefStatsSignalReceived_
+        && partnerLastMove.MoveType() == hle::HanabiMove::kPlay
+        && playedCardPossiblySignalledCard(
+            partnerLastMove, partner->previousHand_)) {
+        beliefStatsSignalReceived_ = false;
+        beliefStatsResponsePosition_ = responseMove.CardIndex();
+    }
+
+    // Reset or shift position if my last action was discard
+    if (beliefStatsSignalReceived_
+        && myLastMove.MoveType() == hle::HanabiMove::kDiscard) {
+        if (myLastMove.CardIndex() < beliefStatsResponsePosition_) {
+            beliefStatsResponsePosition_--;
+        } else if (myLastMove.CardIndex() == beliefStatsResponsePosition_) {
+            beliefStatsSignalReceived_ = false;
+            beliefStatsResponsePosition_ = responseMove.CardIndex();
+        }
+    }
+
+    // Reset or shift position if my last action was play
+    if (beliefStatsSignalReceived_
+        && myLastMove.MoveType() == hle::HanabiMove::kPlay) {
+        if (myLastMove.CardIndex() == beliefStatsResponsePosition_) {
+            beliefStatsSignalReceived_ = false;
+            beliefStatsResponsePosition_ = responseMove.CardIndex();
+        } else if (previousHand_ != nullptr
+                && playedCardPossiblySignalledCard(myLastMove, previousHand_)) {
+            beliefStatsSignalReceived_ = false;
+            beliefStatsResponsePosition_ = responseMove.CardIndex();
+        } else if (myLastMove.CardIndex() < beliefStatsResponsePosition_) {
+            beliefStatsResponsePosition_--;
+        }
     }
 
     if (partnerLastMove == signalMove) {
-        signalReceived_ = true;
-        if(BF)printf("partner signal seen\n");
+        beliefStatsSignalReceived_ = true;
     }
 
-    auto cardValue = sampledCards[responseMove.CardIndex()];
-    auto focusCard = hle::HanabiCard(cardValue, -1);
+    auto obs = env.getObsShowCards();
+    auto& all_hands = obs.Hands();
+    auto myHand = all_hands[playerIdx_];
+    auto conventionCard = myHand.Cards()[beliefStatsResponsePosition_];
 
-    if (signalReceived_) {
-        incrementStat("belief_should_be_playable");
-        if(BF)printf("Card should be playable\n");
-        if (state.CardPlayableOnFireworks(focusCard)) {
-            incrementStat("belief_playable_correct");
-            if(BF)printf("Card playable corrent\n");
+    possibleResponseCards(playableCards);
+
+    if (beliefStatsSignalReceived_) {
+        incrementStat("response_should_be_playable");
+        if (state.CardPlayableOnFireworks(conventionCard)) {
+            incrementStat("response_is_playable");
+        }
+        return make_tuple(1, beliefStatsResponsePosition_, playableCards);
+    }
+
+    return make_tuple(0, beliefStatsResponsePosition_, playableCards);
+}
+
+bool Actor::playedCardPossiblySignalledCard(hle::HanabiMove playedMove,
+        shared_ptr<hle::HanabiHand> playedHand) {
+    auto myHandKnowledge = previousHand_->Knowledge();
+    auto signalledCardKnowledge = myHandKnowledge[beliefStatsResponsePosition_];
+    string colourKnowledgeStr = signalledCardKnowledge.ColorKnowledgeRangeString();
+    string rankKnowledgeStr = signalledCardKnowledge.RankKnowledgeRangeString();
+
+    auto playedCard = playedHand->Cards()[playedMove.CardIndex()];
+    char colours[5] = {'R','Y','G','W','B'};
+    char ranks[5] = {'1','2','3','4','5'};
+    char playedColour = colours[playedCard.Color()];
+    char playedRank = ranks[playedCard.Rank()];
+
+    bool colourMatch = false;
+    bool rankMatch = false;
+
+    for (char& ch: colourKnowledgeStr) {
+        if (ch == playedColour) {
+            colourMatch = true;
+            break;
         }
     }
+
+    for (char& ch: rankKnowledgeStr) {
+        if (ch == playedRank) {
+            rankMatch = true;
+            break;
+        }
+    }
+
+    return colourMatch && rankMatch;
+}
+
+void Actor::possibleResponseCards(vector<int> playableCards) {
+    (void)playableCards;
+    //for (int i: playableCards) {
+        //printf("%d", i);
+    //}
+    //printf("\n");
 }
