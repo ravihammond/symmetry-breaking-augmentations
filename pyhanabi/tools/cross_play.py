@@ -115,14 +115,14 @@ def cross_play_conventions(model, args, seed):
         for j in range(len(conventions)):
             model_key = f"{conv_str(conventions[i])}" + \
                         f":{conv_str(conventions[j])}" 
-            print("evaluting:", model_key)
+            print("evaluating:", model_key)
             scores = evaluate_saved_model(
                     [model, model], 
                     args.num_game, 
                     seed, 
                     0,
                     convention=args.convention,
-                    override=[3, 3],
+                    override=[args.override, args.override],
                     convention_indexes=[i, j],
                     device="cuda:1",
                     pre_loaded_data=pre_loaded_data,
@@ -176,6 +176,7 @@ if __name__ == "__main__":
     parser.add_argument("--exclude", default=None, type=str, nargs="+")
     parser.add_argument("--convention", default="None", type=str)
     parser.add_argument("--num_game", default=1000, type=int)
+    parser.add_argument("--override", default=0, type=int)
 
     args = parser.parse_args()
 

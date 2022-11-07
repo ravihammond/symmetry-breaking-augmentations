@@ -19,8 +19,6 @@
 #include "rlcc/thread_loop.h"
 #include "rlcc/actors/actor.h"
 #include "rlcc/actors/r2d2_actor.h"
-#include "rlcc/actors/rulebot_actor.h"
-#include "rlcc/actors/rulebot_2_actor.h"
 
 namespace py = pybind11;
 using namespace hanabi_learning_env;
@@ -66,20 +64,21 @@ PYBIND11_MODULE(hanalearn, m) {
         .def("start_data_generation", &CloneDataGenerator::startDataGeneration)
         .def("terminate", &CloneDataGenerator::terminate);
 
-    py::class_<Actor, std::shared_ptr<Actor>>(m, "Actor")
-        .def(py::init<
-                int, //seed
-                int, //numPlayer
-                int, //playerIdx
-                std::vector<std::vector<std::vector<std::string>>>, // convention
-                int, // conventionIdx
-                int, // conventionOverride
-                bool>()) //recordStats
-        .def("get_played_card_info", &Actor::getPlayedCardInfo)
-        .def("get_stats", &Actor::getStats)
-        .def("get_convention_index", &Actor::getConventionIndex);
+    //py::class_<Actor, std::shared_ptr<Actor>>(m, "Actor")
+        //.def(py::init<
+                //int, //seed
+                //int, //numPlayer
+                //int, //playerIdx
+                //std::vector<std::vector<std::vector<std::string>>>, // convention
+                //int, // conventionIdx
+                //int, // conventionOverride
+                //bool>()) //recordStats
+        //.def("get_played_card_info", &Actor::getPlayedCardInfo)
+        //.def("get_stats", &Actor::getStats)
+        //.def("get_convention_index", &Actor::getConventionIndex);
 
-    py::class_<R2D2Actor, Actor, std::shared_ptr<R2D2Actor>>(m, "R2D2Actor")
+    //py::class_<R2D2Actor, Actor, std::shared_ptr<R2D2Actor>>(m, "R2D2Actor")
+    py::class_<R2D2Actor, std::shared_ptr<R2D2Actor>>(m, "R2D2Actor")
         .def(py::init<
                 std::shared_ptr<rela::BatchRunner>, // runner,
                 int,  // seed,
@@ -159,7 +158,7 @@ PYBIND11_MODULE(hanalearn, m) {
             m, "HanabiThreadLoop")
         .def(py::init<
                 std::vector<std::shared_ptr<HanabiEnv>>,
-                std::vector<std::vector<std::shared_ptr<Actor>>>,
+                std::vector<std::vector<std::shared_ptr<R2D2Actor>>>,
                 bool>())
         .def("get_time_stats", &HanabiThreadLoop::getTimeStats);
 

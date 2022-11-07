@@ -23,4 +23,7 @@ python pyhanabi/tools/eval_model_verbose.py --weight1 pyhanabi/exps/obl1/model_e
 python tools/eval_model_verbose.py --weight1 exps/poblf1_CR-P0/model0.pthw --convention conventions/CR-P0.json --num_game 1 --seed 2 --belief_stats 1
 
 == CROSS PLAY ==
-python tools/cross_play.py --root ../training_models/obl1 --convention conventions/all_colours.json
+python tools/cross_play.py --root ../training_models/obl1 --convention conventions/all_colours.json --override 3
+
+== RUN FLAGS ==
+ASAN_OPTIONS=detect_leaks=1

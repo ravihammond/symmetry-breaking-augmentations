@@ -36,7 +36,8 @@ from belief_model import ARBeliefModel
 def run_belief_xent_cross_play(args):
     plot_data = belief_xent_cross_play(args)
     pprint(plot_data)
-    # create_figures(plot_data, args)
+    print
+    create_figures(plot_data, args)
 
 
 def conv_str(conv):
@@ -70,6 +71,9 @@ def belief_xent_cross_play(args):
         belief_config["parameterized"],
         belief_config["num_conventions"],
     )
+    belief_model_for_runner = None
+    if args.belief_runner:
+        belief_model_for_runner = belief_model
 
     assert((args.num_game * 2) % args.batch_size == 0)
     num_batches = (int)((args.num_game * 2) / args.batch_size)
@@ -85,7 +89,8 @@ def belief_xent_cross_play(args):
             device=args.device,
             convention=args.policy_conventions,
             convention_index=policy_convention_index,
-            override=[3, 3],
+            belief_model=belief_model_for_runner,
+            override=[args.override, args.override],
         )
         row = []
 
@@ -99,18 +104,13 @@ def belief_xent_cross_play(args):
                         args.batch_size, args.device, sample_id_list)
 
                 values = []
-                if args.xentropy_type == "per_card":
+                if args.loss_type == "per_card":
                     loss = belief_model.loss_no_grad(batch, 
                         convention_index_override=belief_convention_index)
                     (_, avg_xent, _, _) = loss
                     values.append(avg_xent.mean().item())
 
-                elif args.xentropy_type == "semantic":
-                    loss = belief_model.loss_semantic(batch, 
-                        convention_index_override=belief_convention_index)
-                    values.append(loss.item())
-
-                elif args.xentropy_type == "response_playable":
+                elif args.loss_type == "response_playable":
                     loss = belief_model.loss_response_playable(batch,
                         convention_index_override=belief_convention_index)
                     values.append(loss)
@@ -145,7 +145,7 @@ def generate_replay_data(
     convention="None",
     convention_index=None,
     override=[0, 0],
-    belief_stats=False,
+    belief_model=None,
     num_player=2,
 ):
     agent, cfgs = loaded_agent
@@ -161,6 +161,13 @@ def generate_replay_data(
     runner = rela.BatchRunner(agent.clone(device), device)
     runner.add_method("act", 5000)
     runner.add_method("compute_priority", 100)
+
+    belief_runner = None
+    belief_stats = False
+    if belief_model is not None:
+        belief_runner = rela.BatchRunner(
+                belief_model, belief_model.device, 5000, ["sample"])
+        belief_stats = True
 
     context = rela.Context()
     threads = []
@@ -219,8 +226,12 @@ def generate_replay_data(
                     override[i], # conventionOverride
                     False, # fictitiousOverride
                     True, # useExperience
-                    False, # beliefStats
+                    belief_stats, # beliefStats
                 )
+
+                if belief_stats:
+                    actor.set_belief_runner_stats(belief_runner)
+
                 actors.append(actor)
                 all_actors.append(actor)
 
@@ -235,15 +246,20 @@ def generate_replay_data(
 
         thread = hanalearn.HanabiThreadLoop(thread_games, thread_actors, True)
         threads.append(thread)
-        print(thread)
         context.push_thread_loop(thread)
 
     runner.start()
+
+    if belief_runner is not None:
+        belief_runner.start()
 
     context.start()
     context.join()
 
     runner.stop()
+
+    if belief_runner is not None:
+        belief_runner.stop()
 
     return replay_buffer
 
@@ -254,18 +270,19 @@ def load_json_list(convention_path):
     convention_file = open(convention_path)
     return json.load(convention_file)
 
-def create_figures(plot_data, args, colour_max=3):
+def create_figures(plot_data, args):
     print("creating figures")
     data = plot_data["data"]
-    title = f"{args.xentropy_type} xentropy: obl1f_all_colours vs pbelief1_obl1f_CRP0"
+    title = f"{args.loss_type}: obl1f_all_colours vs pbelief1_obl1f_all_colours"
     ylabel = "Ground Truth Convention"
     xlabel = "Belief Convention"
     xticklabels = plot_data["xlabels"]
     yticklabels = plot_data["ylabels"]
 
-    norm = mcolors.Normalize(vmin=0., vmax=colour_max)
+    norm = mcolors.Normalize(vmin=args.colour_min, vmax=args.colour_max)
     # see note above: this makes all pcolormesh calls consistent:
-    pc_kwargs = {'rasterized': True, 'cmap': 'cividis_r', 'norm': norm}
+    colour_map = "cividis_r" if args.reverse_colour else "cividis"
+    pc_kwargs = {'rasterized': True, 'cmap': colour_map, 'norm': norm}
     fig, ax = plt.subplots(constrained_layout=True)
     im = ax.imshow(data, **pc_kwargs)
     cb = fig.colorbar(im, ax=ax,fraction=0.024, pad=0.04)
@@ -295,7 +312,12 @@ if __name__ == "__main__":
     parser.add_argument("--seed", default=0, type=int)
     parser.add_argument("--batch_size", type=int, default=100)
     parser.add_argument("--device", type=str, default="cuda:0")
-    parser.add_argument("--xentropy_type", type=str, default="per_card")
+    parser.add_argument("--loss_type", type=str, default="per_card")
+    parser.add_argument("--belief_runner", type=int, default=0)
+    parser.add_argument("--colour_max", type=float, default=1)
+    parser.add_argument("--colour_min", type=float, default=0)
+    parser.add_argument("--reverse_colour", type=float, default=0)
+    parser.add_argument("--override", type=int, default=3)
 
     args = parser.parse_args()
 
