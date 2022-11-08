@@ -9,12 +9,10 @@ python pyhanabi/tools/eval_model_verbose.py --weight1 pyhanabi/exps/obl_CR_P0/mo
 python pyhanabi/tools/eval_model_verbose.py --weight1 training_models/obl1/model0.pthw --convention pyhanabi/conventions/CR-P0.json --override0 3 --override1 3 --num_game 5000
 
 == OVERRIDE ==
-python pyhanabi/tools/eval_model_verbose.py --weight1 pyhanabi/exps/iql_obl1_CR_P0/model_epoch1500.pthw --weight2 pyhanabi/exps/obl1/model_epoch1400.pthw --override1 1 --convention pyhanabi/conventions/CR_P0.json
+
 
 == ACTION MATRIX ==
 python pyhanabi/tools/model_convention_stats.py --weight1 pyhanabi/exps/iql/model_epoch1900.pthw --title IQL
-
-
 
 python pyhanabi/tools/model_convention_stats.py --weight1 pyhanabi/exps/iql_obl1_CR-P0_CY-P1/model_epoch1600.pthw --weight2 pyhanabi/exps/obl1/model_epoch1400.pthw --convention pyhanabi/conventions/CR-P0_CY-P1.json --override1 1
 
@@ -24,3 +22,8 @@ python pyhanabi/tools/eval_model_verbose.py --weight1 pyhanabi/exps/obl1/model_e
 == BELIEF CONVENTION ==
 python tools/eval_model_verbose.py --weight1 exps/poblf1_CR-P0/model0.pthw --convention conventions/CR-P0.json --num_game 1 --seed 2 --belief_stats 1
 
+== CROSS PLAY ==
+python tools/cross_play.py --root ../training_models/obl1 --convention conventions/all_colours.json --override 3
+
+== RUN FLAGS ==
+ASAN_OPTIONS=detect_leaks=1

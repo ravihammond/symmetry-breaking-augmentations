@@ -70,7 +70,7 @@ def selfplay(args):
 
     agent_in_dim = games[0].feature_size(args.sad),
     if args.parameterized:
-        agent_in_dim = tuple([x + args.num_conventions for x in agent_in_dim[0]])
+        agent_in_dim = tuple([x + args.num_parameters for x in agent_in_dim[0]])
     else:
         agent_in_dim = tuple([x for x in agent_in_dim[0]])
 
@@ -89,7 +89,8 @@ def selfplay(args):
         False,  # uniform priority
         args.off_belief,
         parameterized=args.parameterized,
-        num_conventions=args.num_conventions,
+        parameter_type=args.parameter_type,
+        num_parameters=args.num_parameters,
     )
     agent.sync_target_with_online()
 
@@ -176,6 +177,7 @@ def selfplay(args):
         partner_cfgs,
         args.static_partner,
         use_experience,
+        args.belief_stats,
     )
 
     context, threads = create_threads(
@@ -444,8 +446,9 @@ def parse_args():
 
     parser.add_argument("--save_checkpoints", type=int, default=100)
     parser.add_argument("--convention", type=str, default="None")
-    parser.add_argument("--num_conventions", type=int, default=0)
     parser.add_argument("--parameterized", type=int, default=0)
+    parser.add_argument("--parameter_type", type=str, default="one_hot")
+    parser.add_argument("--num_parameters", type=int, default=0)
     parser.add_argument("--no_evaluation", type=int, default=0)
     parser.add_argument("--convention_act_override", type=int, default=0)
     parser.add_argument("--convention_fict_act_override", type=int, default=0)
@@ -453,6 +456,7 @@ def parse_args():
     parser.add_argument("--static_partner", type=int, default=0)
     parser.add_argument("--wandb", type=int, default=0)
     parser.add_argument("--partner_models", type=str, default="None")
+    parser.add_argument("--belief_stats", type=int, default=0)
 
     args = parser.parse_args()
     if args.off_belief == 1:

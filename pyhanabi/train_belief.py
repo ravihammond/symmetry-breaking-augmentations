@@ -204,35 +204,37 @@ def create_rl_context(args):
     )
 
     convention = load_convention(args.convention)
+    act_override = [args.convention_act_override, args.convention_act_override]
 
     act_group = ActGroup(
-        args.act_device,
-        agent,
-        args.seed,
-        args.num_thread,
-        args.num_game_per_thread,
-        cfgs["num_player"],
-        explore_eps,
-        boltzmann_t,
-        "iql",
-        cfgs["sad"],
-        cfgs["shuffle_color"] if not args.rand else False,
-        cfgs["hide_action"],
-        False,  # not trinary, need full hand for prediction
-        replay_buffer,
-        cfgs["multi_step"],  # not used
-        cfgs["max_len"],
-        cfgs["gamma"],  # not used
-        False,  # turn off off-belief rewardless of how it is trained
+        args.act_device, # devices
+        agent, # agent
+        args.seed, # seed
+        args.num_thread, # num_thread
+        args.num_game_per_thread, # num_game_per_thread
+        cfgs["num_player"], # num_player
+        explore_eps, #explore_eps
+        boltzmann_t, # boltzmann_t
+        "iql", # method
+        cfgs["sad"], # sad 
+        cfgs["shuffle_color"] if not args.rand else False, # shuffle_color
+        cfgs["hide_action"], # hide_action
+        False,  # trinary
+        replay_buffer, # replay_buffer
+        cfgs["multi_step"],  # multi_step
+        cfgs["max_len"], # max_len
+        cfgs["gamma"],  # gamma
+        False,  # off_belief
         None,  # belief_model
-        convention,
+        convention, # convention
         cfgs["parameterized"], # act_parameterized
-        [args.convention_act_override, args.convention_act_override], # convention_act_override
+        act_override, # convention_act_override
         False, # convention_fict_act_override
         None, # partner_agent
         "None", # partner_cfg
         False, # static_partner
         [1,1], # use_experience
+        False, # belief_stats
     )
 
     context, threads = create_threads(

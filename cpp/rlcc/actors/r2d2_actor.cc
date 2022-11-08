@@ -117,8 +117,23 @@ std::tuple<std::vector<hle::HanabiCardValue>, bool> filterSample(
     return {hand.CardValues(), false};
 }
 
+std::tuple<bool, bool> analyzeCardBelief(const std::vector<float>& b) {
+    assert(b.size() == 25);
+    std::set<int> colors;
+    std::set<int> ranks;
+    for (int c = 0; c < 5; ++c) {
+        for (int r = 0; r < 5; ++r) {
+            if (b[c * 5 + r] > 0) {
+                colors.insert(c);
+                ranks.insert(r);
+            }
+        }
+    }
+    return {colors.size() == 1, ranks.size() == 1};
+}
+
 void R2D2Actor::reset(const HanabiEnv& env) {
-    Actor::reset(env);
+    conventionReset(env);
     hidden_ = getH0(batchsize_, runner_);
     if (beliefRunner_ != nullptr) {
         beliefHidden_ = getH0(batchsize_, beliefRunner_);
@@ -209,6 +224,16 @@ void R2D2Actor::observeBeforeAct(HanabiEnv& env) {
     // add convention index information for parameterization
     input["convention_idx"] = torch::tensor(conventionIdx_);
 
+    if (beliefStats_) {
+        int responseShouldBePlayable, responseCardPosition;
+        vector<int> playableCards;
+        tie(responseShouldBePlayable, responseCardPosition, playableCards) = 
+            beliefConventionPlayable(env);
+        input["response_should_be_playable"] = torch::tensor(responseShouldBePlayable);
+        input["response_card_position"] = torch::tensor(responseCardPosition);
+        input["playable_cards"] = torch::tensor(playableCards);
+    }
+
     // push before we add hidden
     if (replayBuffer_ != nullptr) {
         r2d2Buffer_->pushObs(input);
@@ -257,7 +282,7 @@ void R2D2Actor::observeBeforeAct(HanabiEnv& env) {
         beliefInput["convention_idx"] = torch::tensor(conventionIdx_);
         futBelief_ = beliefRunner_->call("sample", beliefInput);
     }
-    
+
     fictState_ = std::make_unique<hle::HanabiState>(state);
 }
 
@@ -300,10 +325,6 @@ void R2D2Actor::act(HanabiEnv& env, const int curPlayer) {
                     *invColorPermute,
                     env.getHleGame(),  // *fictGame_,
                     hand);
-
-            if (success && beliefStats_) {
-                incrementBeliefStatsConvention(env, sampledCards_, curPlayer);
-            }
         }
         if (success) {
             auto& deck = fictState_->Deck();
@@ -318,8 +339,8 @@ void R2D2Actor::act(HanabiEnv& env, const int curPlayer) {
 
     if (!vdn_ && curPlayer != playerIdx_) {
         if (offBelief_) {
-            auto partner = partners_[curPlayer];
-            assert(partner != nullptr);
+            assert(!partners_[curPlayer].expired());
+            auto partner = partners_[curPlayer].lock();
             // it is not my turn, I need to re-evaluate my partner on
             // the fictitious transition
             auto partnerInput = observe(
@@ -365,10 +386,30 @@ void R2D2Actor::act(HanabiEnv& env, const int curPlayer) {
         move.SetColor(realColor);
     }
 
-    incrementPlayedCardKnowledgeCount(env, move);
+    if (replayBuffer_ == nullptr) {
+        if (move.MoveType() == hle::HanabiMove::kPlay) {
+            auto cardBelief = perCardPrivV0_[move.CardIndex()];
+            auto [colorKnown, rankKnown] = analyzeCardBelief(cardBelief);
+
+            if (colorKnown && rankKnown) {
+                ++bothKnown_;
+            } else if (colorKnown) {
+                ++colorKnown_;
+            } else if (rankKnown) {
+                ++rankKnown_;
+            } else {
+                ++noneKnown_;
+            }
+        }
+    }
     if (logStats_) {
         incrementStatsBeforeMove(env, move);
     }
+
+    auto obs = env.getObsShowCards();
+    auto& all_hands = obs.Hands();
+    auto hand = all_hands[playerIdx_];
+    previousHand_ = std::make_shared<hle::HanabiHand>(hand);
 
     if(PR)printf("Playing move: %s\n", move.ToString().c_str());
     env.step(move);
@@ -399,8 +440,8 @@ void R2D2Actor::fictAct(const HanabiEnv& env) {
                 }
 
                 if (lastMove.MoveType() != hle::HanabiMove::kDeal &&
-                    lastMove == senderMove && 
-                    fictState_->MoveIsLegal(responseMove)) {
+                        lastMove == senderMove && 
+                        fictState_->MoveIsLegal(responseMove)) {
                     move = responseMove;
                     break;
                 }
@@ -437,6 +478,8 @@ void R2D2Actor::observeAfterAct(const HanabiEnv& env) {
         return;
     }
 
+    pushToReplayBuffer();
+
     if (!futPriority_.isNull() && useExperience_) {
         auto priority = futPriority_.get()["priority"].item<float>();
         replayBuffer_->add(std::move(lastEpisode_), priority);
@@ -462,5 +505,12 @@ void R2D2Actor::observeAfterAct(const HanabiEnv& env) {
         if (useExperience_) {
             futPriority_ = runner_->call("compute_priority", input);
         }
+    }
+}
+
+void R2D2Actor::pushToReplayBuffer() {
+    if (!futPriority_.isNull() && useExperience_) {
+        auto priority = futPriority_.get()["priority"].item<float>();
+        replayBuffer_->add(std::move(lastEpisode_), priority);
     }
 }

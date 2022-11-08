@@ -2,85 +2,23 @@
 #include <algorithm>
 #include <random>
 
-#include "actor.h"
+#include "r2d2_actor.h"
+#include "rlcc/utils.h"
 
 using namespace std;
 
 #define CV false
-#define BF false
 
-Actor::Actor(
-        int seed,
-        int playerIdx,
-        std::vector<std::vector<std::vector<std::string>>> convention,
-        int conventionIdx,
-        int conventionOverride,
-        bool recordStats)
-    : rng_(seed)
-    , playerIdx_(playerIdx) 
-    , convention_(convention) 
-    , conventionIdx_(conventionIdx) 
-    , conventionOverride_(conventionOverride) 
-    , sentSignal_(false)
-    , sentSignalStats_(false)
-    , recordStats_(recordStats)
-    , livesBeforeMove_(-1) 
-    , currentTwoStep_("X") 
-    , signalReceived_(false) {
-}
-
-void Actor::reset(const HanabiEnv& env) {
+void R2D2Actor::conventionReset(const HanabiEnv& env) {
     (void)env;
     sentSignal_ = false;
     sentSignalStats_ = false;
-    signalReceived_ = false;
+    beliefStatsSignalReceived_ = false;
+    auto responseMove = strToMove(convention_[conventionIdx_][0][1]);
+    beliefStatsResponsePosition_ = responseMove.CardIndex();
 }
 
-tuple<bool, bool> Actor::analyzeCardBelief(const vector<float>& b) {
-    assert(b.size() == 25);
-    set<int> colors;
-    set<int> ranks;
-    for (int c = 0; c < 5; ++c) {
-        for (int r = 0; r < 5; ++r) {
-            if (b[c * 5 + r] > 0) {
-                colors.insert(c);
-                ranks.insert(r);
-            }
-        }
-    }
-    return {colors.size() == 1, ranks.size() == 1};
-}
-
-void Actor::incrementPlayedCardKnowledgeCount(
-        const HanabiEnv& env, hle::HanabiMove move) {
-    const auto& state = env.getHleState();
-    const auto& game = env.getHleGame();
-    auto obs = hle::HanabiObservation(state, state.CurPlayer(), true);
-    auto encoder = hle::CanonicalObservationEncoder(&game);
-    auto [privV0, cardCount] =
-        encoder.EncodePrivateV0Belief(obs, std::vector<int>(), 
-                false, std::vector<int>());
-    perCardPrivV0_ =
-        extractPerCardBelief(privV0, env.getHleGame(), 
-                obs.Hands()[0].Cards().size());
-
-    if (move.MoveType() == hle::HanabiMove::kPlay) {
-        auto cardBelief = perCardPrivV0_[move.CardIndex()];
-        auto [colorKnown, rankKnown] = analyzeCardBelief(cardBelief);
-
-        if (colorKnown && rankKnown) {
-            ++bothKnown_;
-        } else if (colorKnown) {
-            ++colorKnown_;
-        } else if (rankKnown) {
-            ++rankKnown_;
-        } else {
-            ++noneKnown_;
-        }
-    }
-}
-
-hle::HanabiMove Actor::overrideMove(const HanabiEnv& env, hle::HanabiMove move, 
+hle::HanabiMove R2D2Actor::overrideMove(const HanabiEnv& env, hle::HanabiMove move, 
         vector<float> actionQ, bool exploreAction, vector<float> legalMoves) {
     if (conventionOverride_ == 0|| convention_.size() == 0 || 
             convention_[conventionIdx_].size() == 0) {
@@ -100,12 +38,10 @@ hle::HanabiMove Actor::overrideMove(const HanabiEnv& env, hle::HanabiMove move,
             && sentSignal_
             && lastMove.CardIndex() <= responseMove.CardIndex()) {
         sentSignal_ = false;
-        if(CV)printf("signal reset\n");
     }
 
     if (conventionOverride_ == 2 || conventionOverride_ == 3 ) {
         if (lastMove == signalMove) {
-            if(CV)printf("play response\n");
             return responseMove;
         } else if (move == responseMove) {
             vector<hle::HanabiMove> exclude = {responseMove};
@@ -115,11 +51,9 @@ hle::HanabiMove Actor::overrideMove(const HanabiEnv& env, hle::HanabiMove move,
                         && movePlayableOnFireworks(env, responseMove, nextPlayer) 
                         && state.MoveIsLegal(signalMove)) {
                     sentSignal_ = true;
-                    if(CV)printf("play signal (move was response)\n");
                     return signalMove;
                 }
             }
-            if(CV)printf("playing new move (move was response)\n");
             return different_action(env, exclude, actionQ, exploreAction, legalMoves);
         }
     }
@@ -128,12 +62,10 @@ hle::HanabiMove Actor::overrideMove(const HanabiEnv& env, hle::HanabiMove move,
         if (!sentSignal_ && movePlayableOnFireworks(env, responseMove, nextPlayer) 
                 && state.MoveIsLegal(signalMove)) {
             sentSignal_ = true;
-            if(CV)printf("play signal\n");
             return signalMove;
         } else if (move == signalMove) {
             vector<hle::HanabiMove> exclude = {signalMove};
             if (conventionOverride_ == 3) exclude.push_back(responseMove);
-            if(CV)printf("playing new move (move was signal)\n");
             return different_action(env, exclude, actionQ, exploreAction, legalMoves);
         }
     }
@@ -141,7 +73,7 @@ hle::HanabiMove Actor::overrideMove(const HanabiEnv& env, hle::HanabiMove move,
     return move;
 }
 
-bool Actor::movePlayableOnFireworks(const HanabiEnv& env, hle::HanabiMove move, 
+bool R2D2Actor::movePlayableOnFireworks(const HanabiEnv& env, hle::HanabiMove move, 
         int player) {
     auto& state = env.getHleState();
     hle::HanabiObservation obs = env.getObsShowCards();
@@ -155,7 +87,7 @@ bool Actor::movePlayableOnFireworks(const HanabiEnv& env, hle::HanabiMove move,
     return false;
 }
 
-hle::HanabiMove Actor::different_action(const HanabiEnv& env, 
+hle::HanabiMove R2D2Actor::different_action(const HanabiEnv& env, 
         vector<hle::HanabiMove> exclude, vector<float> actionQ, 
         bool exploreAction, vector<float> legalMoves) {
     assert(actionQ.size() == 21);
@@ -189,7 +121,7 @@ hle::HanabiMove Actor::different_action(const HanabiEnv& env,
     return game.GetMove(nextBestMove);
 }
 
-hle::HanabiMove Actor::strToMove(string key) {
+hle::HanabiMove R2D2Actor::strToMove(string key) {
     auto move = hle::HanabiMove(hle::HanabiMove::kInvalid, -1, -1, -1, -1);
 
     assert(key.length() == 2);
@@ -224,12 +156,12 @@ hle::HanabiMove Actor::strToMove(string key) {
     return move;
 }
 
-void Actor::incrementStat(std::string key) {
+void R2D2Actor::incrementStat(std::string key) {
     if (stats_.find(key) == stats_.end()) stats_[key] = 0;
     stats_[key]++;
 }
 
-void Actor::incrementStatsBeforeMove(
+void R2D2Actor::incrementStatsBeforeMove(
         const HanabiEnv& env, hle::HanabiMove move) {
     if (!recordStats_) {
         return;
@@ -265,7 +197,7 @@ void Actor::incrementStatsBeforeMove(
     livesBeforeMove_ = env.getLife();
 }
 
-void Actor::incrementStatsConvention(
+void R2D2Actor::incrementStatsConvention(
         const HanabiEnv& env, hle::HanabiMove move) {
     if (convention_.size() == 0 || 
             convention_[conventionIdx_].size() == 0) {
@@ -286,13 +218,11 @@ void Actor::incrementStatsConvention(
             && sentSignalStats_
             && lastMove.CardIndex() <= responseMove.CardIndex()) {
         sentSignalStats_ = false;
-        if(CV)printf("stats seen signal\n");
     }
 
     // Should play the response move
     if (lastMove == signalMove && state.MoveIsLegal(responseMove)) {
         shouldHavePlayedResponse = true;
-        if(CV)printf("stats should play response\n");
     }
     
     // Should play the signal move
@@ -301,12 +231,10 @@ void Actor::incrementStatsConvention(
             && movePlayableOnFireworks(env, responseMove, nextPlayer)
             && state.MoveIsLegal(signalMove)) {
         shouldHavePlayedSignal = true;
-        if(CV)printf("stats should play signal\n");
     } 
     
     // Signal move has been played
     if (move == signalMove) {
-        if(CV)printf("stats signal move played\n");
         sentSignalStats_ = true;
     }
 
@@ -314,7 +242,6 @@ void Actor::incrementStatsConvention(
     if (shouldHavePlayedResponse 
             && move == responseMove 
             && !movePlayableOnFireworks(env, move, playerIdx_)) {
-        if(CV)printf("response played losing a life\n");
         incrementStat("response_played_life_lost");
     }
 
@@ -322,29 +249,26 @@ void Actor::incrementStatsConvention(
     incrementStatsConventionRole(shouldHavePlayedSignal, "signal", move, signalMove);
 }
 
-void Actor::incrementStatsConventionRole(bool shouldHavePlayed, string role,
+void R2D2Actor::incrementStatsConventionRole(bool shouldHavePlayed, string role,
         hle::HanabiMove movePlayed, hle::HanabiMove moveRole) {
     string roleStr = role + "_" + conventionString();
 
     if (shouldHavePlayed) {
         incrementStat(roleStr + "_available");
-        if(CV)printf("stats %s available\n", role.c_str());
     }
 
     if (movePlayed == moveRole) {
         incrementStat(roleStr + "_played");
         if (shouldHavePlayed) {
             incrementStat(roleStr + "_played_correct");
-            if(CV)printf("stats %s played correct\n", role.c_str());
         } else {
             incrementStat(roleStr + "_played_incorrect");
-            if(CV)printf("stats %s played incorrect\n", role.c_str());
         }
     }
 
 }
 
-string Actor::conventionString() {
+string R2D2Actor::conventionString() {
     string conventionStr = "";
 
     auto conventionSet = convention_[conventionIdx_];
@@ -359,7 +283,7 @@ string Actor::conventionString() {
     return conventionStr;
 }
 
-void Actor::incrementStatsTwoStep(
+void R2D2Actor::incrementStatsTwoStep(
         const HanabiEnv& env, hle::HanabiMove move) {
     auto lastMove = env.getMove(env.getLastAction());
     string colours[5] = {"R", "Y", "G", "W", "B"};
@@ -410,7 +334,7 @@ void Actor::incrementStatsTwoStep(
 }
 
 
-void Actor::incrementStatsAfterMove(
+void R2D2Actor::incrementStatsAfterMove(
         const HanabiEnv& env) {
     if (!recordStats_) {
         return;
@@ -423,12 +347,16 @@ void Actor::incrementStatsAfterMove(
     }
 }
 
-void Actor::incrementBeliefStatsConvention(const HanabiEnv& env,
-        std::vector<hle::HanabiCardValue> sampledCards, int curPlayer) {
+tuple<int, int, vector<int>> R2D2Actor::beliefConventionPlayable(const HanabiEnv& env) {
+    int curPlayer = env.getCurrentPlayer();
+    vector<int> playableCards(25, 0);
+    assert(!partners_[(playerIdx_ + 1) % 2].expired());
+    auto partner = partners_[(playerIdx_ + 1) % 2].lock();
     if (curPlayer != playerIdx_ 
             || convention_.size() == 0 
-            || convention_[conventionIdx_].size() == 0) {
-        return;
+            || convention_[conventionIdx_].size() == 0
+            || partner->previousHand_ == nullptr) {
+        return make_tuple(0, beliefStatsResponsePosition_, playableCards);
     }
 
     auto& state = env.getHleState();
@@ -437,28 +365,123 @@ void Actor::incrementBeliefStatsConvention(const HanabiEnv& env,
     auto signalMove = strToMove(convention_[conventionIdx_][0][0]);
     auto responseMove = strToMove(convention_[conventionIdx_][0][1]);
 
-    if ((myLastMove.MoveType() == hle::HanabiMove::kPlay 
-            || myLastMove.MoveType() == hle::HanabiMove::kDiscard) 
-            && signalReceived_
-            && myLastMove.CardIndex() <= responseMove.CardIndex()) {
-        signalReceived_ = false;
-        if(BF)printf("Signalled card moved\n");
+    // Reset if partners play may be the signal card 
+    if (beliefStatsSignalReceived_
+        && partnerLastMove.MoveType() == hle::HanabiMove::kPlay
+        && playedCardPossiblySignalledCard(
+            partnerLastMove, partner->previousHand_)) {
+        beliefStatsSignalReceived_ = false;
+        beliefStatsResponsePosition_ = responseMove.CardIndex();
+    }
+
+    // Reset or shift position if my last action was discard
+    if (beliefStatsSignalReceived_
+        && myLastMove.MoveType() == hle::HanabiMove::kDiscard) {
+        if (myLastMove.CardIndex() < beliefStatsResponsePosition_) {
+            beliefStatsResponsePosition_--;
+        } else if (myLastMove.CardIndex() == beliefStatsResponsePosition_) {
+            beliefStatsSignalReceived_ = false;
+            beliefStatsResponsePosition_ = responseMove.CardIndex();
+        }
+    }
+
+    // Reset or shift position if my last action was play
+    if (beliefStatsSignalReceived_
+        && myLastMove.MoveType() == hle::HanabiMove::kPlay) {
+        if (myLastMove.CardIndex() == beliefStatsResponsePosition_) {
+            beliefStatsSignalReceived_ = false;
+            beliefStatsResponsePosition_ = responseMove.CardIndex();
+        } else if (previousHand_ != nullptr
+                && playedCardPossiblySignalledCard(myLastMove, previousHand_)) {
+            beliefStatsSignalReceived_ = false;
+            beliefStatsResponsePosition_ = responseMove.CardIndex();
+        } else if (myLastMove.CardIndex() < beliefStatsResponsePosition_) {
+            beliefStatsResponsePosition_--;
+        }
     }
 
     if (partnerLastMove == signalMove) {
-        signalReceived_ = true;
-        if(BF)printf("partner signal seen\n");
+        beliefStatsSignalReceived_ = true;
     }
 
-    auto cardValue = sampledCards[responseMove.CardIndex()];
-    auto focusCard = hle::HanabiCard(cardValue, -1);
+    auto obs = env.getObsShowCards();
+    auto& all_hands = obs.Hands();
+    auto myHand = all_hands[playerIdx_];
+    auto conventionCard = myHand.Cards()[beliefStatsResponsePosition_];
 
-    if (signalReceived_) {
-        incrementStat("belief_should_be_playable");
-        if(BF)printf("Card should be playable\n");
-        if (state.CardPlayableOnFireworks(focusCard)) {
-            incrementStat("belief_playable_correct");
-            if(BF)printf("Card playable corrent\n");
+    if (beliefStatsSignalReceived_) {
+        possibleResponseCards(env, playableCards);
+        incrementStat("response_should_be_playable");
+        if (state.CardPlayableOnFireworks(conventionCard)) {
+            incrementStat("response_is_playable");
+        }
+        return make_tuple(1, beliefStatsResponsePosition_, playableCards);
+    }
+
+    return make_tuple(0, beliefStatsResponsePosition_, playableCards);
+}
+
+bool R2D2Actor::playedCardPossiblySignalledCard(hle::HanabiMove playedMove,
+        shared_ptr<hle::HanabiHand> playedHand) {
+    auto myHandKnowledge = previousHand_->Knowledge();
+    auto signalledCardKnowledge = myHandKnowledge[beliefStatsResponsePosition_];
+    string colourKnowledgeStr = signalledCardKnowledge.ColorKnowledgeRangeString();
+    string rankKnowledgeStr = signalledCardKnowledge.RankKnowledgeRangeString();
+
+    auto playedCard = playedHand->Cards()[playedMove.CardIndex()];
+    char colours[5] = {'R','Y','G','W','B'};
+    char ranks[5] = {'1','2','3','4','5'};
+    char playedColour = colours[playedCard.Color()];
+    char playedRank = ranks[playedCard.Rank()];
+
+    bool colourMatch = false;
+    bool rankMatch = false;
+
+    for (char& ch: colourKnowledgeStr) {
+        if (ch == playedColour) {
+            colourMatch = true;
+            break;
+        }
+    }
+
+    for (char& ch: rankKnowledgeStr) {
+        if (ch == playedRank) {
+            rankMatch = true;
+            break;
+        }
+    }
+
+    return colourMatch && rankMatch;
+}
+
+void R2D2Actor::possibleResponseCards(const HanabiEnv& env, 
+        vector<int>& playableCards) {
+    auto obs = env.getObsShowCards();
+    auto& all_hands = obs.Hands();
+    auto cards = all_hands[playerIdx_].Cards();
+    auto game = env.getHleGame();
+    auto& state = env.getHleState();
+
+    for (auto card: cards) {
+        int id = game.CardToIndex(card.Value());
+        if (state.CardPlayableOnFireworks(card)) {
+            playableCards[id] = 1;
+        }
+    }
+
+    auto deck = state.Deck();
+
+    for (int colour = 0; colour < 5; colour++) {
+        for (int rank = 0; rank < 5; rank++) {
+            int id = colour * 5 + rank;
+            auto cardValue = indexToCard(id, game.NumRanks());
+            auto card = hle::HanabiCard(
+                    cardValue, -1);
+            if (deck.CardCount(colour, rank) > 0
+                && state.CardPlayableOnFireworks(card)) {
+                playableCards[id] = 1;
+            }
         }
     }
 }
+

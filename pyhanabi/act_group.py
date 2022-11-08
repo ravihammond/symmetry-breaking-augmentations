@@ -48,6 +48,7 @@ class ActGroup:
         partner_cfgs,
         static_partner,
         use_experience,
+        belief_stats,
     ):
         self.devices = devices.split(",")
         self.method = method
@@ -102,6 +103,7 @@ class ActGroup:
         self.partner_cfgs = partner_cfgs
         self.static_partner = static_partner
         self.use_experience = use_experience
+        self.belief_stats = belief_stats
 
         self.create_r2d2_actors()
 
@@ -187,6 +189,7 @@ class ActGroup:
                             self.convention_act_override[k],
                             self.convention_fict_act_override,
                             self.use_experience[k],
+                            self.belief_stats,
                         )
 
                         if self.off_belief:
@@ -203,7 +206,6 @@ class ActGroup:
                         partners = game_actors[:]
                         partners[k] = None
                         game_actors[k].set_partners(partners)
-
 
                     thread_actors.append(game_actors)
                     convention_index_count += 1
@@ -224,6 +226,18 @@ class ActGroup:
         if self.belief_runner is not None:
             for runner in self.belief_runner:
                 runner.start()
+
+    def stop(self):
+        for runner in self.model_runners:
+            runner.stop()
+
+        for runners in self.partner_runners:
+            for runner in runners:
+                runner.stop()
+
+        if self.belief_runner is not None:
+            for runner in self.belief_runner:
+                runner.stop()
 
     def update_model(self, agent):
         for runner in self.model_runners:

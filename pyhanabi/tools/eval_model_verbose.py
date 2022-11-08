@@ -25,12 +25,16 @@ def evaluate_model(args):
 
     stats = collect_stats(score, perfect, scores, actors, conventions)
 
+    # pprint(stats)
+
     print()
     print_scores(stats)
     print_move_stats(stats, 0)
     print_move_stats(stats, 1)
 
     for convention_string in convention_strings:
+        if not any(convention_string in key for key in stats.keys()):
+            continue
         print()
         print_scores(stats, f"{convention_string}_")
         print_actor_stats(stats, 0, convention_string)
@@ -57,6 +61,10 @@ def load_weights(args):
 
 
 def run_evaluation(args, weight_files):
+    convention_indexes = None
+    if args.convention_index is not None:
+        convention_indexes = [args.convention_index, args.convention_index]
+
     score, _, perfect,scores, actors = evaluate_saved_model(
         weight_files,
         args.num_game,
@@ -68,7 +76,9 @@ def run_evaluation(args, weight_files):
         override=[args.override0, args.override1],
         verbose=False,
         belief_stats=args.belief_stats,
+        belief_model=args.belief_model,
         partner_models_path=args.partner_models,
+        convention_indexes=convention_indexes,
     )
 
     return score, perfect, scores, actors
@@ -79,6 +89,7 @@ def print_actor_stats(stats, player, convention_string):
     print_convention_stats(stats, player, convention_string, "signal")
     print_convention_stats(stats, player, convention_string, "response")
     print_convention_lose_life_stats(stats, player, convention_string)
+    print_convention_should_be_playable_stats(stats, player, convention_string)
 
 
 def print_scores(stats, convention=""):
@@ -142,6 +153,19 @@ def print_convention_lose_life_stats(stats, player, convention_string):
     print(f"{stat}: {stats[stat]}")
 
 
+def print_convention_should_be_playable_stats(stats, player, convention_string):
+    prefix = f"{convention_string}_actor{player}"
+
+    should_be_playable = f"{prefix}_response_should_be_playable"
+    playable = f"{prefix}_response_is_playable"
+    playable_percent_str = f"{playable}%"
+
+    playable_percent = stats[playable_percent_str] * 100
+
+    print(f"{should_be_playable}: {stats[should_be_playable]}")
+    print(f"{playable}: {stats[playable]} ({playable_percent:.1f}%)")
+
+
 def load_convention(convention_path):
     if convention_path == "None":
         return []
@@ -180,9 +204,11 @@ if __name__ == "__main__":
     )
     parser.add_argument("--device", default="cuda:0", type=str)
     parser.add_argument("--convention", default="None", type=str)
+    parser.add_argument("--convention_index", default=None, type=int)
     parser.add_argument("--override0", default=0, type=int)
     parser.add_argument("--override1", default=0, type=int)
     parser.add_argument("--belief_stats", default=0, type=int)
+    parser.add_argument("--belief_model", default="None", type=str)
     parser.add_argument("--partner_models", default="None", type=str)
     args = parser.parse_args()
 

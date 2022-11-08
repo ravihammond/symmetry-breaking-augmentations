@@ -13,9 +13,8 @@
 #include "rela/r2d2.h"
 
 #include "rlcc/hanabi_env.h"
-#include "rlcc/actors/actor.h"
 
-class R2D2Actor: public Actor {
+class R2D2Actor {
 public:
     R2D2Actor(
             std::shared_ptr<rela::BatchRunner> runner,
@@ -34,21 +33,19 @@ public:
             int multiStep,
             int seqLen,
             float gamma,
+
+            // My changes
             std::vector<std::vector<std::vector<std::string>>> convention,
             bool actParameterized,
             int conventionIdx,
             int conventionOverride,
             bool conventionFictitiousOverride,
-            bool useExperience)
-        : Actor(
-                seed,
-                playerIdx,
-                convention,
-                conventionIdx,
-                conventionOverride,
-                false)
-          , runner_(std::move(runner))
+            bool useExperience,
+            bool beliefStats)
+        : runner_(std::move(runner))
+          , rng_(seed)
           , numPlayer_(numPlayer)
+          , playerIdx_(playerIdx)
           , epsList_(epsList)
           , tempList_(tempList)
           , vdn_(vdn)
@@ -56,18 +53,31 @@ public:
           , shuffleColor_(shuffleColor)
           , hideAction_(hideAction)
           , trinary_(trinary)
-          , batchsize_(vdn_ ? numPlayer_ : 1)
+          , batchsize_(vdn_ ? numPlayer : 1)
           , playerEps_(batchsize_)
           , playerTemp_(batchsize_)
           , colorPermutes_(batchsize_)
           , invColorPermutes_(batchsize_)
           , replayBuffer_(std::move(replayBuffer))
           , r2d2Buffer_(std::make_unique<rela::R2D2Buffer>(multiStep, seqLen, gamma))
-          , actParameterized_(actParameterized)
+
+          // My changes
+          , convention_(convention) 
+          , conventionIdx_(conventionIdx) 
+          , conventionOverride_(conventionOverride) 
           , conventionFictitiousOverride_(conventionFictitiousOverride)
+          , actParameterized_(actParameterized)
+          , recordStats_(false)
           , useExperience_(useExperience)
           , logStats_(false) 
-          , beliefStats_(false) {
+          , livesBeforeMove_(-1) 
+          , currentTwoStep_("X") 
+          , beliefStats_(beliefStats) 
+          , sentSignal_(false)
+          , sentSignalStats_(false)
+          , beliefStatsSignalReceived_(false) {
+        auto responseMove = strToMove(convention_[conventionIdx_][0][1]);
+        beliefStatsResponsePosition_ = responseMove.CardIndex();
     }
 
     // simpler constructor for eval mode
@@ -78,63 +88,72 @@ public:
             bool vdn,
             bool sad,
             bool hideAction,
+
+            // My changes
             std::vector<std::vector<std::vector<std::string>>> convention,
             bool actParameterized,
             int conventionIdx,
             int conventionOverride,
             bool beliefStats)
-        : Actor(
-                1, // seed not used in eval move
-                playerIdx,
-                convention,
-                conventionIdx,
-                conventionOverride,
-                true)
-          , runner_(std::move(runner))
+        : runner_(std::move(runner))
+          , rng_(1)  // not used in eval mode
           , numPlayer_(numPlayer)
+          , playerIdx_(playerIdx)
           , epsList_({0})
           , vdn_(vdn)
           , sad_(sad)
           , shuffleColor_(false)
           , hideAction_(hideAction)
           , trinary_(true)
-          , batchsize_(vdn_ ? numPlayer_ : 1)
+          , batchsize_(vdn_ ? numPlayer : 1)
           , playerEps_(batchsize_)
           , colorPermutes_(batchsize_)
           , invColorPermutes_(batchsize_)
           , replayBuffer_(nullptr)
           , r2d2Buffer_(nullptr)
-          , actParameterized_(actParameterized)
+
+          // My changes
+          , convention_(convention) 
+          , conventionIdx_(conventionIdx) 
+          , conventionOverride_(conventionOverride) 
           , conventionFictitiousOverride_(false)
+          , actParameterized_(actParameterized)
+          , recordStats_(true)
           , useExperience_(false)
           , logStats_(true) 
-          , beliefStats_(beliefStats) {
+          , livesBeforeMove_(-1) 
+          , currentTwoStep_("X") 
+          , beliefStats_(beliefStats) 
+          , sentSignal_(false)
+          , sentSignalStats_(false)
+          , beliefStatsSignalReceived_(false) {
+        auto responseMove = strToMove(convention_[conventionIdx_][0][1]);
+        beliefStatsResponsePosition_ = responseMove.CardIndex();
+    }
+
+    void setPartners(std::vector<std::shared_ptr<R2D2Actor>> partners) {
+        partners_.reserve(partners.size());
+        for (size_t i = 0; i < partners.size(); i++) {
+            if ((int)i == playerIdx_) {
+                partners_.push_back(std::weak_ptr<R2D2Actor>());
+                continue;
+            }
+            partners_.emplace_back(std::move(partners[i]));
+        }
+        assert((int)partners_.size() == numPlayer_);
     }
 
     virtual void addHid(rela::TensorDict& to, rela::TensorDict& hid);
-    void reset(const HanabiEnv& env) override;
-    void observeBeforeAct(HanabiEnv& env) override;
-    void act(HanabiEnv& env, const int curPlayer) override;
-    void fictAct(const HanabiEnv& env) override;
-    void observeAfterAct(const HanabiEnv& env) override;
-
-    void setPartners(std::vector<std::shared_ptr<R2D2Actor>> partners) {
-        partners_ = std::move(partners);
-        assert((int)partners_.size() == numPlayer_);
-        assert(partners_[playerIdx_] == nullptr);
-    }
+    void reset(const HanabiEnv& env);
+    void observeBeforeAct(HanabiEnv& env);
+    void act(HanabiEnv& env, const int curPlayer);
+    void fictAct(const HanabiEnv& env);
+    void observeAfterAct(const HanabiEnv& env);
 
     void setBeliefRunner(std::shared_ptr<rela::BatchRunner>& beliefModel) {
         assert(!vdn_ && batchsize_ == 1);
         beliefRunner_ = beliefModel;
         offBelief_ = true;
-        // OBL does not need Other-Play, and does not support Other-Play
-        assert(!shuffleColor_);
-    }
-
-    void setBeliefRunnerStats(std::shared_ptr<rela::BatchRunner>& beliefModel) {
-        assert(!vdn_ && batchsize_ == 1);
-        beliefRunner_ = beliefModel;
         // OBL does not need Other-Play, and does not support Other-Play
         assert(!shuffleColor_);
     }
@@ -146,7 +165,22 @@ public:
         return rate;
     }
 
-protected:
+    std::tuple<int, int, int, int> getPlayedCardInfo() const {
+        return {noneKnown_, colorKnown_, rankKnown_, bothKnown_};
+    }
+
+    // My changes
+    void setBeliefRunnerStats(std::shared_ptr<rela::BatchRunner>& beliefModel) {
+        assert(!vdn_ && batchsize_ == 1);
+        beliefRunner_ = beliefModel;
+        // OBL does not need Other-Play, and does not support Other-Play
+        assert(!shuffleColor_);
+    }
+    void pushToReplayBuffer();
+    std::unordered_map<std::string, float> getStats() const { return stats_; }
+    int getConventionIndex() { return conventionIdx_; }
+
+private:
     rela::TensorDict getH0(int numPlayer, std::shared_ptr<rela::BatchRunner>& runner) {
         std::vector<torch::jit::IValue> input{numPlayer};
         auto model = runner->jitModel();
@@ -155,9 +189,47 @@ protected:
         return h0;
     }
 
+    // My changes
+    void conventionReset(const HanabiEnv& env);
+    //void incrementPlayedCardKnowledgeCount(
+            //const HanabiEnv& env, hle::HanabiMove move);
+    void incrementStat(std::string key);
+    virtual void incrementStatsBeforeMove(
+            const HanabiEnv& env, hle::HanabiMove move);
+    void incrementStatsConvention(const HanabiEnv& env, hle::HanabiMove move);
+    void incrementStatsConventionRole(bool shouldHavePlayed, std::string role,
+        hle::HanabiMove movePlayed, hle::HanabiMove moveRole);
+    void incrementStatsTwoStep(const HanabiEnv& env, hle::HanabiMove move);
+    std::string conventionString();
+    virtual void incrementStatsAfterMove(const HanabiEnv& env);
+    hle::HanabiMove overrideMove(const HanabiEnv& env, hle::HanabiMove move,
+            std::vector<float> actionQ, bool exploreAction,
+            std::vector<float> legalMoves);
+    bool moveInVector(std::vector<hle::HanabiMove> moves, hle::HanabiMove move);
+    std::tuple<hle::HanabiMove, bool> availableSignalMove( const HanabiEnv& env, 
+            std::vector<std::vector<std::string>> convention);
+    hle::HanabiMove matchingResponseMove(
+            std::vector<std::vector<std::string>> convention,
+        hle::HanabiMove signalMove);
+    hle::HanabiMove different_action(const HanabiEnv& env, 
+            std::vector<hle::HanabiMove> exclude,
+            std::vector<float> actionQ, bool exploreAction,
+            std::vector<float> legalMoves);
+    bool movePlayableOnFireworks(const HanabiEnv& env, hle::HanabiMove move, int player);
+    bool discardMovePlayable(const HanabiEnv& env, hle::HanabiMove move);
+    hle::HanabiMove strToMove(std::string key);
+    std::tuple<int,int,std::vector<int>> beliefConventionPlayable(
+            const HanabiEnv& env);
+    bool playedCardPossiblySignalledCard(hle::HanabiMove playedMove,
+            std::shared_ptr<hle::HanabiHand> playedHand);
+    void possibleResponseCards(const HanabiEnv& env,
+            std::vector<int>& playableCards);
+
     std::shared_ptr<rela::BatchRunner> runner_;
     std::shared_ptr<rela::BatchRunner> classifier_;
+    std::mt19937 rng_;
     const int numPlayer_;
+    const int playerIdx_;
     const std::vector<float> epsList_;
     const std::vector<float> tempList_;
     const bool vdn_;
@@ -197,11 +269,37 @@ protected:
     int successFict_ = 0;
     bool validFict_ = false;
     std::unique_ptr<hle::HanabiState> fictState_ = nullptr;
-    std::vector<std::shared_ptr<R2D2Actor>> partners_;
+    std::vector<std::weak_ptr<R2D2Actor>> partners_;
 
-    bool actParameterized_;
+
+    std::vector<std::vector<float>> perCardPrivV0_;
+    int noneKnown_ = 0;
+    int colorKnown_ = 0;
+    int rankKnown_ = 0;
+    int bothKnown_ = 0;
+    int testVariable_ = 0;
+
+    // My changes
+    std::unordered_map<std::string,float> stats_;
+    std::vector<std::vector<std::vector<std::string>>> convention_;
+    int conventionIdx_;
+    int conventionOverride_;
     bool conventionFictitiousOverride_;
+    bool actParameterized_;
+    bool recordStats_;
     bool useExperience_;
     bool logStats_;
+    std::unordered_map<char, int> colourMoveToIndex_{
+        {'R', 0}, {'Y', 1}, {'G', 2}, {'W', 3}, {'B', 4} };
+    std::unordered_map<char, int> rankMoveToIndex_{
+        {'1', 0}, {'2', 1}, {'3', 2}, {'4', 3}, {'5', 4} };
+    int livesBeforeMove_;
+    std::string currentTwoStep_;
     bool beliefStats_;
+    bool sentSignal_;
+    bool sentSignalStats_;
+    bool beliefStatsSignalReceived_;
+    int beliefStatsResponsePosition_;
+    std::shared_ptr<hle::HanabiHand> previousHand_ = nullptr;
 };
+
