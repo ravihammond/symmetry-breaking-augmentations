@@ -43,7 +43,8 @@ class R2D2Agent(torch.jit.ScriptModule):
         nlayer=None,
         max_len=None,
         parameterized=0,
-        num_conventions=0,
+        parameter_type="one_hot",
+        num_parameters=0,
     ):
         super().__init__()
 
@@ -91,7 +92,8 @@ class R2D2Agent(torch.jit.ScriptModule):
         self.nlayer = nlayer
         self.max_len = max_len
         self.parameterized = parameterized
-        self.num_conventions= num_conventions
+        self.parameter_type = parameter_type
+        self.num_parameters = num_parameters
 
     @torch.jit.script_method
     def get_h0(self, batchsize: int) -> Dict[str, torch.Tensor]:
@@ -119,7 +121,8 @@ class R2D2Agent(torch.jit.ScriptModule):
             nlayer=self.nlayer,
             max_len=self.max_len,
             parameterized=self.parameterized,
-            num_conventions=self.num_conventions,
+            parameter_type=self.parameter_type,
+            num_parameters=self.num_parameters,
         )
         cloned.load_state_dict(self.state_dict())
         cloned.train(self.training)
@@ -170,13 +173,9 @@ class R2D2Agent(torch.jit.ScriptModule):
         priv_s = obs["priv_s"]
         publ_s = obs["publ_s"]
         legal_move = obs["legal_move"]
-        convention_index = obs["convention_idx"]
+        convention_idx = obs["convention_idx"]
 
-        if self.parameterized:
-            one_hot = F.one_hot(convention_index, 
-                    num_classes=self.num_conventions)
-            priv_s = torch.cat((priv_s, one_hot), 1)
-            publ_s = torch.cat((publ_s, one_hot), 1)
+        priv_s, publ_s = self.encode_parameters(priv_s, publ_s, convention_idx)
 
         if "eps" in obs:
             eps = obs["eps"].flatten(0, 1)
@@ -259,13 +258,9 @@ class R2D2Agent(torch.jit.ScriptModule):
         }
         reward = input_["reward"]
         terminal = input_["terminal"]
-        convention_index = input_["convention_idx"]
+        convention_idx = input_["convention_idx"]
 
-        if self.parameterized:
-            one_hot = F.one_hot(convention_index, 
-                    num_classes=self.num_conventions)
-            priv_s = torch.cat((priv_s, one_hot), 1)
-            publ_s = torch.cat((publ_s, one_hot), 1)
+        priv_s, publ_s = self.encode_parameters(priv_s, publ_s, convention_idx)
 
         if self.boltzmann:
             temp = input_["temperature"].flatten(0, 1)
@@ -335,13 +330,9 @@ class R2D2Agent(torch.jit.ScriptModule):
         publ_s = obs["publ_s"]
         legal_move = obs["legal_move"]
         action = action["a"]
-        convention_index = obs["convention_idx"]
+        convention_idx = obs["convention_idx"]
 
-        if self.parameterized:
-            one_hot = F.one_hot(convention_index, 
-                    num_classes=self.num_conventions)
-            priv_s = torch.cat((priv_s, one_hot), 2)
-            publ_s = torch.cat((publ_s, one_hot), 2)
+        priv_s, publ_s = self.encode_parameters(priv_s, publ_s, convention_idx)
 
         for k, v in hid.items():
             hid[k] = v.flatten(1, 2).contiguous()
@@ -511,3 +502,26 @@ class R2D2Agent(torch.jit.ScriptModule):
         xent = xent.sum(0)
         stat["bc_loss"].feed(xent.mean().detach())
         return xent
+
+    def encode_parameters(self, priv_s, publ_s, convention_idx):
+        if not self.parameterized:
+            return priv_s, publ_s
+
+        if self.parameter_type == "one_hot":
+            one_hot = F.one_hot(convention_idx, 
+                    num_classes=self.num_parameters)
+            priv_s = torch.cat((priv_s, one_hot), 1)
+            publ_s = torch.cat((publ_s, one_hot), 1)
+        elif self.parameter_type == "two_hot":
+            num_colours = 5
+            num_ranks = 5
+            colour_idx = torch.div(convention_idx, num_colours,
+                    rounding_mode="trunc")
+            rank_idx = torch.remainder(convention_idx, num_colours)
+            colour_one_hot = F.one_hot(colour_idx, num_classes=num_colours)
+            rank_one_hot = F.one_hot(rank_idx, num_classes=num_ranks)
+            cat_axis = len(priv_s.shape) - 1
+            priv_s = torch.cat((priv_s, colour_one_hot, rank_one_hot), cat_axis)
+            publ_s = torch.cat((publ_s, colour_one_hot, rank_one_hot), cat_axis)
+
+        return priv_s, publ_s

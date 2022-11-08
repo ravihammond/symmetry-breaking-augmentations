@@ -69,6 +69,7 @@ python selfplay.py \
        --load_model None \
        --net publ-lstm \
        --convention conventions/all_colours.json \
-       --num_conventions 25 \
        --parameterized 1 \
+       --parameter_type two_hot \
+       --num_parameters 10 \
        --wandb 0 \

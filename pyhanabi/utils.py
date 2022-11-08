@@ -167,11 +167,12 @@ def load_agent(weight_file, overwrite):
     )[0]
 
     cfg["parameterized"] = cfg["parameterized"] if "parameterized" in cfg else False
-    cfg["num_conventions"] = cfg["num_conventions"] if "num_conventions" in cfg else 0
+    cfg["parameter_type"] = cfg["parameter_type"] if "parameter_type" in cfg else "one_hot"
+    cfg["num_parameters"] = cfg["num_parameters"] if "num_parameters" in cfg else 0
 
     in_dim = game.feature_size(cfg["sad"])
     if cfg["parameterized"]:
-        in_dim = tuple([x + cfg["num_conventions"] for x in in_dim])
+        in_dim = tuple([x + cfg["num_parameters"] for x in in_dim])
 
     config = {
         "vdn": overwrite["vdn"] if "vdn" in overwrite else cfg["method"] == "vdn",
@@ -190,7 +191,8 @@ def load_agent(weight_file, overwrite):
         "net": cfg.get("net", "publ-lstm"),
         "off_belief": overwrite.get("off_belief", cfg.get("off_belief", False)),
         "parameterized": cfg["parameterized"],
-        "num_conventions": cfg["num_conventions"],
+        "parameter_type": cfg["parameter_type"],
+        "num_parameters": cfg["num_parameters"],
     }
     if cfg.get("net", None) == "transformer":
         config["nhead"] = cfg["nhead"]
