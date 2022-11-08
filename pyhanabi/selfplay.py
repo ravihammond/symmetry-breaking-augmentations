@@ -137,7 +137,7 @@ def selfplay(args):
                 5,
                 args.num_fict_sample,
                 belief_config["fc_only"],
-                belief_config["parameterized_belief"],
+                belief_config["parameterized"],
                 belief_config["num_conventions"],
             ))
 

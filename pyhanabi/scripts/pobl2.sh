@@ -1,6 +1,6 @@
 #!/bin/bash
 python selfplay.py \
-       --save_dir exps/pobl2_CR-P1_CB-P1 \
+       --save_dir exps/pobl2_all_colours \
        --num_thread 24 \
        --num_game_per_thread 80 \
        --sad 0 \
@@ -15,7 +15,7 @@ python selfplay.py \
        --burn_in_frames 10000 \
        --replay_buffer_size 100000 \
        --epoch_len 1000 \
-       --num_epoch 3001 \
+       --num_epoch 6001 \
        --num_player 2 \
        --rnn_hid_dim 512 \
        --multi_step 1 \
@@ -28,7 +28,7 @@ python selfplay.py \
        --off_belief 1 \
        --num_fict_sample 10 \
        --belief_device cuda:3 \
-       --belief_model exps/pbelief_obl1f_CR-P0/model0.pthw \
+       --belief_model exps/pbelief_obl1f_all_colours/model0.pthw \
        --load_model None \
        --net publ-lstm \
        --convention conventions/all_colours.json \
