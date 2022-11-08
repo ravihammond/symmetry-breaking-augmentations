@@ -39,7 +39,7 @@
 python selfplay.py \
        --save_dir exps/test \
        --num_thread 1 \
-       --num_game_per_thread 1 \
+       --num_game_per_thread 80 \
        --sad 0 \
        --act_base_eps 0.1 \
        --act_eps_alpha 7 \
@@ -48,11 +48,11 @@ python selfplay.py \
        --grad_clip 5 \
        --gamma 0.999 \
        --seed 2254257 \
-       --batchsize 10 \
-       --burn_in_frames 100 \
-       --replay_buffer_size 1000 \
-       --epoch_len 1 \
-       --num_epoch 1 \
+       --batchsize 128 \
+       --burn_in_frames 1000 \
+       --replay_buffer_size 10000 \
+       --epoch_len 1000 \
+       --num_epoch 10 \
        --num_player 2 \
        --rnn_hid_dim 512 \
        --multi_step 1 \

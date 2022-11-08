@@ -11,8 +11,7 @@ from typing import Tuple, Dict
 import numpy as np
 
 torch.set_printoptions(
-    profile="full",
-    linewidth=200,
+    linewidth=600
 )
 
 

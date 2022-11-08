@@ -223,13 +223,16 @@ void R2D2Actor::observeBeforeAct(HanabiEnv& env) {
 
     // add convention index information for parameterization
     input["convention_idx"] = torch::tensor(conventionIdx_);
-    int responseShouldBePlayable, responseCardPosition;
-    vector<int> playableCards;
-    tie(responseShouldBePlayable, responseCardPosition, playableCards) = 
-        beliefConventionPlayable(env);
-    input["response_should_be_playable"] = torch::tensor(responseShouldBePlayable);
-    input["response_card_position"] = torch::tensor(responseCardPosition);
-    input["playable_cards"] = torch::tensor(playableCards);
+
+    if (beliefStats_) {
+        int responseShouldBePlayable, responseCardPosition;
+        vector<int> playableCards;
+        tie(responseShouldBePlayable, responseCardPosition, playableCards) = 
+            beliefConventionPlayable(env);
+        input["response_should_be_playable"] = torch::tensor(responseShouldBePlayable);
+        input["response_card_position"] = torch::tensor(responseCardPosition);
+        input["playable_cards"] = torch::tensor(playableCards);
+    }
 
     // push before we add hidden
     if (replayBuffer_ != nullptr) {
@@ -342,8 +345,8 @@ void R2D2Actor::act(HanabiEnv& env, const int curPlayer) {
             // the fictitious transition
             auto partnerInput = observe(
                     *fictState_,
-                    partner->numPlayer_,
                     partner->playerIdx_,
+                    partner->shuffleColor_,
                     partner->colorPermutes_[0],
                     partner->invColorPermutes_[0],
                     partner->hideAction_,

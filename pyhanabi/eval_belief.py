@@ -33,10 +33,9 @@ from eval import load_agents
 from belief_model import ARBeliefModel
 
 
-def run_belief_xent_cross_play(args):
-    plot_data = belief_xent_cross_play(args)
+def run_belief_cross_play(args):
+    plot_data = belief_cross_play(args)
     pprint(plot_data)
-    print
     create_figures(plot_data, args)
 
 
@@ -45,7 +44,7 @@ def conv_str(conv):
     return f"{conv[0]}{conv[1]}"
 
 
-def belief_xent_cross_play(args):
+def belief_cross_play(args):
     data = []
     xlabels = []
     ylabels = []
@@ -270,6 +269,7 @@ def load_json_list(convention_path):
     convention_file = open(convention_path)
     return json.load(convention_file)
 
+
 def create_figures(plot_data, args):
     print("creating figures")
     data = plot_data["data"]
@@ -321,4 +321,4 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    run_belief_xent_cross_play(args)
+    run_belief_cross_play(args)
