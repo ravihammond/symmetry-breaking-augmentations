@@ -25,6 +25,7 @@ pybind11_add_module(
   ${CMAKE_CURRENT_SOURCE_DIR}/rlcc/clone_data_generator.cc
   ${CMAKE_CURRENT_SOURCE_DIR}/rlcc/actors/r2d2_actor.cc
   ${CMAKE_CURRENT_SOURCE_DIR}/rlcc/actors/r2d2_actor_convention.cc
+  ${CMAKE_CURRENT_SOURCE_DIR}/rlcc/actors/sad_actor.cc
   ${CMAKE_CURRENT_SOURCE_DIR}/rlcc/pybind.cc
 )
 

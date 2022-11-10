@@ -10,7 +10,7 @@ from typing import Tuple, Dict
 import common_utils
 
 
-class R2D2Net(torch.jit.ScriptModule):
+class SADNet(torch.jit.ScriptModule):
     __constants__ = [
         "hid_dim",
         "out_dim",
@@ -66,6 +66,7 @@ class R2D2Net(torch.jit.ScriptModule):
     def act(
         self, priv_s: torch.Tensor, hid: Dict[str, torch.Tensor]
     ) -> Tuple[torch.Tensor, Dict[str, torch.Tensor]]:
+
         assert priv_s.dim() == 2, "dim should be 2, [batch, dim], get %d" % priv_s.dim()
 
         priv_s = priv_s.unsqueeze(0)
@@ -156,7 +157,7 @@ class R2D2Net(torch.jit.ScriptModule):
         return self.cross_entropy(self.pred, lstm_o, target, hand_slot_mask, seq_len)
 
 
-class R2D2Agent(torch.jit.ScriptModule):
+class SADAgent(torch.jit.ScriptModule):
     __constants__ = ["vdn", "multi_step", "gamma", "eta", "uniform_priority"]
 
     def __init__(
@@ -177,7 +178,7 @@ class R2D2Agent(torch.jit.ScriptModule):
         skip_connect=False,
     ):
         super().__init__()
-        self.online_net = R2D2Net(
+        self.online_net = SADNet(
             device,
             in_dim,
             hid_dim,
@@ -187,7 +188,7 @@ class R2D2Agent(torch.jit.ScriptModule):
             num_fc_layer,
             skip_connect,
         ).to(device)
-        self.target_net = R2D2Net(
+        self.target_net = SADNet(
             device,
             in_dim,
             hid_dim,
@@ -250,22 +251,28 @@ class R2D2Agent(torch.jit.ScriptModule):
         output: {'a' : actions}, a long Tensor of shape
             [batchsize] or [batchsize, num_player]
         """
+        priv_s = obs["priv_s"]
+        legal_move = obs["legal_move"]
+        eps = obs["eps"]
+        h0 = obs["h0"]
+        c0 = obs["c0"]
+
         obsize, ibsize, num_player = 0, 0, 0
         if self.vdn:
-            obsize, ibsize, num_player = obs["priv_s"].size()[:3]
-            priv_s = obs["priv_s"].flatten(0, 2)
-            legal_move = obs["legal_move"].flatten(0, 2)
-            eps = obs["eps"].flatten(0, 2)
+            obsize, ibsize, num_player = priv_s.size()[:3]
+            priv_s = priv_s.flatten(0, 2)
+            legal_move = legal_move.flatten(0, 2)
+            eps = eps.flatten(0, 2)
         else:
-            obsize, ibsize = obs["priv_s"].size()[:2]
+            obsize, ibsize = priv_s.size()[:2]
             num_player = 1
-            priv_s = obs["priv_s"].flatten(0, 1)
-            legal_move = obs["legal_move"].flatten(0, 1)
-            eps = obs["eps"].flatten(0, 1)
+            priv_s = priv_s.flatten(0, 1)
+            legal_move = legal_move.flatten(0, 1)
+            eps = eps.flatten(0, 1)
 
         hid = {
-            "h0": obs["h0"].flatten(0, 1).transpose(0, 1).contiguous(),
-            "c0": obs["c0"].flatten(0, 1).transpose(0, 1).contiguous(),
+            "h0": h0.flatten(0, 1).transpose(0, 1).contiguous(),
+            "c0": c0.flatten(0, 1).transpose(0, 1).contiguous(),
         }
 
         greedy_action, new_hid = self.greedy_act(priv_s, legal_move, hid)
@@ -497,3 +504,4 @@ class R2D2Agent(torch.jit.ScriptModule):
         else:
             loss = rl_loss
         return loss, priority
+

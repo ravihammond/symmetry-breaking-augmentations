@@ -17,7 +17,9 @@
 #include "rlcc/clone_data_generator.h"
 #include "rlcc/hanabi_env.h"
 #include "rlcc/thread_loop.h"
+#include "rlcc/actors/actor.h"
 #include "rlcc/actors/r2d2_actor.h"
+#include "rlcc/actors/sad_actor.h"
 
 namespace py = pybind11;
 using namespace hanabi_learning_env;
@@ -63,8 +65,9 @@ PYBIND11_MODULE(hanalearn, m) {
         .def("start_data_generation", &CloneDataGenerator::startDataGeneration)
         .def("terminate", &CloneDataGenerator::terminate);
 
-    //py::class_<R2D2Actor, Actor, std::shared_ptr<R2D2Actor>>(m, "R2D2Actor")
-    py::class_<R2D2Actor, std::shared_ptr<R2D2Actor>>(m, "R2D2Actor")
+    py::class_<Actor, std::shared_ptr<Actor>>(m, "Actor");
+
+    py::class_<R2D2Actor, Actor, std::shared_ptr<R2D2Actor>>(m, "R2D2Actor")
         .def(py::init<
                 std::shared_ptr<rela::BatchRunner>, // runner,
                 int,  // seed,
@@ -106,23 +109,21 @@ PYBIND11_MODULE(hanalearn, m) {
         .def("set_belief_runner_stats", &R2D2Actor::setBeliefRunnerStats)
         .def("get_success_fict_rate", &R2D2Actor::getSuccessFictRate);
 
-    //py::class_<RulebotActor, Actor, std::shared_ptr<RulebotActor>>(
-                //m, "RulebotActor")
-        //.def(py::init<
-                //int, //playerIdx
-                //std::vector<std::vector<std::vector<std::string>>>, // convention
-                //int, // conventionIdx
-                //int, // conventionOverride
-                //bool>()); // recordStats
+    py::class_<SADActor, Actor, std::shared_ptr<SADActor>>(m, "SADActor")
+        .def(py::init<
+                std::shared_ptr<rela::BatchRunner>, // runner
+                int, // numEnvs
+                float, // eta
+                int, // numPlayer
+                int, // playerIdx
+                bool, // shuffleColor
+                std::shared_ptr<rela::RNNPrioritizedReplay>>()) // replayBuffer,
+        .def(py::init<
+                std::shared_ptr<rela::BatchRunner>, // runner 
+                int, // numPlayer
+                int>()) // playerIdx
+        .def("num_act", &SADActor::numAct) ;
 
-    //py::class_<Rulebot2Actor, Actor, std::shared_ptr<Rulebot2Actor>>(
-            //m, "Rulebot2Actor")
-        //.def(py::init<
-                //int, //playerIdx
-                //std::vector<std::vector<std::vector<std::string>>>, // convention
-                //int, // conventionIdx
-                //int, // conventionOverride
-                //bool>()); // recordStats
 
     m.def("observe", py::overload_cast<const hle::HanabiState&, int, bool>(&observe));
 
@@ -144,7 +145,7 @@ PYBIND11_MODULE(hanalearn, m) {
             m, "HanabiThreadLoop")
         .def(py::init<
                 std::vector<std::shared_ptr<HanabiEnv>>,
-                std::vector<std::vector<std::shared_ptr<R2D2Actor>>>,
+                std::vector<std::vector<std::shared_ptr<Actor>>>,
                 bool>())
         .def("get_time_stats", &HanabiThreadLoop::getTimeStats);
 
