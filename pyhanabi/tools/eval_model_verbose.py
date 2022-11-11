@@ -25,8 +25,6 @@ def evaluate_model(args):
 
     stats = collect_stats(score, perfect, scores, actors, conventions)
 
-    # pprint(stats)
-
     print()
     print_scores(stats)
     print_move_stats(stats, 0)
@@ -79,6 +77,7 @@ def run_evaluation(args, weight_files):
         belief_model=args.belief_model,
         partner_models_path=args.partner_models,
         convention_indexes=convention_indexes,
+        sad_legacy=args.sad_legacy,
     )
 
     return score, perfect, scores, actors
@@ -210,6 +209,12 @@ if __name__ == "__main__":
     parser.add_argument("--belief_stats", default=0, type=int)
     parser.add_argument("--belief_model", default="None", type=str)
     parser.add_argument("--partner_models", default="None", type=str)
+    parser.add_argument("--sad_legacy", default="0,0", type=str)
     args = parser.parse_args()
+
+    args.sad_legacy = [int(x) for x in args.sad_legacy.split(",")]
+    assert(len(args.sad_legacy) <= 2)
+    if (len(args.sad_legacy) == 1):
+        args.sad_legacy *= 2
 
     evaluate_model(args)

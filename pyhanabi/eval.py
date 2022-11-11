@@ -40,6 +40,7 @@ def evaluate(
     belief_model_path="None",
     partner_agents=None,
     partner_cfgs=None,
+    sad_legacy=[0, 0],
 ):
     """
     evaluate agents as long as they have a "act" function
@@ -118,6 +119,7 @@ def evaluate(
                     convention_index, # conventionIndex
                     override[i], # conventionOverride
                     belief_stats, # beliefStats
+                    sad_legacy[i], # sadLegacy
                 )
 
                 if belief_stats:
@@ -218,6 +220,7 @@ def evaluate_saved_model(
     belief_model="None",
     partner_models_path="None",
     pre_loaded_data=None,
+    sad_legacy=[0, 0]
 ):
     if pre_loaded_data is None:
         pre_loaded_data = load_agents(
@@ -225,7 +228,8 @@ def evaluate_saved_model(
             overwrite=overwrite,
             device=device,
             belief_stats=belief_stats,
-            partner_models_path=partner_models_path
+            partner_models_path=partner_models_path,
+            sad_legacy=sad_legacy
         )
 
     agents = pre_loaded_data["agents"]
@@ -259,6 +263,7 @@ def evaluate_saved_model(
             partner_agents=partner_agents,
             partner_cfgs=partner_cfgs,
             act_parameterized=parameterized,
+            sad_legacy=sad_legacy,
         )
         scores.extend(score)
         perfect += p
@@ -285,6 +290,7 @@ def load_agents(
     device="cuda:0",
     belief_stats=False,
     partner_models_path="None",
+    sad_legacy=[0, 0],
 ):
     agents = []
     sad = []
@@ -299,6 +305,7 @@ def load_agents(
 
     # Load models from weight files
     for i, weight_file in enumerate(weight_files):
+        assert os.path.exists(weight_file)
         if i > 0 and partner_models_path is not "None":
             agents.append(None)
             sad.append(False)
@@ -306,10 +313,12 @@ def load_agents(
             parameterized.append(False)
             break
 
-        if "rulebot" in weight_file:
-            agents.append(weight_file)
-            sad.append(False)
+        if sad_legacy[i]:
+            agent = utils.load_sad_model(weight_file, device)
+            agents.append(agent)
+            sad.append(True)
             hide_action.append(False)
+            parameterized.append(False)
             continue
 
         try: 

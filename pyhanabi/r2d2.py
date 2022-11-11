@@ -192,7 +192,6 @@ class R2D2Agent(torch.jit.ScriptModule):
 
         hid = {"h0": obs["h0"], "c0": obs["c0"]}
 
-
         if self.boltzmann:
             temp = obs["temperature"].flatten(0, 1)
             greedy_action, new_hid, prob = self.boltzmann_act(

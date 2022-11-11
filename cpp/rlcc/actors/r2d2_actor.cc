@@ -19,18 +19,30 @@ void R2D2Actor::addHid(rela::TensorDict& to, rela::TensorDict& hid) {
     for (auto& kv : hid) {
         // hid: [num_layer, batch/num_player, dim]
         // -> batched hid: [batchsize, num_layer, batch/num_player, dim]
-        auto ret = to.emplace(kv.first, kv.second);
-        assert(ret.second);
+        if (sadLegacy_) {
+            auto ret = to.emplace(kv.first, kv.second.transpose(0, 1));
+            assert(ret.second);
+        } else {
+            auto ret = to.emplace(kv.first, kv.second);
+            assert(ret.second);
+        }
     }
 }
 
-void moveHid(rela::TensorDict& from, rela::TensorDict& hid) {
+void R2D2Actor::moveHid(rela::TensorDict& from, rela::TensorDict& hid) {
     for (auto& kv : hid) {
         auto it = from.find(kv.first);
         assert(it != from.end());
         auto newHid = it->second;
-        assert(newHid.sizes() == kv.second.sizes());
-        hid[kv.first] = newHid;
+
+        if (sadLegacy_) {
+            assert(newHid.sizes() == kv.second.transpose(0, 1).sizes());
+            hid[kv.first] = newHid.transpose(0, 1);
+        } else {
+            assert(newHid.sizes() == kv.second.sizes());
+            hid[kv.first] = newHid;
+        }
+
         from.erase(it);
     }
 }
@@ -188,7 +200,6 @@ void R2D2Actor::observeBeforeAct(HanabiEnv& env) {
     rela::TensorDict input;
     const auto& state = env.getHleState();
 
-
     if (vdn_) {
         std::vector<rela::TensorDict> vObs;
         for (int i = 0; i < numPlayer_; ++i) {
@@ -200,7 +211,9 @@ void R2D2Actor::observeBeforeAct(HanabiEnv& env) {
                         invColorPermutes_[i],
                         hideAction_,
                         trinary_,
-                        sad_));
+                        sad_,
+                        showOwnCards_,
+                        sadLegacy_));
         }
         input = rela::tensor_dict::stack(vObs, 0);
     } else {
@@ -212,7 +225,9 @@ void R2D2Actor::observeBeforeAct(HanabiEnv& env) {
                 invColorPermutes_[0],
                 hideAction_,
                 trinary_,
-                sad_);
+                sad_,
+                showOwnCards_,
+                sadLegacy_);
     }
 
     // add features such as eps and temperature
@@ -249,6 +264,12 @@ void R2D2Actor::observeBeforeAct(HanabiEnv& env) {
     }
 
     addHid(input, hidden_);
+
+    //printf("input before call\n");
+    //for (auto& item: input) {
+        //cout << "name: " << item.first << endl;
+        //cout << "shape: " << item.second.sizes() << endl;
+    //}
 
     // no-blocking async call to neural network
     futReply_ = runner_->call("act", input);
@@ -351,7 +372,9 @@ void R2D2Actor::act(HanabiEnv& env, const int curPlayer) {
                     partner->invColorPermutes_[0],
                     partner->hideAction_,
                     partner->trinary_,
-                    partner->sad_);
+                    partner->sad_,
+                    true,
+                    false);
             // add features such as eps and temperature
             partnerInput["eps"] = torch::tensor(partner->playerEps_);
             if (partner->playerTemp_.size() > 0) {
@@ -459,7 +482,9 @@ void R2D2Actor::fictAct(const HanabiEnv& env) {
             invColorPermutes_[0],
             hideAction_,
             trinary_,
-            sad_);
+            sad_,
+            true,
+            false);
 
     // the hidden is new, so we are good
     addHid(fictInput, hidden_);

@@ -18,7 +18,17 @@ import sad_utils
 from sad_eval import evaluate
 
 
-def evaluate_agents(agents, num_game, seed, bomb, device, num_run=1, verbose=True, sad=True):
+def evaluate_agents(
+        agents, 
+        num_game, 
+        seed, 
+        bomb, 
+        device, 
+        num_run=1, 
+        verbose=True, 
+        sad=True, 
+        num_thread=10,
+):
     num_player = len(agents)
     assert num_player > 1, "1 weight file per player"
 
@@ -33,6 +43,7 @@ def evaluate_agents(agents, num_game, seed, bomb, device, num_run=1, verbose=Tru
             0,
             True,  # in op paper, sad was a default
             device=device,
+            num_thread=num_thread,
         )
         scores.extend(score)
         perfect += p
@@ -49,6 +60,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--paper", default="sad", type=str, help="sad/op")
     parser.add_argument("--num_game", default=5000, type=int)
+    parser.add_argument("--num_thread", default=10, type=int)
     parser.add_argument(
         "--num_run", default=1, type=int, help="total num game = num_game * num_run"
     )
@@ -84,5 +96,6 @@ if __name__ == "__main__":
         num_run=args.num_run, 
         device=args.device,
         sad=args.sad,
+        num_thread=args.num_thread,
     )
 

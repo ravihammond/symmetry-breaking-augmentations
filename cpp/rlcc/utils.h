@@ -63,7 +63,9 @@ rela::TensorDict observe(
         const std::vector<int>& invColorPermute,
         bool hideAction,
         bool trinary,
-        bool sad);
+        bool sad,
+        bool showOwnCards,
+        bool legacySad);
 
 inline rela::TensorDict observe(
         const hle::HanabiState& state, 
@@ -76,6 +78,8 @@ inline rela::TensorDict observe(
             std::vector<int>(),
             std::vector<int>(),
             hideAction,
+            true,
+            false,
             true,
             false);
 }
@@ -91,7 +95,9 @@ inline rela::TensorDict observeSAD(
             std::vector<int>(), 
             false, 
             true, 
-            true);
+            true,
+            true,
+            false);
 }
 
 inline std::unique_ptr<hle::HanabiHistoryItem> getLastNonDealMove(

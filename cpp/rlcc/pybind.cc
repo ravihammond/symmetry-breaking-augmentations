@@ -91,7 +91,8 @@ PYBIND11_MODULE(hanalearn, m) {
                 int, // conventionOverride
                 bool, // conventionFictitiousOverride
                 bool, // useExperience
-                bool>()) // beliefStats
+                bool, // beliefStats
+                bool>()) // sadLegacy
         .def(py::init<
                 std::shared_ptr<rela::BatchRunner>,
                 int,  // numPlayer
@@ -103,11 +104,14 @@ PYBIND11_MODULE(hanalearn, m) {
                 bool, // actParameterized
                 int, // conventionIdx
                 int, // conventionOverride
-                bool>()) // beliefStats
+                bool, // beliefStats
+                bool>()) // sadLegacy
         .def("set_partners", &R2D2Actor::setPartners)
         .def("set_belief_runner", &R2D2Actor::setBeliefRunner)
         .def("set_belief_runner_stats", &R2D2Actor::setBeliefRunnerStats)
-        .def("get_success_fict_rate", &R2D2Actor::getSuccessFictRate);
+        .def("get_success_fict_rate", &R2D2Actor::getSuccessFictRate)
+        .def("get_stats", &R2D2Actor::getStats)
+        .def("get_convention_index", &R2D2Actor::getConventionIndex);
 
     py::class_<SADActor, Actor, std::shared_ptr<SADActor>>(m, "SADActor")
         .def(py::init<
@@ -127,14 +131,15 @@ PYBIND11_MODULE(hanalearn, m) {
 
     m.def("observe", py::overload_cast<const hle::HanabiState&, int, bool>(&observe));
 
-    m.def(
-            "observe_op",
+    m.def("observe_op",
             py::overload_cast<
             const hle::HanabiState&,
             int,
             bool,
             const std::vector<int>&,
             const std::vector<int>&,
+            bool,
+            bool,
             bool,
             bool,
             bool>(&observe));

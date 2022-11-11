@@ -11,6 +11,9 @@ using namespace std;
 
 void R2D2Actor::conventionReset(const HanabiEnv& env) {
     (void)env;
+    if (convention_.size() == 0 || convention_[conventionIdx_].size() == 0) {
+        return;
+    }
     sentSignal_ = false;
     sentSignalStats_ = false;
     beliefStatsSignalReceived_ = false;

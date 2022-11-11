@@ -71,8 +71,6 @@ private:
         return h0;
     }
 
-    rela::TensorDict computeFeatureAndLegalMove(HanabiEnv& env);
-
     std::shared_ptr<rela::BatchRunner> runner_;
     const int numEnvs_;
     const int numPlayer_;

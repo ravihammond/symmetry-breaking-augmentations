@@ -55,10 +55,24 @@ def evaluate(
             actors = []
 
             for i in range(num_player):
-                actors.append(hanalearn.SADActor(
-                    runners[i], 
-                    1,
-                    i,
+                # actors.append(hanalearn.SADActor(
+                    # runners[i], 
+                    # 1,
+                    # i,
+                # ))
+                actors.append(hanalearn.R2D2Actor(
+                    runners[i], # runner
+                    num_player, # numPlayer
+                    i, # playerIdx
+                    False, # vdn
+                    True, # sad
+                    False, # hideAction
+                    [], # convention
+                    False, # act parameterized
+                    0, # conventionIndex
+                    0, # conventionOverride
+                    False, # beliefStats
+                    True, # sadLegacy
                 ))
 
             thread_actors.append(actors)
@@ -90,6 +104,7 @@ def evaluate_saved_model(
     overwrite=None,
     num_run=1,
     verbose=True,
+    num_thread=10,
 ):
     agents = []
     sad = []
@@ -134,6 +149,7 @@ def evaluate_saved_model(
             hide_action,
             process_game=process_game,
             hand_size=hand_size,
+            num_thread=num_thread,
         )
         scores.extend(score)
         perfect += p

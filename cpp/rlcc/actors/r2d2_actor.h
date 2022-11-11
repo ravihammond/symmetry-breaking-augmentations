@@ -42,7 +42,8 @@ public:
             int conventionOverride,
             bool conventionFictitiousOverride,
             bool useExperience,
-            bool beliefStats)
+            bool beliefStats,
+            bool sadLegacy)
         : runner_(std::move(runner))
           , rng_(seed)
           , numPlayer_(numPlayer)
@@ -74,11 +75,20 @@ public:
           , livesBeforeMove_(-1) 
           , currentTwoStep_("X") 
           , beliefStats_(beliefStats) 
+          , sadLegacy_(sadLegacy) 
           , sentSignal_(false)
           , sentSignalStats_(false)
           , beliefStatsSignalReceived_(false) {
-        auto responseMove = strToMove(convention_[conventionIdx_][0][1]);
-        beliefStatsResponsePosition_ = responseMove.CardIndex();
+        if (beliefStats_ && convention_.size() > 0) {
+            auto responseMove = strToMove(convention_[conventionIdx_][0][1]);
+            beliefStatsResponsePosition_ = responseMove.CardIndex();
+        }
+
+        if (sadLegacy_) {
+            showOwnCards_ = false;
+        } else {
+            showOwnCards_ = true;
+        }
     }
 
     // simpler constructor for eval mode
@@ -95,7 +105,8 @@ public:
             bool actParameterized,
             int conventionIdx,
             int conventionOverride,
-            bool beliefStats)
+            bool beliefStats,
+            bool sadLegacy)
         : runner_(std::move(runner))
           , rng_(1)  // not used in eval mode
           , numPlayer_(numPlayer)
@@ -125,11 +136,20 @@ public:
           , livesBeforeMove_(-1) 
           , currentTwoStep_("X") 
           , beliefStats_(beliefStats) 
+          , sadLegacy_(sadLegacy) 
           , sentSignal_(false)
           , sentSignalStats_(false)
           , beliefStatsSignalReceived_(false) {
-        auto responseMove = strToMove(convention_[conventionIdx_][0][1]);
-        beliefStatsResponsePosition_ = responseMove.CardIndex();
+        if (beliefStats_ && convention_.size() > 0) {
+            auto responseMove = strToMove(convention_[conventionIdx_][0][1]);
+            beliefStatsResponsePosition_ = responseMove.CardIndex();
+        }
+
+        if (sadLegacy_) {
+            showOwnCards_ = false;
+        } else {
+            showOwnCards_ = true;
+        }
     }
 
     void setPartners(std::vector<std::shared_ptr<R2D2Actor>> partners) {
@@ -151,6 +171,7 @@ public:
     void observeAfterAct(const HanabiEnv& env) override;
 
     void addHid(rela::TensorDict& to, rela::TensorDict& hid);
+    void moveHid(rela::TensorDict& from, rela::TensorDict& hid);
 
     void setBeliefRunner(std::shared_ptr<rela::BatchRunner>& beliefModel) {
         assert(!vdn_ && batchsize_ == 1);
@@ -193,8 +214,6 @@ private:
 
     // My changes
     void conventionReset(const HanabiEnv& env);
-    //void incrementPlayedCardKnowledgeCount(
-            //const HanabiEnv& env, hle::HanabiMove move);
     void incrementStat(std::string key);
     virtual void incrementStatsBeforeMove(
             const HanabiEnv& env, hle::HanabiMove move);
@@ -298,6 +317,8 @@ private:
     int livesBeforeMove_;
     std::string currentTwoStep_;
     bool beliefStats_;
+    bool showOwnCards_;
+    bool sadLegacy_;
     bool sentSignal_;
     bool sentSignalStats_;
     bool beliefStatsSignalReceived_;

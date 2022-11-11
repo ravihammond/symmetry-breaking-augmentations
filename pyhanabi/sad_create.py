@@ -123,7 +123,16 @@ class ActGroup:
                 for j in range(num_game_per_thread):
                     game_actors = []
                     for k in range(num_player):
-                        actor = hanalearn.SADActor(
+                        # actor = hanalearn.SADActor(
+                            # self.model_runners[i % self.num_runners],
+                            # num_game_per_thread,
+                            # eta,
+                            # 1,
+                            # k,
+                            # shuffle_color,
+                            # replay_buffer,
+                        # )
+                        actor = hanalearn.R2D2Actor(
                             self.model_runners[i % self.num_runners],
                             num_game_per_thread,
                             eta,

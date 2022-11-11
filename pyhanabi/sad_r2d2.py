@@ -238,11 +238,11 @@ class SADAgent(torch.jit.ScriptModule):
         priv_s: torch.Tensor,
         legal_move: torch.Tensor,
         hid: Dict[str, torch.Tensor],
-    ) -> Tuple[torch.Tensor, Dict[str, torch.Tensor]]:
+    ) -> Tuple[torch.Tensor, Dict[str, torch.Tensor], torch.Tensor]:
         adv, new_hid = self.online_net.act(priv_s, hid)
         legal_adv = (1 + adv - adv.min()) * legal_move
         greedy_action = legal_adv.argmax(1).detach()
-        return greedy_action, new_hid
+        return greedy_action, new_hid, legal_adv
 
     @torch.jit.script_method
     def act(self, obs: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
@@ -275,7 +275,7 @@ class SADAgent(torch.jit.ScriptModule):
             "c0": c0.flatten(0, 1).transpose(0, 1).contiguous(),
         }
 
-        greedy_action, new_hid = self.greedy_act(priv_s, legal_move, hid)
+        greedy_action, new_hid, legal_act = self.greedy_act(priv_s, legal_move, hid)
 
         random_action = legal_move.multinomial(1).squeeze(1)
         rand = torch.rand(greedy_action.size(), device=greedy_action.device)
@@ -306,6 +306,9 @@ class SADAgent(torch.jit.ScriptModule):
             "greedy_a": greedy_action.detach().cpu(),
             "h0": h0.contiguous().detach().cpu(),
             "c0": c0.contiguous().detach().cpu(),
+            "all_q": legal_act.detach().cpu(),
+            "legal_moves": legal_move.detach().cpu(),
+            "explore_a": rand.detach().cpu(),
         }
         return reply
 
@@ -349,7 +352,7 @@ class SADAgent(torch.jit.ScriptModule):
         bootstrap = input_["bootstrap"].flatten(0, 1)
 
         online_qa = self.online_net(priv_s, legal_move, online_a, hid)[0]
-        next_a, _ = self.greedy_act(next_priv_s, next_legal_move, next_hid)
+        next_a, _, _ = self.greedy_act(next_priv_s, next_legal_move, next_hid)
         target_qa, _, _, _ = self.target_net(
             next_priv_s, next_legal_move, next_a, next_hid,
         )
