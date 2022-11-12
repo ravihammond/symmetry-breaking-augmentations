@@ -3,7 +3,7 @@
 //
 // This source code is licensed under the license found in the
 // LICENSE file in the root directory of this source tree.
-//
+// 
 #pragma once
 
 #include <stdio.h>
@@ -265,6 +265,7 @@ private:
     std::vector<std::vector<int>> colorPermutes_;
     std::vector<std::vector<int>> invColorPermutes_;
 
+    std::deque<rela::TensorDict> historyHidden_;
     std::shared_ptr<rela::RNNPrioritizedReplay> replayBuffer_;
     std::unique_ptr<rela::R2D2Buffer> r2d2Buffer_;
 

@@ -2,7 +2,7 @@
 // All rights reserved.
 //
 // This source code is licensed under the license found in the
-// LICENSE file in the root directory of this source tree.
+// LICENSE file in the root directory of this source tree. 
 #include <stdio.h>
 #include <iostream>
 #include <random>
@@ -13,7 +13,7 @@
 
 using namespace std;
 
-#define PR false
+#define PR true
 
 void R2D2Actor::addHid(rela::TensorDict& to, rela::TensorDict& hid) {
     for (auto& kv : hid) {
@@ -238,6 +238,12 @@ void R2D2Actor::observeBeforeAct(HanabiEnv& env) {
 
     // add convention index information for parameterization
     input["convention_idx"] = torch::tensor(conventionIdx_);
+
+    if (replayBuffer_ != nullptr && sadLegacy_) {
+        assert(!hidden_.empty());
+        historyHidden_.push_back(hidden_);
+    }
+
 
     if (beliefStats_) {
         int responseShouldBePlayable, responseCardPosition;
@@ -505,11 +511,6 @@ void R2D2Actor::observeAfterAct(const HanabiEnv& env) {
 
     pushToReplayBuffer();
 
-    if (!futPriority_.isNull() && useExperience_) {
-        auto priority = futPriority_.get()["priority"].item<float>();
-        replayBuffer_->add(std::move(lastEpisode_), priority);
-    }
-
     float reward = env.stepReward();
     bool terminated = env.terminated();
     r2d2Buffer_->pushReward(reward);
@@ -527,6 +528,25 @@ void R2D2Actor::observeAfterAct(const HanabiEnv& env) {
     if (terminated) {
         lastEpisode_ = r2d2Buffer_->popTransition();
         auto input = lastEpisode_.toDict();
+
+        if (sadLegacy_) {
+            rela::TensorDict hid = historyHidden_.front();
+            rela::TensorDict nextHid = historyHidden_.back();
+            for (auto& kv : hid) {
+                input.emplace(kv.first, kv.second.transpose(0, 1));
+            }
+            for (auto& kv : nextHid) {
+                auto ret = input.emplace("next_" + kv.first, kv.second.transpose(0, 1));
+                assert(ret.second);
+            }
+        }
+
+        printf("input dict\n");
+        for (auto& kv : input) {
+            cout << kv.first << " " << kv.second.sizes() << endl;
+        }
+        printf("^^^\n");
+
         if (useExperience_) {
             futPriority_ = runner_->call("compute_priority", input);
         }

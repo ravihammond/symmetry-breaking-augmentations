@@ -157,6 +157,22 @@ def create_rl_context(args):
             "multi_step": 1,
             "gamma": 0.999,
         }
+    elif args.sad_legacy:
+        agent = utils.load_sad_model(args.policy, args.act_device)
+        cfgs = {
+            "act_base_eps": 0.1,
+            "act_eps_alpha": 7,
+            "num_game_per_thread": 80,
+            "num_player": 2,
+            "train_bomb": 0,
+            "max_len": 80,
+            "sad": 1,
+            "shuffle_color": 0,
+            "hide_action": 0,
+            "multi_step": 1,
+            "gamma": 0.999,
+            "parameterized": 0,
+        }
     else:
         agent, cfgs = utils.load_agent(args.policy, agent_overwrite)
 
@@ -235,6 +251,7 @@ def create_rl_context(args):
         False, # static_partner
         [1,1], # use_experience
         False, # belief_stats
+        args.sad_legacy, # sad_legacy
     )
 
     context, threads = create_threads(
@@ -343,6 +360,9 @@ def parse_args():
     parser.add_argument("--num_conventions", type=int, default=0)
     parser.add_argument("--parameterized", type=int, default=0)
     parser.add_argument("--convention_act_override", type=int, default=0)
+
+    # legacy sad
+    parser.add_argument("--sad_legacy", type=int, default=0)
 
     args = parser.parse_args()
     return args

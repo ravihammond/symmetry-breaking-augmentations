@@ -133,13 +133,29 @@ class ActGroup:
                             # replay_buffer,
                         # )
                         actor = hanalearn.R2D2Actor(
-                            self.model_runners[i % self.num_runners],
-                            num_game_per_thread,
-                            eta,
-                            1,
-                            k,
-                            shuffle_color,
-                            replay_buffer,
+                            self.model_runners[i % self.num_runners], # runner
+                            0, # seed
+                            num_player, # numPlayer
+                            k, # playerIdx
+                            [0], # epsList
+                            [], # tempList
+                            False, # vdn
+                            True, # sad
+                            shuffle_color, # shuffleColor
+                            False, # hideAction 
+                            True, # trinary
+                            replay_buffer, # replayBuffer
+                            multi_step, # multiStep
+                            max_len, # seqLen
+                            gamma, # gamma
+                            [], # convention
+                            False, # actParameterized
+                            0, # conventionIdx
+                            0, # conventionOverride
+                            False, # conventionFectitiousOverride
+                            True, # useExperience
+                            False, # beliefStats
+                            True, # sadLegacy
                         )
                         game_actors.append(actor)
 

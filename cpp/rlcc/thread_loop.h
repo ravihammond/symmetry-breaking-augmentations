@@ -13,7 +13,7 @@
 #include "rela/thread_loop.h"
 #include "rlcc/actors/actor.h"
 
-#define PR false
+#define PR true
 
 class HanabiThreadLoop : public rela::ThreadLoop {
     public:
@@ -31,10 +31,9 @@ class HanabiThreadLoop : public rela::ThreadLoop {
 
         virtual void mainLoop() override {
             clock_t t;
-            int gameTurn = 0;
             while (!terminated()) {
                 if(PR)printf("\n=======================================\n");
-                if(PR)printf("Game Turn: %d\n", gameTurn);
+                if(PR)printf("Game Turn: %d\n", envs_[0]->numStep());
                 // go over each envs in sequential order
                 // call in seperate for-loops to maximize parallization
                 
@@ -181,7 +180,6 @@ class HanabiThreadLoop : public rela::ThreadLoop {
                 t = clock() - t;
                 timeStats_[4] = approxRollingAverage(
                         timeStats_[4], ((double)t)/CLOCKS_PER_SEC);
-            gameTurn++;
             }
         }
 

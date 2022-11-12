@@ -203,6 +203,7 @@ class SADAgent(torch.jit.ScriptModule):
         self.gamma = gamma
         self.eta = eta
         self.uniform_priority = uniform_priority
+        self.boltzmann = False
 
     @torch.jit.script_method
     def get_h0(self, batchsize: int) -> Dict[str, torch.Tensor]:
@@ -311,6 +312,85 @@ class SADAgent(torch.jit.ScriptModule):
             "explore_a": rand.detach().cpu(),
         }
         return reply
+
+    # @torch.jit.script_method
+    # def compute_priority(
+        # self, input_: Dict[str, torch.Tensor]
+    # ) -> Dict[str, torch.Tensor]:
+        # if self.uniform_priority:
+            # return {"priority": torch.ones_like(input_["reward"].sum(1))}
+
+        # # swap batch_dim and seq_dim
+        # for k, v in input_.items():
+            # if k != "seq_len":
+                # input_[k] = v.transpose(0, 1).contiguous()
+
+        # obs = {
+            # "priv_s": input_["priv_s"],
+            # "publ_s": input_["publ_s"],
+            # "legal_move": input_["legal_move"],
+            # "convention_idx": input_["convention_idx"]
+        # }
+
+        # hid = {"h0": input_["h0"], "c0": input_["c0"]}
+        # action = {"a": input_["a"]}
+        # reward = input_["reward"]
+        # terminal = input_["terminal"]
+        # bootstrap = input_["bootstrap"]
+        # seq_len = input_["seq_len"]
+        # err, _, _ = self.td_error(
+            # obs, hid, action, reward, terminal, bootstrap, seq_len
+        # )
+        # priority = err.abs()
+        # priority = self.aggregate_priority(priority, seq_len).detach().cpu()
+        # return {"priority": priority}
+
+    # @torch.jit.script_method
+    # def td_error(
+        # self,
+        # obs: Dict[str, torch.Tensor],
+        # hid: Dict[str, torch.Tensor],
+        # action: Dict[str, torch.Tensor],
+        # reward: torch.Tensor,
+        # terminal: torch.Tensor,
+        # bootstrap: torch.Tensor,
+        # seq_len: torch.Tensor,
+    # ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        # max_seq_len = obs["priv_s"].size(0)
+        # priv_s = obs["priv_s"]
+        # publ_s = obs["publ_s"]
+        # legal_move = obs["legal_move"]
+        # action = action["a"]
+        # convention_idx = obs["convention_idx"]
+
+        # for k, v in hid.items():
+            # hid[k] = v.flatten(1, 2).contiguous()
+
+        # bsize, num_player = priv_s.size(1), 1
+
+        # # this only works because the trajectories are padded,
+        # # i.e. no terminal in the middle
+        # online_qa, greedy_a, online_q, lstm_o = self.online_net(
+            # priv_s, publ_s, legal_move, action, hid
+        # )
+
+        # target_qa, _, target_q, _ = self.target_net(
+            # priv_s, publ_s, legal_move, greedy_a, hid
+        # )
+
+        # target_qa = torch.cat(
+            # [target_qa[self.multi_step :], target_qa[: self.multi_step]], 0
+        # )
+        # target_qa[-self.multi_step :] = 0
+        # assert target_qa.size() == reward.size()
+        # target = reward + bootstrap * (self.gamma ** self.multi_step) * target_qa
+
+        # mask = torch.arange(0, max_seq_len, device=seq_len.device)
+        # mask = (mask.unsqueeze(1) < seq_len.unsqueeze(0)).float()
+        # err = (target.detach() - online_qa) * mask
+        # if self.off_belief and "valid_fict" in obs:
+            # err = err * obs["valid_fict"]
+        # return err, lstm_o, online_q
 
     @torch.jit.script_method
     def compute_priority(
@@ -467,6 +547,12 @@ class SADAgent(torch.jit.ScriptModule):
 
         stat["aux1"].feed(avg_xent1)
         return pred_loss1
+
+    # def aggregate_priority(self, priority, seq_len):
+        # p_mean = priority.sum(0) / seq_len
+        # p_max = priority.max(0)[0]
+        # agg_priority = self.eta * p_max + (1.0 - self.eta) * p_mean
+        # return agg_priority
 
     def loss(self, batch, pred_weight, stat):
         err, lstm_o = self.td_error(

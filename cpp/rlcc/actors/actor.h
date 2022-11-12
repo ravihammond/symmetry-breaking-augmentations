@@ -10,4 +10,4 @@ public:
     virtual void fictAct(const HanabiEnv& env) = 0;
     virtual void observeAfterAct(const HanabiEnv& env) = 0;
     virtual void pushToReplayBuffer() = 0;
-};
+}; 

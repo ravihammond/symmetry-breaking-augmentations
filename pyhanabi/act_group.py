@@ -49,6 +49,7 @@ class ActGroup:
         static_partner,
         use_experience,
         belief_stats,
+        sad_legacy,
     ):
         self.devices = devices.split(",")
         self.method = method
@@ -104,6 +105,10 @@ class ActGroup:
         self.static_partner = static_partner
         self.use_experience = use_experience
         self.belief_stats = belief_stats
+        self.sad_legacy = sad_legacy
+
+        if self.sad_legacy:
+            self.trinary = True
 
         self.create_r2d2_actors()
 
@@ -190,6 +195,7 @@ class ActGroup:
                             self.convention_fict_act_override,
                             self.use_experience[k],
                             self.belief_stats,
+                            self.sad_legacy
                         )
 
                         if self.off_belief:

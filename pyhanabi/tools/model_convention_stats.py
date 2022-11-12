@@ -26,7 +26,6 @@ ACTION_MAP = {
     "D": CARDS
 }
 
-
 def convention_data(args):
     conventions = load_convention_strings(args.convention)
     weight_files = load_weights(args)
@@ -35,9 +34,10 @@ def convention_data(args):
     stats = extract_convention_stats(actors, args, conventions)
 
     model_name = os.path.basename(os.path.dirname(args.weight1))
+    if args.title is not None:
+        model_name = args.title
     create_figures(stats, conventions, model_name, args)
     pprint(stats)
-    # create_plots(stats, conventions)
 
 def load_convention_strings(convention_path):
     if convention_path == "None":
@@ -90,6 +90,7 @@ def run_evaluation(args, weight_files, conventions):
         device=args.device,
         convention=args.convention,
         override=[args.override0, args.override1],
+        sad_legacy=args.sad_legacy,
     )
 
     return scores, actors
@@ -107,22 +108,24 @@ def create_figures(stats, conventions, title, args):
     for i in range(rows):
         create_figure_row(subfigs[i], stats[i], args)
 
-    fig.suptitle(title, fontsize='xx-large')
+    fig.suptitle(title, fontsize='x-large')
 
     plt.show()
 
 def create_figure_row(fig, stats, args):
+    pprint(stats)
     plots = stats["plots"]
     title = stats["title"]
     axs = fig.subplots(1, len(plots), sharey=True)
     if len(plots) == 1:
         axs = [axs]
 
-    fig.suptitle(title)
+    if title != "All":
+        fig.suptitle(title)
 
     for i, plot_stats in enumerate(plots):
         plot_data = generate_plot_data(plot_stats, args, title, i)
-        create_plot(axs[i], *plot_data, colour_max=args.colour_max)
+        create_plot(axs[i], *plot_data, fig, colour_max=args.colour_max)
 
 
 def generate_plot_data(stats, args, convention, player_idx):
@@ -130,8 +133,8 @@ def generate_plot_data(stats, args, convention, player_idx):
     if convention == "All":
         prefix = ""
     
-    xticklabels = ticklabels(args.response_actions)
-    yticklabels = ticklabels(args.signal_actions)
+    xticklabels = ticklabels(args.responses)
+    yticklabels = ticklabels(args.signals)
 
     plot_data = []
 
@@ -153,7 +156,7 @@ def ticklabels(actions):
     return tick_labels
 
 
-def create_plot(ax, data, xticklabels, yticklabels, colour_max=1.0):
+def create_plot(ax, data, xticklabels, yticklabels, fig, colour_max=1.0):
     norm = mcolors.Normalize(vmin=0., vmax=colour_max)
     pc_kwargs = {'rasterized': True, 'cmap': 'cividis', 'norm': norm}
 
@@ -169,6 +172,9 @@ def create_plot(ax, data, xticklabels, yticklabels, colour_max=1.0):
 
     ax.set_yticks(range(len(yticklabels)));
     ax.set_yticklabels(yticklabels);
+
+    cb = fig.colorbar(im, ax=ax,fraction=0.024, pad=0.04)
+    cb.ax.tick_params(length=1)
 
 
 if __name__ == "__main__":
@@ -186,12 +192,18 @@ if __name__ == "__main__":
     parser.add_argument("--convention", default="None", type=str)
     parser.add_argument("--override0", default=0, type=int)
     parser.add_argument("--override1", default=0, type=int)
-    parser.add_argument("--signal_actions", default="DPCR", type=str)
-    parser.add_argument("--response_actions", default="DPCR", type=str)
-    parser.add_argument("--title", default="None", type=str)
-    parser.add_argument("--colour_max", default=0.7, type=float)
-    parser.add_argument("--split", default=1, type=int)
+    parser.add_argument("--signals", default="DPCR", type=str)
+    parser.add_argument("--responses", default="DPCR", type=str)
+    parser.add_argument("--title", default=None, type=str)
+    parser.add_argument("--colour_max", default=1, type=float)
+    parser.add_argument("--split", default=0, type=int)
+    parser.add_argument("--sad_legacy", default="0,0", type=str)
     args = parser.parse_args()
+
+    args.sad_legacy = [int(x) for x in args.sad_legacy.split(",")]
+    assert(len(args.sad_legacy) <= 2)
+    if (len(args.sad_legacy) == 1):
+        args.sad_legacy *= 2
 
     convention_data(args)
 

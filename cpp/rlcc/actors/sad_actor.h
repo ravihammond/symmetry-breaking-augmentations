@@ -49,11 +49,11 @@ public:
           , invColorPermutes_(1) {
     }
 
-    void reset(const HanabiEnv& env) override { (void)env; }
+    void reset(const HanabiEnv& env) override;
     void observeBeforeAct(HanabiEnv& env) override;
     void act(HanabiEnv& env, const int curPlayer) override;
     void fictAct(const HanabiEnv& env) override { (void)env; }
-    void observeAfterAct(const HanabiEnv& env) override { (void)env; }
+    void observeAfterAct(const HanabiEnv& env) override;
     void pushToReplayBuffer() override {}
 
     int numAct() const {
