@@ -8,14 +8,13 @@
 
 #include <stdio.h>
 
-#include "rlcc/actors/actor.h"
 #include "rela/batch_runner.h"
 #include "rela/prioritized_replay.h"
 #include "rela/r2d2.h"
 
 #include "rlcc/hanabi_env.h"
 
-class R2D2Actor: public Actor{
+class R2D2Actor {
 public:
     R2D2Actor(
             std::shared_ptr<rela::BatchRunner> runner,
@@ -164,11 +163,11 @@ public:
         assert((int)partners_.size() == numPlayer_);
     }
 
-    void reset(const HanabiEnv& env) override;
-    void observeBeforeAct(HanabiEnv& env) override;
-    void act(HanabiEnv& env, const int curPlayer) override;
-    void fictAct(const HanabiEnv& env) override;
-    void observeAfterAct(const HanabiEnv& env) override;
+    void reset(const HanabiEnv& env);
+    void observeBeforeAct(HanabiEnv& env);
+    void act(HanabiEnv& env, const int curPlayer);
+    void fictAct(const HanabiEnv& env);
+    void observeAfterAct(const HanabiEnv& env);
 
     void addHid(rela::TensorDict& to, rela::TensorDict& hid);
     void moveHid(rela::TensorDict& from, rela::TensorDict& hid);
