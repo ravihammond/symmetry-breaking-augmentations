@@ -10,16 +10,15 @@ python train_belief.py \
        --hid_dim 512 \
        --batchsize 128 \
        --burn_in_frames 10000 \
-       --replay_buffer_size 20000 \
+       --replay_buffer_size 100000 \
        --epoch_len 1000 \
        --num_epoch 5001 \
        --train_device cuda:0 \
        --act_device cuda:1 \
        --explore 1 \
        --num_player 2 \
-       --policy exps/sad_1/model0.pthw \
-       #--policy ../models/sad_models/sad_2p_3.pthw \
-       #--sad_legacy 1 \
+       --policy ../models/sad_models/sad_2p_3.pthw \
+       --sad_legacy 1 \
 
 #python train_belief.py \
        #--save_dir exps/test \

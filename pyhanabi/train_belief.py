@@ -52,8 +52,7 @@ def train_belief(args):
         cfgs = {"sad": False}
 
     while replay_buffer.size() < args.burn_in_frames:
-        print("warming up replay buffer:", replay_buffer.size(),
-                ", mem size:", sys.getsizeof(replay_buffer))
+        print("warming up replay buffer:", replay_buffer.size())
         time.sleep(1)
 
     print("Success, Done")

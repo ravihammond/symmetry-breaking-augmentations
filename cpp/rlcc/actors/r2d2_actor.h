@@ -265,7 +265,6 @@ private:
     std::vector<std::vector<int>> colorPermutes_;
     std::vector<std::vector<int>> invColorPermutes_;
 
-    std::deque<rela::TensorDict> historyHidden_;
     std::shared_ptr<rela::RNNPrioritizedReplay> replayBuffer_;
     std::unique_ptr<rela::R2D2Buffer> r2d2Buffer_;
 

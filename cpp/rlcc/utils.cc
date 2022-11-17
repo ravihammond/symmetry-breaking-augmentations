@@ -81,45 +81,11 @@ rela::TensorDict observe(
 
     auto obsCheat = hle::HanabiObservation(state, playerIdx, true);
 
-    //if (legacySad) {
-        //auto vOwnHandTrinary = encoder.EncodeOwnHandTrinary(obsCheat);
-        //feat["own_hand"] = torch::tensor(vOwnHandTrinary);
-
-        //auto vOwnHand = encoder.EncodeOwnHand(obsCheat, shuffleColor, colorPermute);
-        //std::vector<float> vOwnHandARIn(vOwnHand.size(), 0);
-        //int end = (game.HandSize() - 1) * game.NumColors() * game.NumRanks();
-        //std::copy(
-                //vOwnHand.begin(),
-                //vOwnHand.begin() + end,
-                //vOwnHandARIn.begin() + game.NumColors() * game.NumRanks());
-        //feat["own_hand_plain"] = torch::tensor(vOwnHand);
-        //feat["own_hand_ar_in"] = torch::tensor(vOwnHandARIn);
-        //auto privARV0 =
-            //encoder.EncodeARV0Belief(obsCheat, std::vector<int>(), shuffleColor, colorPermute);
-        //feat["priv_ar_v0"] = torch::tensor(privARV0);
-
-    //}else if (trinary) {
     if (trinary || legacySad) {
         auto vOwnHandTrinary = encoder.EncodeOwnHandTrinary(obsCheat);
         feat["own_hand"] = torch::tensor(vOwnHandTrinary);
-
-        if (legacySad) {
-            auto vOwnHand = encoder.EncodeOwnHand(
-                    obsCheat, shuffleColor, colorPermute);
-            std::vector<float> vOwnHandARIn(vOwnHand.size(), 0);
-            int end = (game.HandSize() - 1) * game.NumColors() * game.NumRanks();
-            std::copy(
-                    vOwnHand.begin(),
-                    vOwnHand.begin() + end,
-                    vOwnHandARIn.begin() + game.NumColors() * game.NumRanks());
-            feat["own_hand_ar"] = torch::tensor(vOwnHand);
-            feat["own_hand_ar_in"] = torch::tensor(vOwnHandARIn);
-            auto privARV0 =
-                encoder.EncodeARV0Belief(obsCheat, std::vector<int>(), 
-                        shuffleColor, colorPermute);
-            feat["priv_ar_v0"] = torch::tensor(privARV0);
-        }
-    } else {
+    } 
+    if (!trinary || legacySad) {
         auto vOwnHand = encoder.EncodeOwnHand(obsCheat, shuffleColor, colorPermute);
         std::vector<float> vOwnHandARIn(vOwnHand.size(), 0);
         int end = (game.HandSize() - 1) * game.NumColors() * game.NumRanks();
@@ -127,7 +93,9 @@ rela::TensorDict observe(
                 vOwnHand.begin(),
                 vOwnHand.begin() + end,
                 vOwnHandARIn.begin() + game.NumColors() * game.NumRanks());
-        feat["own_hand"] = torch::tensor(vOwnHand);
+        string ownHandStr = "own_hand";
+        if (legacySad) ownHandStr = "own_hand_ar";
+        feat[ownHandStr] = torch::tensor(vOwnHand);
         feat["own_hand_ar_in"] = torch::tensor(vOwnHandARIn);
         auto privARV0 =
             encoder.EncodeARV0Belief(obsCheat, std::vector<int>(), shuffleColor, colorPermute);
