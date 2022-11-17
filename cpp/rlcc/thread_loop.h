@@ -11,7 +11,7 @@
 #include <time.h>
 
 #include "rela/thread_loop.h"
-#include "rlcc/actors/actor.h"
+#include "rlcc/actors/r2d2_actor.h"
 
 #define PR false
 
@@ -19,7 +19,7 @@ class HanabiThreadLoop : public rela::ThreadLoop {
     public:
         HanabiThreadLoop(
                     std::vector<std::shared_ptr<HanabiEnv>> envs,
-                    std::vector<std::vector<std::shared_ptr<Actor>>> actors,
+                    std::vector<std::vector<std::shared_ptr<R2D2Actor>>> actors,
                     bool eval)
                 : envs_(std::move(envs))
                 , actors_(std::move(actors))
@@ -195,7 +195,7 @@ class HanabiThreadLoop : public rela::ThreadLoop {
 
     private:
         std::vector<std::shared_ptr<HanabiEnv>> envs_;
-        std::vector<std::vector<std::shared_ptr<Actor>>> actors_;
+        std::vector<std::vector<std::shared_ptr<R2D2Actor>>> actors_;
         std::vector<int8_t> done_;
         const bool eval_;
         int numDone_ = 0;
