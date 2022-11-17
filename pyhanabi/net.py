@@ -233,7 +233,7 @@ class LSTMNet(torch.jit.ScriptModule):
             o, _ = self.lstm(x, (hid["h0"], hid["c0"]))
         a = self.fc_a(o)
         v = self.fc_v(o)
-        q = duel(v, a, legal_move)
+        q = duel(v, a, legal_move) 
 
         # q: [seq_len, batch, num_action]
         # action: [seq_len, batch]

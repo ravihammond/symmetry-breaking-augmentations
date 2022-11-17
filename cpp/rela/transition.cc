@@ -4,9 +4,11 @@
 // This source code is licensed under the license found in the
 // LICENSE file in the root directory of this source tree.
 //
+#include <iostream>
 #include "rela/transition.h"
 #include "rela/utils.h"
 
+using namespace std;
 using namespace rela;
 
 FFTransition FFTransition::index(int i) const {

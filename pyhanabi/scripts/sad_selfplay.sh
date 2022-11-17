@@ -34,7 +34,7 @@
 python sad_selfplay.py \
        --save_dir exps/test \
        --num_thread 1 \
-       --num_game_per_thread 1 \
+       --num_game_per_thread 80 \
        --method iql \
        --sad 1 \
        --act_base_eps 0.1 \
@@ -44,9 +44,9 @@ python sad_selfplay.py \
        --grad_clip 5 \
        --gamma 0.999 \
        --seed 9 \
-       --batchsize 1 \
-       --burn_in_frames 1 \
-       --replay_buffer_size 10 \
+       --batchsize 100 \
+       --burn_in_frames 100 \
+       --replay_buffer_size 1000 \
        --epoch_len 1 \
        --priority_exponent 0.9 \
        --priority_weight 0.6 \
@@ -56,4 +56,5 @@ python sad_selfplay.py \
        --rnn_hid_dim 512 \
        --multi_step 3 \
        --act_device cuda:1,cuda:2 \
+       --num_lstm_layer 2 \
 

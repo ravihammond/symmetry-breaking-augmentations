@@ -66,9 +66,7 @@ class SADNet(torch.jit.ScriptModule):
     def act(
         self, priv_s: torch.Tensor, hid: Dict[str, torch.Tensor]
     ) -> Tuple[torch.Tensor, Dict[str, torch.Tensor]]:
-
         assert priv_s.dim() == 2, "dim should be 2, [batch, dim], get %d" % priv_s.dim()
-
         priv_s = priv_s.unsqueeze(0)
         x = self.net(priv_s)
         o, (h, c) = self.lstm(x, (hid["h0"], hid["c0"]))
@@ -86,6 +84,7 @@ class SADNet(torch.jit.ScriptModule):
         action: torch.Tensor,
         hid: Dict[str, torch.Tensor],
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+        # print("=== forward() SADNet sad_r2d2.py")
         assert (
             priv_s.dim() == 3 or priv_s.dim() == 2
         ), "dim = 3/2, [seq_len(optional), batch, dim]"
@@ -252,11 +251,15 @@ class SADAgent(torch.jit.ScriptModule):
         output: {'a' : actions}, a long Tensor of shape
             [batchsize] or [batchsize, num_player]
         """
+        # print("=== act() SADAgent sad_r2d2.py ===")
         priv_s = obs["priv_s"]
         legal_move = obs["legal_move"]
         eps = obs["eps"]
         h0 = obs["h0"]
         c0 = obs["c0"]
+
+        priv_s = priv_s.unsqueeze(0)
+        legal_move = legal_move.unsqueeze(0)
 
         obsize, ibsize, num_player = 0, 0, 0
         if self.vdn:
@@ -270,10 +273,9 @@ class SADAgent(torch.jit.ScriptModule):
             priv_s = priv_s.flatten(0, 1)
             legal_move = legal_move.flatten(0, 1)
             eps = eps.flatten(0, 1)
-
         hid = {
-            "h0": h0.flatten(0, 1).transpose(0, 1).contiguous(),
-            "c0": c0.flatten(0, 1).transpose(0, 1).contiguous(),
+            "h0": h0.flatten(1, 2).transpose(0, 1).contiguous(),
+            "c0": c0.flatten(1, 2).transpose(0, 1).contiguous(),
         }
 
         greedy_action, new_hid, legal_act = self.greedy_act(priv_s, legal_move, hid)
@@ -289,16 +291,17 @@ class SADAgent(torch.jit.ScriptModule):
             greedy_action = greedy_action.view(obsize, ibsize, num_player)
             rand = rand.view(obsize, ibsize, num_player)
         else:
-            action = action.view(obsize, ibsize)
-            greedy_action = greedy_action.view(obsize, ibsize)
-            rand = rand.view(obsize, ibsize)
+            action = action.view(ibsize, obsize)
+            greedy_action = greedy_action.view(ibsize, obsize)
+            rand = rand.view(ibsize, obsize)
 
         hid_shape = (
-            obsize,
             ibsize * num_player,
             self.online_net.num_lstm_layer,
+            obsize,
             self.online_net.hid_dim,
         )
+
         h0 = new_hid["h0"].transpose(0, 1).view(*hid_shape)
         c0 = new_hid["c0"].transpose(0, 1).view(*hid_shape)
 
@@ -313,142 +316,63 @@ class SADAgent(torch.jit.ScriptModule):
         }
         return reply
 
-    # @torch.jit.script_method
-    # def compute_priority(
-        # self, input_: Dict[str, torch.Tensor]
-    # ) -> Dict[str, torch.Tensor]:
-        # if self.uniform_priority:
-            # return {"priority": torch.ones_like(input_["reward"].sum(1))}
-
-        # # swap batch_dim and seq_dim
-        # for k, v in input_.items():
-            # if k != "seq_len":
-                # input_[k] = v.transpose(0, 1).contiguous()
-
-        # obs = {
-            # "priv_s": input_["priv_s"],
-            # "publ_s": input_["publ_s"],
-            # "legal_move": input_["legal_move"],
-            # "convention_idx": input_["convention_idx"]
-        # }
-
-        # hid = {"h0": input_["h0"], "c0": input_["c0"]}
-        # action = {"a": input_["a"]}
-        # reward = input_["reward"]
-        # terminal = input_["terminal"]
-        # bootstrap = input_["bootstrap"]
-        # seq_len = input_["seq_len"]
-        # err, _, _ = self.td_error(
-            # obs, hid, action, reward, terminal, bootstrap, seq_len
-        # )
-        # priority = err.abs()
-        # priority = self.aggregate_priority(priority, seq_len).detach().cpu()
-        # return {"priority": priority}
-
-    # @torch.jit.script_method
-    # def td_error(
-        # self,
-        # obs: Dict[str, torch.Tensor],
-        # hid: Dict[str, torch.Tensor],
-        # action: Dict[str, torch.Tensor],
-        # reward: torch.Tensor,
-        # terminal: torch.Tensor,
-        # bootstrap: torch.Tensor,
-        # seq_len: torch.Tensor,
-    # ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-        # max_seq_len = obs["priv_s"].size(0)
-        # priv_s = obs["priv_s"]
-        # publ_s = obs["publ_s"]
-        # legal_move = obs["legal_move"]
-        # action = action["a"]
-        # convention_idx = obs["convention_idx"]
-
-        # for k, v in hid.items():
-            # hid[k] = v.flatten(1, 2).contiguous()
-
-        # bsize, num_player = priv_s.size(1), 1
-
-        # # this only works because the trajectories are padded,
-        # # i.e. no terminal in the middle
-        # online_qa, greedy_a, online_q, lstm_o = self.online_net(
-            # priv_s, publ_s, legal_move, action, hid
-        # )
-
-        # target_qa, _, target_q, _ = self.target_net(
-            # priv_s, publ_s, legal_move, greedy_a, hid
-        # )
-
-        # target_qa = torch.cat(
-            # [target_qa[self.multi_step :], target_qa[: self.multi_step]], 0
-        # )
-        # target_qa[-self.multi_step :] = 0
-        # assert target_qa.size() == reward.size()
-        # target = reward + bootstrap * (self.gamma ** self.multi_step) * target_qa
-
-        # mask = torch.arange(0, max_seq_len, device=seq_len.device)
-        # mask = (mask.unsqueeze(1) < seq_len.unsqueeze(0)).float()
-        # err = (target.detach() - online_qa) * mask
-        # if self.off_belief and "valid_fict" in obs:
-            # err = err * obs["valid_fict"]
-        # return err, lstm_o, online_q
 
     @torch.jit.script_method
     def compute_priority(
         self, input_: Dict[str, torch.Tensor]
     ) -> Dict[str, torch.Tensor]:
-        """
-        compute priority for one batch
-        """
         if self.uniform_priority:
-            return {"priority": torch.ones_like(input_["reward"]).detach().cpu()}
+            return {"priority": torch.ones_like(input_["reward"].sum(1))}
 
-        obsize, ibsize, num_player = 0, 0, 0
-        flatten_end = 0
-        if self.vdn:
-            obsize, ibsize, num_player = input_["priv_s"].size()[:3]
-            flatten_end = 2
-        else:
-            obsize, ibsize = input_["priv_s"].size()[:2]
-            num_player = 1
-            flatten_end = 1
+        # swap batch_dim and seq_dim
+        for k, v in input_.items():
+            if k != "seq_len":
+                input_[k] = v.transpose(0, 1).contiguous()
 
-        priv_s = input_["priv_s"].flatten(0, flatten_end)
-        legal_move = input_["legal_move"].flatten(0, flatten_end)
-        online_a = input_["a"].flatten(0, flatten_end)
+        priv_s = input_["priv_s"]
+        legal_move = input_["legal_move"]
+        online_a = input_["a"].flatten(1, 2)
 
-        next_priv_s = input_["next_priv_s"].flatten(0, flatten_end)
-        next_legal_move = input_["next_legal_move"].flatten(0, flatten_end)
-        temperature = input_["temperature"].flatten(0, flatten_end)
+        hid = {"h0": input_["h0"], "c0": input_["c0"]}
+        action = {"a": input_["a"]}
+        reward = input_["reward"]
+        terminal = input_["terminal"]
+        bootstrap = input_["bootstrap"]
+        seq_len = input_["seq_len"]
+        max_seq_len = priv_s.size(0)
 
-        hid = {
-            "h0": input_["h0"].flatten(0, 1).transpose(0, 1).contiguous(),
-            "c0": input_["c0"].flatten(0, 1).transpose(0, 1).contiguous(),
-        }
-        next_hid = {
-            "h0": input_["next_h0"].flatten(0, 1).transpose(0, 1).contiguous(),
-            "c0": input_["next_c0"].flatten(0, 1).transpose(0, 1).contiguous(),
-        }
-        reward = input_["reward"].flatten(0, 1)
-        bootstrap = input_["bootstrap"].flatten(0, 1)
+        for k, v in hid.items():
+            hid[k] = v.flatten(1, 2).contiguous()
 
-        online_qa = self.online_net(priv_s, legal_move, online_a, hid)[0]
-        next_a, _, _ = self.greedy_act(next_priv_s, next_legal_move, next_hid)
-        target_qa, _, _, _ = self.target_net(
-            next_priv_s, next_legal_move, next_a, next_hid,
+        online_qa, greedy_a, _, _ = self.online_net(
+            priv_s, legal_move, online_a, hid
         )
 
-        bsize = obsize * ibsize
-        if self.vdn:
-            # sum over action & player
-            online_qa = online_qa.view(bsize, num_player).sum(1)
-            target_qa = target_qa.view(bsize, num_player).sum(1)
+        target_qa, _, _, _ = self.target_net(
+            priv_s, legal_move, greedy_a, hid
+        )
 
-        assert reward.size() == bootstrap.size()
-        assert reward.size() == target_qa.size()
+        target_qa = torch.cat(
+            [target_qa[self.multi_step :], target_qa[: self.multi_step]], 0
+        )
+        target_qa[-self.multi_step :] = 0
+        assert target_qa.size() == reward.size()
         target = reward + bootstrap * (self.gamma ** self.multi_step) * target_qa
-        priority = (target - online_qa).abs()
-        priority = priority.view(obsize, ibsize).detach().cpu()
+
+        mask = torch.arange(0, max_seq_len, device=seq_len.device)
+        mask = (mask.unsqueeze(1) < seq_len.unsqueeze(0)).float()
+        err = (target.detach() - online_qa) * mask
+
+        priority = err.abs()
+        priority = self.aggregate_priority(priority, seq_len).detach().cpu()
+
         return {"priority": priority}
+
+    def aggregate_priority(self, priority, seq_len):
+        p_mean = priority.sum(0) / seq_len
+        p_max = priority.max(0)[0]
+        agg_priority = self.eta * p_max + (1.0 - self.eta) * p_mean
+        return agg_priority
 
     ############# python only functions #############
     def flat_4d(self, data):
@@ -517,6 +441,7 @@ class SADAgent(torch.jit.ScriptModule):
         err = (target.detach() - online_qa) * mask
         return err, lstm_o
 
+
     def aux_task_iql(self, lstm_o, hand, seq_len, rl_loss_size, stat):
         seq_size, bsize, _ = hand.size()
         own_hand = hand.view(seq_size, bsize, self.online_net.hand_size, 3)
@@ -547,12 +472,6 @@ class SADAgent(torch.jit.ScriptModule):
 
         stat["aux1"].feed(avg_xent1)
         return pred_loss1
-
-    # def aggregate_priority(self, priority, seq_len):
-        # p_mean = priority.sum(0) / seq_len
-        # p_max = priority.max(0)[0]
-        # agg_priority = self.eta * p_max + (1.0 - self.eta) * p_mean
-        # return agg_priority
 
     def loss(self, batch, pred_weight, stat):
         err, lstm_o = self.td_error(

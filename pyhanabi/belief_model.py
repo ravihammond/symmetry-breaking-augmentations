@@ -97,6 +97,7 @@ class ARBeliefModel(torch.jit.ScriptModule):
         fc_only, 
         parameterized,
         num_conventions,
+        sad_legacy=False,
     ):
         """
         mode: priv: private belief prediction
@@ -106,8 +107,10 @@ class ARBeliefModel(torch.jit.ScriptModule):
         self.device = device
         self.input_key = "priv_s"
         self.ar_input_key = "own_hand_ar_in"
-        self.ar_target_key = "own_hand"
         self.convention_idx_key = "convention_idx"
+        self.ar_target_key = "own_hand"
+        if sad_legacy:
+            self.ar_target_key = "own_hand_ar"
 
         self.in_dim = in_dim
         self.hand_size = hand_size
@@ -163,7 +166,8 @@ class ARBeliefModel(torch.jit.ScriptModule):
             num_sample, 
             fc_only,
             parameterized,
-            num_conventions):
+            num_conventions,
+            sad_legacy=False):
         state_dict = torch.load(weight_file)
         hid_dim, in_dim = state_dict["net.0.weight"].size()
         if parameterized:
@@ -178,7 +182,8 @@ class ARBeliefModel(torch.jit.ScriptModule):
                 num_sample, 
                 fc_only,
                 parameterized,
-                num_conventions)
+                num_conventions,
+                sad_legacy=sad_legacy)
         model.load_state_dict(state_dict)
         model = model.to(device)
         return model
@@ -209,10 +214,6 @@ class ARBeliefModel(torch.jit.ScriptModule):
         return logit
 
     def loss(self, batch, beta=1, convention_index_override=None):
-        # print("belief loss")
-        # for key in batch.obs.keys():
-            # print(key)
-
         x = batch.obs[self.input_key]
 
         # Append convention one-hot vectors if model is parameterized

@@ -13,14 +13,15 @@
 
 using namespace std;
 
-#define PR true
+#define PR false
 
 void R2D2Actor::addHid(rela::TensorDict& to, rela::TensorDict& hid) {
     for (auto& kv : hid) {
         // hid: [num_layer, batch/num_player, dim]
         // -> batched hid: [batchsize, num_layer, batch/num_player, dim]
         if (sadLegacy_) {
-            auto ret = to.emplace(kv.first, kv.second.transpose(0, 1));
+            //auto ret = to.emplace(kv.first, kv.second.transpose(0, 1));
+            auto ret = to.emplace(kv.first, kv.second);
             assert(ret.second);
         } else {
             auto ret = to.emplace(kv.first, kv.second);
@@ -35,9 +36,14 @@ void R2D2Actor::moveHid(rela::TensorDict& from, rela::TensorDict& hid) {
         assert(it != from.end());
         auto newHid = it->second;
 
+        //cout << "newHid: " << newHid.sizes() 
+            //<< ", kv" << kv.second.sizes() << endl;
+
         if (sadLegacy_) {
-            assert(newHid.sizes() == kv.second.transpose(0, 1).sizes());
-            hid[kv.first] = newHid.transpose(0, 1);
+            //assert(newHid.sizes() == kv.second.transpose(0, 1).sizes());
+            //hid[kv.first] = newHid.transpose(0, 1);
+            assert(newHid.sizes() == kv.second.sizes());
+            hid[kv.first] = newHid;
         } else {
             assert(newHid.sizes() == kv.second.sizes());
             hid[kv.first] = newHid;
@@ -271,11 +277,11 @@ void R2D2Actor::observeBeforeAct(HanabiEnv& env) {
 
     addHid(input, hidden_);
 
-    //printf("input before call\n");
-    //for (auto& item: input) {
-        //cout << "name: " << item.first << endl;
-        //cout << "shape: " << item.second.sizes() << endl;
+    //printf("input observeBeforeAct()\n");
+    //for (auto& kv : input) {
+        //cout << kv.first << " " << kv.second.sizes() << endl;
     //}
+    //printf("^^^\n");
 
     // no-blocking async call to neural network
     futReply_ = runner_->call("act", input);
@@ -319,6 +325,12 @@ void R2D2Actor::act(HanabiEnv& env, const int curPlayer) {
     auto& state = env.getHleState();
     auto reply = futReply_.get();
     moveHid(reply, hidden_);
+
+    //printf("reply act()\n");
+    //for (auto& kv : reply) {
+        //cout << kv.first << " " << kv.second.sizes() << endl;
+    //}
+    //printf("^^^\n");
 
     if (replayBuffer_ != nullptr) {
         r2d2Buffer_->pushAction(reply);
@@ -528,24 +540,6 @@ void R2D2Actor::observeAfterAct(const HanabiEnv& env) {
     if (terminated) {
         lastEpisode_ = r2d2Buffer_->popTransition();
         auto input = lastEpisode_.toDict();
-
-        if (sadLegacy_) {
-            rela::TensorDict hid = historyHidden_.front();
-            rela::TensorDict nextHid = historyHidden_.back();
-            for (auto& kv : hid) {
-                input.emplace(kv.first, kv.second.transpose(0, 1));
-            }
-            for (auto& kv : nextHid) {
-                auto ret = input.emplace("next_" + kv.first, kv.second.transpose(0, 1));
-                assert(ret.second);
-            }
-        }
-
-        printf("input dict\n");
-        for (auto& kv : input) {
-            cout << kv.first << " " << kv.second.sizes() << endl;
-        }
-        printf("^^^\n");
 
         if (useExperience_) {
             futPriority_ = runner_->call("compute_priority", input);

@@ -45,13 +45,15 @@ def train_belief(args):
         context.start()
     else:
         data_gen, replay_buffer = create_sl_context(args)
+        print("creating new belief model")
         data_gen.start_data_generation(args.inf_data_loop, args.seed)
         # only for getting feature size
         games = create_envs(1, 1, args.num_player, 0, args.max_len)
         cfgs = {"sad": False}
 
     while replay_buffer.size() < args.burn_in_frames:
-        print("warming up replay buffer:", replay_buffer.size())
+        print("warming up replay buffer:", replay_buffer.size(),
+                ", mem size:", sys.getsizeof(replay_buffer))
         time.sleep(1)
 
     print("Success, Done")
@@ -72,11 +74,17 @@ def train_belief(args):
             belief_config["fc_only"],
             belief_config["parameterized"],
             belief_config["num_conventions"],
+            sad_legacy=args.sad_legacy,
         )
     else:
+        belief_in_dim = games[0].feature_size(cfgs["sad"])[1]
+
+        if args.sad_legacy:
+            belief_in_dim = 838
+
         model = belief_model.ARBeliefModel(
             args.train_device,
-            games[0].feature_size(cfgs["sad"])[1],
+            belief_in_dim,
             args.hid_dim,
             5,  # hand_size
             25,  # bits per card
@@ -84,6 +92,7 @@ def train_belief(args):
             fc_only=args.fc_only,
             parameterized=args.parameterized,
             num_conventions=args.num_conventions,
+            sad_legacy=args.sad_legacy,
         ).to(args.train_device)
 
     optim = torch.optim.Adam(model.parameters(), lr=args.lr, eps=args.eps)
@@ -97,6 +106,9 @@ def train_belief(args):
         stat.reset()
 
         for batch_idx in range(args.epoch_len):
+            if batch_idx % 50 == 0:
+                print("replay buffer size:", replay_buffer.size(),
+                        ", mem size:", sys.getsizeof(replay_buffer))
             batch, weight = replay_buffer.sample(args.batchsize, args.train_device)
             assert weight.max() == 1
             loss, xent, xent_v0, _ = model.loss(batch)

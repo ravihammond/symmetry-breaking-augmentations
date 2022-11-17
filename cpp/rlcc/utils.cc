@@ -71,8 +71,9 @@ rela::TensorDict observe(
                     std::vector<int>(), shuffleColor, colorPermute);
         if (legacySad) {
             vS.insert(vS.end(), vA.begin(), vA.end());
-            vector<torch::Tensor> privS(1, torch::tensor(vS));
-            feat["priv_s"] = torch::stack(privS, 0);
+            //vector<torch::Tensor> privS(1, torch::tensor(vS));
+            //feat["priv_s"] = torch::stack(privS, 0);
+            feat["priv_s"] = torch::tensor(vS);
         } else {
             feat = convertSad(vS, vA, game);
         }
@@ -80,13 +81,44 @@ rela::TensorDict observe(
 
     auto obsCheat = hle::HanabiObservation(state, playerIdx, true);
 
-    if (legacySad) {
-        auto vOwnHand = encoder.EncodeOwnHandTrinary(obsCheat);
-        vector<torch::Tensor> ownHand(1, torch::tensor(vOwnHand));
-        feat["own_hand"] = torch::stack(ownHand, 0);
-    }else if (trinary) {
-        auto vOwnHand = encoder.EncodeOwnHandTrinary(obsCheat);
-        feat["own_hand"] = torch::tensor(vOwnHand);
+    //if (legacySad) {
+        //auto vOwnHandTrinary = encoder.EncodeOwnHandTrinary(obsCheat);
+        //feat["own_hand"] = torch::tensor(vOwnHandTrinary);
+
+        //auto vOwnHand = encoder.EncodeOwnHand(obsCheat, shuffleColor, colorPermute);
+        //std::vector<float> vOwnHandARIn(vOwnHand.size(), 0);
+        //int end = (game.HandSize() - 1) * game.NumColors() * game.NumRanks();
+        //std::copy(
+                //vOwnHand.begin(),
+                //vOwnHand.begin() + end,
+                //vOwnHandARIn.begin() + game.NumColors() * game.NumRanks());
+        //feat["own_hand_plain"] = torch::tensor(vOwnHand);
+        //feat["own_hand_ar_in"] = torch::tensor(vOwnHandARIn);
+        //auto privARV0 =
+            //encoder.EncodeARV0Belief(obsCheat, std::vector<int>(), shuffleColor, colorPermute);
+        //feat["priv_ar_v0"] = torch::tensor(privARV0);
+
+    //}else if (trinary) {
+    if (trinary || legacySad) {
+        auto vOwnHandTrinary = encoder.EncodeOwnHandTrinary(obsCheat);
+        feat["own_hand"] = torch::tensor(vOwnHandTrinary);
+
+        if (legacySad) {
+            auto vOwnHand = encoder.EncodeOwnHand(
+                    obsCheat, shuffleColor, colorPermute);
+            std::vector<float> vOwnHandARIn(vOwnHand.size(), 0);
+            int end = (game.HandSize() - 1) * game.NumColors() * game.NumRanks();
+            std::copy(
+                    vOwnHand.begin(),
+                    vOwnHand.begin() + end,
+                    vOwnHandARIn.begin() + game.NumColors() * game.NumRanks());
+            feat["own_hand_ar"] = torch::tensor(vOwnHand);
+            feat["own_hand_ar_in"] = torch::tensor(vOwnHandARIn);
+            auto privARV0 =
+                encoder.EncodeARV0Belief(obsCheat, std::vector<int>(), 
+                        shuffleColor, colorPermute);
+            feat["priv_ar_v0"] = torch::tensor(privARV0);
+        }
     } else {
         auto vOwnHand = encoder.EncodeOwnHand(obsCheat, shuffleColor, colorPermute);
         std::vector<float> vOwnHandARIn(vOwnHand.size(), 0);
@@ -119,8 +151,9 @@ rela::TensorDict observe(
     }
 
     if (legacySad) {
-        vector<torch::Tensor> legalMove(1, torch::tensor(vLegalMove));
-        feat["legal_move"] = torch::stack(legalMove, 0);
+        //vector<torch::Tensor> legalMove(1, torch::tensor(vLegalMove));
+        //feat["legal_move"] = torch::stack(legalMove, 0);
+        feat["legal_move"] = torch::tensor(vLegalMove);
     } else {
         feat["legal_move"] = torch::tensor(vLegalMove);
     }
