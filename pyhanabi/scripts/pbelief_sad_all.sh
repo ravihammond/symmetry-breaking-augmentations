@@ -1,0 +1,24 @@
+#!/bin/bash
+python train_belief.py \
+       --save_dir exps/pbelief_sad_all \
+       --num_thread 26 \
+       --num_game_per_thread 80 \
+       --seed 89321672 \
+       --lr 6.25e-05 \
+       --eps 1.5e-05 \
+       --grad_clip 5 \
+       --hid_dim 512 \
+       --batchsize 128 \
+       --burn_in_frames 10000 \
+       --replay_buffer_size 100000 \
+       --epoch_len 1000 \
+       --num_epoch 6001 \
+       --train_device cuda:0 \
+       --act_device cuda:1,cuda:2,cuda:3 \
+       --explore 1 \
+       --num_player 2 \
+       --sad_legacy 1 \
+       --num_parameters 13 \
+       --parameterized 1 \
+       --runner_div round_robin \
+       --policy_list agent_groups/all_sad.json \

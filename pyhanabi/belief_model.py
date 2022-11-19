@@ -11,9 +11,10 @@ from typing import Tuple, Dict
 import numpy as np
 
 torch.set_printoptions(
-    linewidth=600
+    linewidth=600,
+    threshold=10_000,
+    profile="full",
 )
-
 
 class V0BeliefModel(torch.jit.ScriptModule):
     def __init__(self, device, num_sample):
@@ -32,12 +33,10 @@ class V0BeliefModel(torch.jit.ScriptModule):
 
     @torch.jit.script_method
     def observe(self, obs: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
-        # print("observe")
         return obs
 
     @torch.jit.script_method
     def sample(self, obs: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
-        # print("sample")
         v0 = obs["v0"]
         bsize = v0.size(0)
         v0 = v0.view(bsize, self.hand_size, -1)[:, :, : self.bit_per_card]
@@ -61,28 +60,10 @@ def pred_loss(logp, gtruth, seq_len):
     hand_size = gtruth.sum(3).sum(2).clamp(min=1e-5)
     logp_per_card = logp.sum(2) / hand_size
     xent = -logp_per_card.sum(0)
-    # print(seq_len.size(), xent.size())
     assert seq_len.size() == xent.size()
     avg_xent = xent / seq_len
     nll_per_card = -logp_per_card
     return xent, avg_xent, nll_per_card
-
-# def pred_loss(logp, gtruth, seq_len):
-    # """
-    # logit: [seq_len, batch, hand_size, bits_per_card]
-    # gtruth: [seq_len, batch, hand_size, bits_per_card]
-        # one-hot, can be all zero if no card for that position
-    # """
-    # assert logp.size() == gtruth.size()
-    # logp = (logp * gtruth).sum(3)
-    # hand_size = gtruth.sum(3).sum(2).clamp(min=1e-5)
-    # logp_per_card = logp.sum(2) / hand_size
-    # xent = -logp_per_card.sum(0)
-    # # print(seq_len.size(), xent.size())
-    # assert seq_len.size() == xent.size()
-    # avg_xent = xent / seq_len
-    # nll_per_card = -logp_per_card
-    # return xent, avg_xent, nll_per_card
 
 
 class ARBeliefModel(torch.jit.ScriptModule):
@@ -96,7 +77,7 @@ class ARBeliefModel(torch.jit.ScriptModule):
         num_sample, 
         fc_only, 
         parameterized,
-        num_conventions,
+        num_parameters,
         sad_legacy=False,
     ):
         """
@@ -122,10 +103,10 @@ class ARBeliefModel(torch.jit.ScriptModule):
         self.fc_only = fc_only
 
         self.parameterized = parameterized
-        self.num_conventions = num_conventions
+        self.num_parameters = num_parameters
 
         if self.parameterized:
-            self.in_dim += self.num_conventions
+            self.in_dim += self.num_parameters
 
         self.net = nn.Sequential(
             nn.Linear(self.in_dim, self.hid_dim),
@@ -166,12 +147,12 @@ class ARBeliefModel(torch.jit.ScriptModule):
             num_sample, 
             fc_only,
             parameterized,
-            num_conventions,
+            num_parameters,
             sad_legacy=False):
         state_dict = torch.load(weight_file)
         hid_dim, in_dim = state_dict["net.0.weight"].size()
         if parameterized:
-            in_dim -= num_conventions
+            in_dim -= num_parameters
         out_dim = state_dict["fc.weight"].size(0)
         model = cls(
                 device, 
@@ -182,7 +163,7 @@ class ARBeliefModel(torch.jit.ScriptModule):
                 num_sample, 
                 fc_only,
                 parameterized,
-                num_conventions,
+                num_parameters,
                 sad_legacy=sad_legacy)
         model.load_state_dict(state_dict)
         model = model.to(device)
@@ -222,7 +203,7 @@ class ARBeliefModel(torch.jit.ScriptModule):
             convention_indexes = batch.obs[self.convention_idx_key].clone()
             if convention_index_override is not None:
                 convention_indexes[:,:] = convention_index_override
-            one_hot = F.one_hot(convention_indexes, num_classes=self.num_conventions)
+            one_hot = F.one_hot(convention_indexes, num_classes=self.num_parameters)
             cat_x = torch.cat((x, one_hot), 2)
 
             # Create mask to zero out one-hot vectors after sequences finish
@@ -257,7 +238,6 @@ class ARBeliefModel(torch.jit.ScriptModule):
         return result
 
     def loss_response_playable(self, batch, beta=1, convention_index_override=None):
-        torch.set_printoptions(linewidth=300, precision=2, sci_mode=False)
         x = batch.obs[self.input_key]
 
         #Append convention one-hot vectors if model is parameterized
@@ -266,7 +246,7 @@ class ARBeliefModel(torch.jit.ScriptModule):
             convention_indexes = batch.obs[self.convention_idx_key].clone()
             if convention_index_override is not None:
                 convention_indexes[:,:] = convention_index_override
-            one_hot = F.one_hot(convention_indexes, num_classes=self.num_conventions)
+            one_hot = F.one_hot(convention_indexes, num_classes=self.num_parameters)
             cat_x = torch.cat((x, one_hot), 2)
 
             # Create mask to zero out one-hot vectors after sequences finish
@@ -332,7 +312,7 @@ class ARBeliefModel(torch.jit.ScriptModule):
             convention_idx = obs[self.convention_idx_key].unsqueeze(0)
             # tensor_convention_index = torch.tensor(convention_idx)
             one_hot = F.one_hot(convention_idx, 
-                    num_classes=self.num_conventions)
+                    num_classes=self.num_parameters)
             s = torch.cat((s, one_hot), 2)
 
         x = self.net(s)

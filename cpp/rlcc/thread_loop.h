@@ -20,12 +20,14 @@ class HanabiThreadLoop : public rela::ThreadLoop {
         HanabiThreadLoop(
                     std::vector<std::shared_ptr<HanabiEnv>> envs,
                     std::vector<std::vector<std::shared_ptr<R2D2Actor>>> actors,
-                    bool eval)
+                    bool eval,
+                    int threadIdx)
                 : envs_(std::move(envs))
                 , actors_(std::move(actors))
                 , done_(envs_.size(), -1)
                 , eval_(eval) 
-                , avgN_(400) {
+                , avgN_(400) 
+                , threadIdx_(threadIdx) {
             assert(envs_.size() == actors_.size());
         }
 
@@ -201,5 +203,6 @@ class HanabiThreadLoop : public rela::ThreadLoop {
         int numDone_ = 0;
         std::vector<double> timeStats_ = std::vector<double>(5, 0);
         double avgN_;
+        int threadIdx_;
 };
 

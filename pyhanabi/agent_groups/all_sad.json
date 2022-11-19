@@ -1,5 +1,15 @@
 [
-    "exps/sad_1/model0.pthw",
-    "exps/sad_2/model0.pthw",
-    "exps/sad_1000/model0.pthw"
+    "../models/sad_models/sad_2p_1.pthw",
+    "../models/sad_models/sad_2p_2.pthw",
+    "../models/sad_models/sad_2p_3.pthw",
+    "../models/sad_models/sad_2p_4.pthw",
+    "../models/sad_models/sad_2p_5.pthw",
+    "../models/sad_models/sad_2p_6.pthw",
+    "../models/sad_models/sad_2p_7.pthw",
+    "../models/sad_models/sad_2p_8.pthw",
+    "../models/sad_models/sad_2p_9.pthw",
+    "../models/sad_models/sad_2p_10.pthw",
+    "../models/sad_models/sad_2p_11.pthw",
+    "../models/sad_models/sad_2p_12.pthw",
+    "../models/sad_models/sad_2p_13.pthw"
 ]

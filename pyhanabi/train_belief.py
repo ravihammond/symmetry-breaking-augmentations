@@ -59,8 +59,8 @@ def train_belief(args):
     print("=======================")
     convention = []
     if args.convention is not "None":
-        convention = load_convention(args.convention)
-        assert(len(convention) == args.num_conventions)
+        convention = load_json(args.convention)
+        assert(len(convention) == args.num_parameters)
 
     if args.load_model:
         belief_config = utils.get_train_config(cfgs["belief_model"])
@@ -72,14 +72,15 @@ def train_belief(args):
             0,
             belief_config["fc_only"],
             belief_config["parameterized"],
-            belief_config["num_conventions"],
+            belief_config["num_parameters"],
             sad_legacy=args.sad_legacy,
         )
     else:
-        belief_in_dim = games[0].feature_size(cfgs["sad"])[1]
 
         if args.sad_legacy:
             belief_in_dim = 838
+        else:
+            belief_in_dim = games[0].feature_size(cfgs["sad"])[1]
 
         model = belief_model.ARBeliefModel(
             args.train_device,
@@ -90,7 +91,7 @@ def train_belief(args):
             0,  # num_sample
             fc_only=args.fc_only,
             parameterized=args.parameterized,
-            num_conventions=args.num_conventions,
+            num_parameters=args.num_parameters,
             sad_legacy=args.sad_legacy,
         ).to(args.train_device)
 
@@ -105,9 +106,6 @@ def train_belief(args):
         stat.reset()
 
         for batch_idx in range(args.epoch_len):
-            if batch_idx % 50 == 0:
-                print("replay buffer size:", replay_buffer.size(),
-                        ", mem size:", sys.getsizeof(replay_buffer))
             batch, weight = replay_buffer.sample(args.batchsize, args.train_device)
             assert weight.max() == 1
             loss, xent, xent_v0, _ = model.loss(batch)
@@ -153,42 +151,7 @@ def create_rl_context(args):
         "uniform_priority": True,
     }
 
-    if args.clone_bot:
-        agent = utils.load_supervised_agent(args.policy, args.train_device)
-        cfgs = {
-            "act_base_eps": 0.1,
-            "act_eps_alpha": 7,
-            "num_game_per_thread": 80,
-            "num_player": 2,
-            "train_bomb": 0,
-            "max_len": 80,
-            "sad": 0,
-            "shuffle_color": 0,
-            "hide_action": 0,
-            "multi_step": 1,
-            "gamma": 0.999,
-        }
-    elif args.sad_legacy:
-        agent = utils.load_sad_model(args.policy, args.act_device)
-        cfgs = {
-            "act_base_eps": 0.1,
-            "act_eps_alpha": 7,
-            "num_game_per_thread": 80,
-            "num_player": 2,
-            "train_bomb": 0,
-            "max_len": 80,
-            "sad": 1,
-            "shuffle_color": 0,
-            "hide_action": 0,
-            "multi_step": 1,
-            "gamma": 0.999,
-            "parameterized": 0,
-        }
-    else:
-        agent, cfgs = utils.load_agent(args.policy, agent_overwrite)
-
-    assert cfgs["shuffle_color"] == False
-    assert args.explore
+    agents, cfgs, explore_eps, boltzmann_t = load_agents(args)
 
     replay_buffer = rela.RNNPrioritizedReplay(
         args.replay_buffer_size,
@@ -198,63 +161,32 @@ def create_rl_context(args):
         args.prefetch,
     )
 
-    if args.rand:
-        explore_eps = [1]
-    elif args.explore:
-        # use the same exploration config as policy learning
-        explore_eps = utils.generate_explore_eps(
-            cfgs["act_base_eps"], cfgs["act_eps_alpha"], cfgs["num_game_per_thread"]
-        )
-    else:
-        explore_eps = [0]
-
-    expected_eps = np.mean(explore_eps)
-    print("explore eps:", explore_eps)
-    print("avg explore eps:", np.mean(explore_eps))
-    if args.clone_bot or not agent.boltzmann:
-        print("no boltzmann act")
-        boltzmann_t = []
-    else:
-        boltzmann_beta = utils.generate_log_uniform(
-            1 / cfgs["max_t"], 1 / cfgs["min_t"], cfgs["num_t"]
-        )
-        boltzmann_t = [1 / b for b in boltzmann_beta]
-        print("boltzmann beta:", ", ".join(["%.2f" % b for b in boltzmann_beta]))
-        print("avg boltzmann beta:", np.mean(boltzmann_beta))
-
     games = create_envs(
         args.num_thread * args.num_game_per_thread,
         args.seed,
-        cfgs["num_player"],
-        cfgs["train_bomb"],
-        cfgs["max_len"],
+        cfgs[0]["num_player"],
+        cfgs[0]["train_bomb"],
+        cfgs[0]["max_len"],
     )
 
-    convention = load_convention(args.convention)
+    convention = load_json(args.convention)
     act_override = [args.convention_act_override, args.convention_act_override]
 
     act_group = ActGroup(
         args.act_device, # devices
-        agent, # agent
+        agents, # agents
         args.seed, # seed
         args.num_thread, # num_thread
+        args.num_player, # num_player
         args.num_game_per_thread, # num_game_per_thread
-        cfgs["num_player"], # num_player
         explore_eps, #explore_eps
         boltzmann_t, # boltzmann_t
         "iql", # method
-        cfgs["sad"], # sad 
-        cfgs["shuffle_color"] if not args.rand else False, # shuffle_color
-        cfgs["hide_action"], # hide_action
         False,  # trinary
         replay_buffer, # replay_buffer
-        cfgs["multi_step"],  # multi_step
-        cfgs["max_len"], # max_len
-        cfgs["gamma"],  # gamma
         False,  # off_belief
         None,  # belief_model
         convention, # convention
-        cfgs["parameterized"], # act_parameterized
         act_override, # convention_act_override
         False, # convention_fict_act_override
         None, # partner_agent
@@ -263,6 +195,8 @@ def create_rl_context(args):
         [1,1], # use_experience
         False, # belief_stats
         args.sad_legacy, # sad_legacy
+        cfgs, # explore_eps
+        runner_div=args.runner_div, # runner_div
     )
 
     context, threads = create_threads(
@@ -271,8 +205,71 @@ def create_rl_context(args):
         act_group.actors,
         games,
     )
-    return agent, cfgs, replay_buffer, games, act_group, context, threads
 
+    return agents, cfgs, replay_buffer, games, act_group, context, threads
+
+def load_agents(args):
+    agents = []
+    explore_eps = []
+    boltzmann_t = []
+    cfgs = []
+
+    default_cfg = {
+        "act_base_eps": 0.1,
+        "act_eps_alpha": 7,
+        "num_game_per_thread": 80,
+        "num_player": 2,
+        "train_bomb": 0,
+        "max_len": 80,
+        "sad": 1,
+        "shuffle_color": 0,
+        "hide_action": 0,
+        "multi_step": 1,
+        "gamma": 0.999,
+        "parameterized": 0,
+    }
+
+    model_paths = [args.policy]
+    if args.policy_list != "None":
+        model_paths = load_json(args.policy_list)
+
+    devices = args.train_device.split(",")
+
+    for model_path in model_paths:
+        if args.clone_bot:
+            agent = utils.load_supervised_agent(model_path, devices[0])
+            cfg = default_cfg
+        elif args.sad_legacy:
+            agent = utils.load_sad_model(model_path, devices[0])
+            cfg = default_cfg
+        else:
+            agent, cfg = utils.load_agent(model_path, agent_overwrite)
+
+        assert cfg["shuffle_color"] == False
+        assert args.explore
+
+        cfgs.append(cfg)
+        agents.append(agent)
+
+        if args.rand:
+            explore_eps.append([1])
+        elif args.explore:
+            # use the same exploration config as policy learning
+            explore_eps.append(utils.generate_explore_eps(
+                cfg["act_base_eps"], cfg["act_eps_alpha"], cfg["num_game_per_thread"]
+            ))
+        else:
+            explore_eps.append([0])
+
+        if args.clone_bot or not agent.boltzmann:
+            boltzmann_t.append([])
+        else:
+            boltzmann_beta = utils.generate_log_uniform(
+                1 / cfg["max_t"], 1 / cfg["min_t"], cfg["num_t"]
+            )
+            boltzmann_t.append([1 / b for b in boltzmann_beta])
+
+    return agents, cfgs, explore_eps, boltzmann_t
 
 def create_sl_context(args):
     games = pickle.load(open(args.dataset, "rb"))
@@ -319,11 +316,11 @@ def create_sl_context(args):
     return data_gen, replay_buffer
 
 
-def load_convention(convention_path):
-    if convention_path == "None":
+def load_json(path):
+    if path == "None":
         return []
-    convention_file = open(convention_path)
-    return json.load(convention_file)
+    file = open(path)
+    return json.load(file)
 
 
 def parse_args():
@@ -368,12 +365,16 @@ def parse_args():
 
     # conventions
     parser.add_argument("--convention", type=str, default="None")
-    parser.add_argument("--num_conventions", type=int, default=0)
+    parser.add_argument("--num_parameters", type=int, default=0)
     parser.add_argument("--parameterized", type=int, default=0)
     parser.add_argument("--convention_act_override", type=int, default=0)
 
     # legacy sad
     parser.add_argument("--sad_legacy", type=int, default=0)
+
+    # multi_models
+    parser.add_argument("--policy_list", type=str, default="None")
+    parser.add_argument("--runner_div", type=str, default="duplicated")
 
     args = parser.parse_args()
     return args
@@ -387,3 +388,4 @@ if __name__ == "__main__":
         os.makedirs(args.save_dir)
 
     train_belief(args)
+

@@ -58,7 +58,8 @@ def create_threads(num_thread, num_game_per_thread, actors, games):
         envs = games[
             thread_idx * num_game_per_thread : (thread_idx + 1) * num_game_per_thread
         ]
-        thread = hanalearn.HanabiThreadLoop(envs, actors[thread_idx], False)
+        thread = hanalearn.HanabiThreadLoop(
+                envs, actors[thread_idx], False, thread_idx)
         threads.append(thread)
         context.push_thread_loop(thread)
     print(

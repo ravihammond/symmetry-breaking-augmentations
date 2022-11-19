@@ -71,8 +71,6 @@ rela::TensorDict observe(
                     std::vector<int>(), shuffleColor, colorPermute);
         if (legacySad) {
             vS.insert(vS.end(), vA.begin(), vA.end());
-            //vector<torch::Tensor> privS(1, torch::tensor(vS));
-            //feat["priv_s"] = torch::stack(privS, 0);
             feat["priv_s"] = torch::tensor(vS);
         } else {
             feat = convertSad(vS, vA, game);
@@ -118,13 +116,7 @@ rela::TensorDict observe(
         vLegalMove[game.MaxMoves()] = 1;
     }
 
-    if (legacySad) {
-        //vector<torch::Tensor> legalMove(1, torch::tensor(vLegalMove));
-        //feat["legal_move"] = torch::stack(legalMove, 0);
-        feat["legal_move"] = torch::tensor(vLegalMove);
-    } else {
-        feat["legal_move"] = torch::tensor(vLegalMove);
-    }
+    feat["legal_move"] = torch::tensor(vLegalMove);
     return feat;
 }
 

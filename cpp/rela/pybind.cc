@@ -79,5 +79,6 @@ PYBIND11_MODULE(rela, m) {
       .def("start", &BatchRunner::start)
       .def("stop", &BatchRunner::stop)
       .def("update_model", &BatchRunner::updateModel)
-      .def("set_log_freq", &BatchRunner::setLogFreq);
+      .def("set_log_freq", &BatchRunner::setLogFreq)
+      .def("print_model", &BatchRunner::printModel); 
 }

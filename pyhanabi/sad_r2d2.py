@@ -84,7 +84,6 @@ class SADNet(torch.jit.ScriptModule):
         action: torch.Tensor,
         hid: Dict[str, torch.Tensor],
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
-        # print("=== forward() SADNet sad_r2d2.py")
         assert (
             priv_s.dim() == 3 or priv_s.dim() == 2
         ), "dim = 3/2, [seq_len(optional), batch, dim]"
@@ -161,6 +160,7 @@ class SADAgent(torch.jit.ScriptModule):
 
     def __init__(
         self,
+        weight_file,
         vdn,
         multi_step,
         gamma,
@@ -197,6 +197,8 @@ class SADAgent(torch.jit.ScriptModule):
             num_fc_layer,
             skip_connect,
         ).to(device)
+        self.model_name = weight_file
+        self.device = device
         self.vdn = vdn
         self.multi_step = multi_step
         self.gamma = gamma
@@ -208,10 +210,19 @@ class SADAgent(torch.jit.ScriptModule):
     def get_h0(self, batchsize: int) -> Dict[str, torch.Tensor]:
         return self.online_net.get_h0(batchsize)
 
+    @torch.jit.script_method
+    def get_model_name(self) -> str:
+        return self.model_name
+
+    @torch.jit.script_method
+    def get_model_device(self) -> str:
+        return self.device
+
     def clone(self, device, overwrite=None):
         if overwrite is None:
             overwrite = {}
         cloned = type(self)(
+            self.model_name,
             overwrite.get("vdn", self.vdn),
             self.multi_step,
             self.gamma,
@@ -251,7 +262,6 @@ class SADAgent(torch.jit.ScriptModule):
         output: {'a' : actions}, a long Tensor of shape
             [batchsize] or [batchsize, num_player]
         """
-        # print("=== act() SADAgent sad_r2d2.py ===")
         priv_s = obs["priv_s"]
         legal_move = obs["legal_move"]
         eps = obs["eps"]

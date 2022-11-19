@@ -7,7 +7,7 @@
 
 using namespace std;
 
-#define CV false
+#define CV true
 
 void R2D2Actor::conventionReset(const HanabiEnv& env) {
     (void)env;

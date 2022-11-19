@@ -131,7 +131,8 @@ PYBIND11_MODULE(hanalearn, m) {
         .def(py::init<
                 std::vector<std::shared_ptr<HanabiEnv>>,
                 std::vector<std::vector<std::shared_ptr<R2D2Actor>>>,
-                bool>())
+                bool,
+                int>())
         .def("get_time_stats", &HanabiThreadLoop::getTimeStats);
 
     // bind some hanabi util classes
