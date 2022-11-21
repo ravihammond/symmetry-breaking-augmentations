@@ -78,6 +78,7 @@ class ARBeliefModel(torch.jit.ScriptModule):
         fc_only, 
         parameterized,
         num_parameters,
+        weight_file,
         sad_legacy=False,
     ):
         """
@@ -104,6 +105,8 @@ class ARBeliefModel(torch.jit.ScriptModule):
 
         self.parameterized = parameterized
         self.num_parameters = num_parameters
+        self.device = device
+        self.model_name = weight_file
 
         if self.parameterized:
             self.in_dim += self.num_parameters
@@ -138,6 +141,14 @@ class ARBeliefModel(torch.jit.ScriptModule):
         hid = {"h0": torch.zeros(*shape), "c0": torch.zeros(*shape)}
         return hid
 
+    @torch.jit.script_method
+    def get_model_name(self) -> str:
+        return self.model_name
+
+    @torch.jit.script_method
+    def get_model_device(self) -> str:
+        return self.device
+
     @classmethod
     def load(
             cls, 
@@ -164,6 +175,7 @@ class ARBeliefModel(torch.jit.ScriptModule):
                 fc_only,
                 parameterized,
                 num_parameters,
+                weight_file,
                 sad_legacy=sad_legacy)
         model.load_state_dict(state_dict)
         model = model.to(device)

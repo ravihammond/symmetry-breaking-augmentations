@@ -38,6 +38,7 @@ class R2D2Agent(torch.jit.ScriptModule):
         boltzmann_act,
         uniform_priority,
         off_belief,
+        weight_file,
         greedy=False,
         nhead=None,
         nlayer=None,
@@ -91,13 +92,24 @@ class R2D2Agent(torch.jit.ScriptModule):
         self.nhead = nhead
         self.nlayer = nlayer
         self.max_len = max_len
+        self.device = device
         self.parameterized = parameterized
         self.parameter_type = parameter_type
         self.num_parameters = num_parameters
+        self.model_name = weight_file
 
     @torch.jit.script_method
     def get_h0(self, batchsize: int) -> Dict[str, torch.Tensor]:
         return self.online_net.get_h0(batchsize)
+
+    @torch.jit.script_method
+    def get_model_name(self) -> str:
+        return self.model_name
+
+    @torch.jit.script_method
+    def get_model_device(self) -> str:
+        return self.device
+
 
     def clone(self, device, overwrite=None):
         if overwrite is None:
@@ -116,6 +128,7 @@ class R2D2Agent(torch.jit.ScriptModule):
             overwrite.get("boltzmann_act", self.boltzmann),
             self.uniform_priority,
             self.off_belief,
+            self.model_name,
             self.greedy,
             nhead=self.nhead,
             nlayer=self.nlayer,
@@ -503,10 +516,12 @@ class R2D2Agent(torch.jit.ScriptModule):
         return xent
 
     def encode_parameters(self, priv_s, publ_s, convention_idx):
-        if not self.parameterized:
+        if not self.parameterized or self.num_parameters == 0:
             return priv_s, publ_s
 
         if self.parameter_type == "one_hot":
+            print("num_parameters")
+            print(self.num_parameters)
             one_hot = F.one_hot(convention_idx, 
                     num_classes=self.num_parameters)
             priv_s = torch.cat((priv_s, one_hot), 1)

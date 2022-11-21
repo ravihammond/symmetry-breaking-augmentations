@@ -257,8 +257,10 @@ void R2D2Actor::observeBeforeAct(HanabiEnv& env) {
     futReply_ = runner_->call("act", input);
 
     if (!offBelief_ && !beliefStats_) {
+        printf("not off belief, returning\n");
         return;
     }
+    printf("is off belief\n");
 
     // forward belief model
     assert(!vdn_);
@@ -269,10 +271,13 @@ void R2D2Actor::observeBeforeAct(HanabiEnv& env) {
             shuffleColor_,
             colorPermutes_[0],
             invColorPermutes_[0],
-            hideAction_);
+            hideAction_,
+            showOwnCards_,
+            sadLegacy_);
     privCardCount_ = privCardCount;
 
     if (beliefRunner_ == nullptr) {
+        printf("belief runner is nullptr\n");
         sampledCards_ = sampleCards(
                 v0,
                 privCardCount_,
@@ -281,6 +286,7 @@ void R2D2Actor::observeBeforeAct(HanabiEnv& env) {
                 state.Hands()[playerIdx_],
                 rng_);
     } else {
+        printf("calling belief sample\n");
         addHid(beliefInput, beliefHidden_);
         beliefInput["convention_idx"] = torch::tensor(conventionIdx_);
         futBelief_ = beliefRunner_->call("sample", beliefInput);

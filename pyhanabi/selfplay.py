@@ -91,8 +91,19 @@ def selfplay(args):
         parameterized=args.parameterized,
         parameter_type=args.parameter_type,
         num_parameters=args.num_parameters,
+        weight_file=args.save_dir
     )
     agent.sync_target_with_online()
+
+    cfgs = {
+        "sad": args.sad,
+        "hide_action": args.hide_action,
+        "shuffle_color": args.shuffle_color,
+        "multi_step": args.multi_step,
+        "max_len": args.max_len,
+        "gamma": args.gamma,
+        "parameterized": args.parameterized,
+    }
 
     if args.load_model and args.load_model != "None":
         if args.off_belief and args.belief_model != "None":
@@ -139,7 +150,8 @@ def selfplay(args):
                 args.num_fict_sample,
                 belief_config["fc_only"],
                 belief_config["parameterized"],
-                belief_config["num_conventions"],
+                belief_config["num_parameters"],
+                args.belief_model,
             ))
 
     partner_agents, partner_cfgs = load_partner_agents(args.partner_models)
@@ -151,26 +163,20 @@ def selfplay(args):
 
     act_group = ActGroup(
         args.act_device,
-        agent,
+        [agent],
+        [cfgs],
         args.seed,
         args.num_thread,
-        args.num_game_per_thread,
         args.num_player,
-        explore_eps,
-        boltzmann_t,
+        args.num_game_per_thread,
+        [explore_eps],
+        [boltzmann_t],
         args.method,
-        args.sad,
-        args.shuffle_color,
-        args.hide_action,
         True,  # trinary, 3 bits for aux task
         replay_buffer,
-        args.multi_step,
-        args.max_len,
-        args.gamma,
         args.off_belief,
         belief_model,
         convention,
-        args.parameterized, # act_parameterized
         convention_act_override,
         args.convention_fict_act_override,
         partner_agents,
@@ -178,6 +184,9 @@ def selfplay(args):
         args.static_partner,
         use_experience,
         args.belief_stats,
+        False,
+        runner_div=args.runner_div,
+        num_parameters=args.num_parameters,
     )
 
     context, threads = create_threads(
@@ -457,6 +466,7 @@ def parse_args():
     parser.add_argument("--wandb", type=int, default=0)
     parser.add_argument("--partner_models", type=str, default="None")
     parser.add_argument("--belief_stats", type=int, default=0)
+    parser.add_argument("--runner_div", type=str, default="duplicated")
 
     args = parser.parse_args()
     if args.off_belief == 1:

@@ -66,8 +66,7 @@ rela::TensorDict observe(
         feat = splitPrivatePublic(vS, game);
     } else {
         // only for evaluation
-        auto vA =
-            encoder.EncodeLastAction(obs, 
+        auto vA = encoder.EncodeLastAction(obs, 
                     std::vector<int>(), shuffleColor, colorPermute);
         if (legacySad) {
             vS.insert(vS.end(), vA.begin(), vA.end());
@@ -126,12 +125,25 @@ std::tuple<rela::TensorDict, std::vector<int>, std::vector<float>> beliefModelOb
         bool shuffleColor,
         const std::vector<int>& colorPermute,
         const std::vector<int>& invColorPermute,
-        bool hideAction) {
+        bool hideAction,
+        bool showOwnCards,
+        bool sadLegacy) {
     const auto& game = *(state.ParentGame());
     auto obs = hle::HanabiObservation(state, playerIdx, true);
     auto encoder = hle::CanonicalObservationEncoder(&game);
 
-    std::vector<float> vS = encoder.Encode(
+    printf("showOwnCards: %d\n", showOwnCards);
+    printf("sadLegacy: %d\n", sadLegacy);
+
+    //std::vector<float> vs = encoder.encode(
+            //obs,
+            //showOwnCards,
+            //std::vector<int>(),  // shuffle card
+            //shuffleColor,
+            //colorPermute,
+            //invColorPermute,
+            //hideAction);
+    std::vector<float> vs = encoder.encode(
             obs,
             true,
             std::vector<int>(),  // shuffle card
@@ -139,7 +151,22 @@ std::tuple<rela::TensorDict, std::vector<int>, std::vector<float>> beliefModelOb
             colorPermute,
             invColorPermute,
             hideAction);
+
+    printf("vS observation size: %lu\n", vS.size());
+
     rela::TensorDict feat = splitPrivatePublic(vS, game);
+
+    cout << "priv_s size: " << feat["priv_s"].sizes() << endl;
+    cout << "publ_s size: " << feat["publ_s"].sizes() << endl;
+
+    if (sadLegacy) {
+        auto vA = encoder.EncodeLastAction(obs, 
+                    std::vector<int>(), shuffleColor, colorPermute);
+        vS.insert(vS.end(), vA.begin(), vA.end());
+        printf("vS observation size after vA: %lu\n", vS.size());
+        feat["priv_s"] = torch::tensor(vS);
+    } 
+
     auto [v0, privCardCount] =
         encoder.EncodePrivateV0Belief(obs, std::vector<int>(), shuffleColor, colorPermute);
     feat["v0"] = torch::tensor(v0);

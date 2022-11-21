@@ -23,6 +23,7 @@ class ActGroup:
         self,
         devices,
         agents,
+        cfgs,
         seed,
         num_thread,
         num_player,
@@ -43,8 +44,9 @@ class ActGroup:
         use_experience,
         belief_stats,
         sad_legacy,
-        cfgs,
+        *,
         runner_div="duplicated",
+        num_parameters=0,
     ):
         self.devices = devices.split(",")
         self.method = method
@@ -69,13 +71,15 @@ class ActGroup:
         self.belief_model = belief_model
         self.belief_runner = None
         self.runner_div = runner_div
+        self.num_parameters = num_parameters
         if self.sad_legacy:
             self.trinary = True
         self.num_agents = len(agents)
 
-        (self.model_runners, self.belief_runners, self.partner_runners) = \
-            self.load_runners( agents, self.devices, num_thread, off_belief, 
-                runner_div, belief_model)
+        (self.model_runners, self.belief_runner, self.partner_runners) = \
+                self.load_runners( 
+            agents, self.devices, num_thread, off_belief, runner_div, belief_model)
+
         self.num_runners = len(self.model_runners)
 
         self.actors = self.create_r2d2_actors()
@@ -94,9 +98,6 @@ class ActGroup:
                 runner.add_method("compute_target", 5000)
             return runner
 
-        assert(runner_div in ["duplicated", "round_robin"], 
-            f"Error: unknown runner division algorithm: \"{runner_div}\"")
-
         if runner_div == "duplicated":
             for dev in devices:
                 for agent in agents:
@@ -111,13 +112,13 @@ class ActGroup:
 
         if belief_model is not None:
             for bm in belief_model:
-                self.belief_runner.append(
-                    rela.BatchRunner(bm, bm.device, 5000, ["sample"]))
+                belief_runner = rela.BatchRunner(bm, bm.device, 5000, ["sample"])
 
         return model_runners, belief_runner, partner_runners
 
     def create_r2d2_actors(self):
-        convention_index_count = 0
+        partner_idx = -1
+        parameter_index = 0
 
         actors = []
         if self.method == "vdn":
@@ -151,9 +152,6 @@ class ActGroup:
                     thread_actors.append([actor])
                 actors.append(thread_actors)
         elif self.method == "iql":
-            partner_idx = -1
-            convention_index = -1
-
             for t_idx in range(self.num_thread):
                 thread_actors = []
                 agent_idx = t_idx % self.num_agents
@@ -164,11 +162,8 @@ class ActGroup:
                 for g_idx in range(self.num_game_per_thread):
                     game_actors = []
 
-                    if self.num_agents > 1:
-                        convention_index = agent_idx
-
-                    if len(self.convention) > 0:
-                        convention_index = (convention_index + 1) % len(self.convention)
+                    if self.num_parameters > 0:
+                        parameter_index = (parameter_index + 1) % self.num_parameters
 
                     if len(self.partner_runners) > 0:
                         partner_idx = (partner_idx + 1) % len(self.partner_runners)
@@ -183,6 +178,9 @@ class ActGroup:
                             sad = self.partner_cfgs[partner_idx]["sad"]
                             hide_action = self.partner_cfgs[partner_idx]["hide_action"]
                             weight = self.partner_cfgs[partner_idx]["weight"]
+
+                        print("loading runner to actor, parameter:", parameter_index)
+                        runner.print_model()
 
                         actor = hanalearn.R2D2Actor(
                             runner,
@@ -202,7 +200,7 @@ class ActGroup:
                             self.cfgs[agent_idx]["gamma"],
                             self.convention,
                             self.cfgs[agent_idx]["parameterized"],
-                            convention_index,
+                            parameter_index,
                             self.convention_act_override[k],
                             self.convention_fict_act_override,
                             self.use_experience[k],
@@ -214,9 +212,9 @@ class ActGroup:
                             if self.belief_runner is None:
                                 actor.set_belief_runner(None)
                             else:
-                                actor.set_belief_runner(
-                                    self.belief_runner[t_idx % len(self.belief_runner)]
-                                )
+                                print("loading belief runner to actor")
+                                self.belief_runner.print_model()
+                                actor.set_belief_runner(self.belief_runner)
                         self.seed += 1
                         game_actors.append(actor)
 
@@ -226,7 +224,7 @@ class ActGroup:
                         game_actors[k].set_partners(partners)
 
                     thread_actors.append(game_actors)
-                    convention_index_count += 1
+                    parameter_index += 1
 
                 actors.append(thread_actors)
 
@@ -241,8 +239,7 @@ class ActGroup:
                 runner.start()
 
         if self.belief_runner is not None:
-            for runner in self.belief_runner:
-                runner.start()
+            self.belief_runner.start()
 
     def stop(self):
         for runner in self.model_runners:
@@ -253,8 +250,7 @@ class ActGroup:
                 runner.stop()
 
         if self.belief_runner is not None:
-            for runner in self.belief_runner:
-                runner.stop()
+            self.belief_runner.stop()
 
     def update_model(self, agent):
         for runner in self.model_runners:

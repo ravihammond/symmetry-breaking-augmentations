@@ -151,7 +151,9 @@ std::tuple<rela::TensorDict, std::vector<int>, std::vector<float>> beliefModelOb
         bool shuffleColor,
         const std::vector<int>& colorPermute,
         const std::vector<int>& invColorPermute,
-        bool hideAction);
+        bool hideAction,
+        bool showOwnCards,
+        bool sadLegacy);
 
 inline std::vector<float> createOneHot(int oneHotValue, int oneHotLength) {
     std::vector<float> oneHot;

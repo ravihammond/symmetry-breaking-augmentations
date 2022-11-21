@@ -203,6 +203,7 @@ def load_agent(weight_file, overwrite):
         "parameterized": cfg["parameterized"],
         "parameter_type": cfg["parameter_type"],
         "num_parameters": cfg["num_parameters"],
+        "weight_file": weight_file,
     }
     if cfg.get("net", None) == "transformer":
         config["nhead"] = cfg["nhead"]

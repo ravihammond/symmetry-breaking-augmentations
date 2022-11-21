@@ -330,6 +330,16 @@ class PublicLSTMNet(torch.jit.ScriptModule):
 
         priv_s = priv_s.unsqueeze(0)
         publ_s = publ_s.unsqueeze(0)
+        # print("priv_s")
+        # print(priv_s.shape)
+        # print("publ_s")
+        # print(publ_s.shape)
+        # print("legal_move")
+        # print(legal_move.shape)
+        # print("h0")
+        # print(hid["h0"].shape)
+        # print("c0")
+        # print(hid["c0"].shape)
 
         x = self.publ_net(publ_s)
         publ_o, (h, c) = self.lstm(x, (hid["h0"], hid["c0"]))

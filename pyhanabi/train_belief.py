@@ -175,6 +175,7 @@ def create_rl_context(args):
     act_group = ActGroup(
         args.act_device, # devices
         agents, # agents
+        cfgs, # cfgs
         args.seed, # seed
         args.num_thread, # num_thread
         args.num_player, # num_player
@@ -195,7 +196,6 @@ def create_rl_context(args):
         [1,1], # use_experience
         False, # belief_stats
         args.sad_legacy, # sad_legacy
-        cfgs, # explore_eps
         runner_div=args.runner_div, # runner_div
     )
 
