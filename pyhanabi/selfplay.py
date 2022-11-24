@@ -294,6 +294,7 @@ def selfplay(args):
             act_parameterized=[args.parameterized, args.parameterized],
             partner_agents=partner_agents,
             partner_cfgs=partner_cfgs,
+            num_parameters=args.num_parameters
         )
 
         if args.wandb:

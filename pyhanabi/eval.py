@@ -36,6 +36,7 @@ def evaluate(
     convention_indexes=None,
     override=[0, 0],
     act_parameterized=[0, 0],
+    num_parameters=0,
     belief_stats=False,
     belief_model_path="None",
     partner_agents=None,
@@ -106,7 +107,7 @@ def evaluate(
 
                 if convention_indexes is not None:
                     convention_index = convention_indexes[i]
-                
+
                 actor = hanalearn.R2D2Actor(
                     runner, # runner
                     num_player, # numPlayer
@@ -140,8 +141,11 @@ def evaluate(
             thread_games.append(games[g_idx])
             if len(partner_runners) > 0:
                 partner_idx = (partner_idx + 1) % len(partner_runners)
+
             if convention_indexes is None and len(convention) > 0:
                 convention_index = (convention_index + 1) % len(convention)
+            elif convention_indexes is None and num_parameters > 0:
+                convention_index = (convention_index + 1) % num_parameters
 
         thread = hanalearn.HanabiThreadLoop(thread_games, thread_actors, True, t_idx)
         threads.append(thread)
