@@ -520,12 +520,10 @@ class R2D2Agent(torch.jit.ScriptModule):
             return priv_s, publ_s
 
         if self.parameter_type == "one_hot":
-            print("num_parameters")
-            print(self.num_parameters)
             one_hot = F.one_hot(convention_idx, 
                     num_classes=self.num_parameters)
-            priv_s = torch.cat((priv_s, one_hot), 1)
-            publ_s = torch.cat((publ_s, one_hot), 1)
+            priv_s = torch.cat((priv_s, one_hot), len(priv_s.shape) - 1)
+            publ_s = torch.cat((publ_s, one_hot), len(publ_s.shape) - 1)
         elif self.parameter_type == "two_hot":
             num_colours = 5
             num_ranks = 5

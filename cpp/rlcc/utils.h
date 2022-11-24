@@ -37,6 +37,15 @@ inline rela::TensorDict splitPrivatePublic(
     return {{"priv_s", torch::tensor(vPriv)}, {"publ_s", torch::tensor(vPubl)}};
 }
 
+inline rela::TensorDict splitPrivatePublicSadLegacy(
+        const std::vector<float>& feat, const hle::HanabiGame& game) {
+    int bitsPerHand = game.HandSize() * game.NumColors() * game.NumRanks();
+    // remove all private observation
+    std::vector<float> vPubl(
+            feat.begin() + bitsPerHand * game.NumPlayers(), feat.end());
+    return {{"priv_s", torch::tensor(feat)}, {"publ_s", torch::tensor(vPubl)}};
+}
+
 inline rela::TensorDict convertSad(
         const std::vector<float>& feat,
         const std::vector<float>& sad,

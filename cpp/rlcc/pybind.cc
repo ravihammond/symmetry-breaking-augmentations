@@ -88,7 +88,8 @@ PYBIND11_MODULE(hanalearn, m) {
                 bool, // conventionFictitiousOverride
                 bool, // useExperience
                 bool, // beliefStats
-                bool>()) // sadLegacy
+                bool, // sadLegacy
+                bool>()) // beliefSadLegacy
         .def(py::init<
                 std::shared_ptr<rela::BatchRunner>,
                 int,  // numPlayer

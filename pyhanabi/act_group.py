@@ -35,6 +35,7 @@ class ActGroup:
         replay_buffer,
         off_belief,
         belief_model,
+        belief_cfg,
         convention,
         convention_act_override,
         convention_fict_act_override,
@@ -69,6 +70,7 @@ class ActGroup:
         self.cfgs = cfgs
         self.off_belief = off_belief
         self.belief_model = belief_model
+        self.belief_cfg = belief_cfg
         self.belief_runner = None
         self.runner_div = runner_div
         self.num_parameters = num_parameters
@@ -162,9 +164,6 @@ class ActGroup:
                 for g_idx in range(self.num_game_per_thread):
                     game_actors = []
 
-                    if self.num_parameters > 0:
-                        parameter_index = (parameter_index + 1) % self.num_parameters
-
                     if len(self.partner_runners) > 0:
                         partner_idx = (partner_idx + 1) % len(self.partner_runners)
 
@@ -178,9 +177,6 @@ class ActGroup:
                             sad = self.partner_cfgs[partner_idx]["sad"]
                             hide_action = self.partner_cfgs[partner_idx]["hide_action"]
                             weight = self.partner_cfgs[partner_idx]["weight"]
-
-                        print("loading runner to actor, parameter:", parameter_index)
-                        runner.print_model()
 
                         actor = hanalearn.R2D2Actor(
                             runner,
@@ -205,15 +201,14 @@ class ActGroup:
                             self.convention_fict_act_override,
                             self.use_experience[k],
                             self.belief_stats,
-                            self.sad_legacy
+                            self.sad_legacy,
+                            self.belief_cfg["sad_legacy"],
                         )
 
                         if self.off_belief:
                             if self.belief_runner is None:
                                 actor.set_belief_runner(None)
                             else:
-                                print("loading belief runner to actor")
-                                self.belief_runner.print_model()
                                 actor.set_belief_runner(self.belief_runner)
                         self.seed += 1
                         game_actors.append(actor)
@@ -224,7 +219,9 @@ class ActGroup:
                         game_actors[k].set_partners(partners)
 
                     thread_actors.append(game_actors)
-                    parameter_index += 1
+
+                    parameter_index = (parameter_index + 1) % self.num_parameters
+
 
                 actors.append(thread_actors)
 

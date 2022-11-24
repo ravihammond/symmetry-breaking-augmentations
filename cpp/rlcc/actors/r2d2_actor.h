@@ -42,7 +42,8 @@ public:
             bool conventionFictitiousOverride,
             bool useExperience,
             bool beliefStats,
-            bool sadLegacy)
+            bool sadLegacy,
+            bool beliefSadLegacy)
         : runner_(std::move(runner))
           , rng_(seed)
           , numPlayer_(numPlayer)
@@ -75,6 +76,7 @@ public:
           , currentTwoStep_("X") 
           , beliefStats_(beliefStats) 
           , sadLegacy_(sadLegacy) 
+          , beliefSadLegacy_(beliefSadLegacy) 
           , sentSignal_(false)
           , sentSignalStats_(false)
           , beliefStatsSignalReceived_(false) {
@@ -318,6 +320,7 @@ private:
     bool beliefStats_;
     bool showOwnCards_;
     bool sadLegacy_;
+    bool beliefSadLegacy_;
     bool sentSignal_;
     bool sentSignalStats_;
     bool beliefStatsSignalReceived_;

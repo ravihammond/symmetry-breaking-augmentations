@@ -143,7 +143,7 @@ def evaluate(
             if convention_indexes is None and len(convention) > 0:
                 convention_index = (convention_index + 1) % len(convention)
 
-        thread = hanalearn.HanabiThreadLoop(thread_games, thread_actors, True)
+        thread = hanalearn.HanabiThreadLoop(thread_games, thread_actors, True, t_idx)
         threads.append(thread)
         context.push_thread_loop(thread)
 

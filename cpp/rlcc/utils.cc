@@ -70,7 +70,9 @@ rela::TensorDict observe(
                     std::vector<int>(), shuffleColor, colorPermute);
         if (legacySad) {
             vS.insert(vS.end(), vA.begin(), vA.end());
-            feat["priv_s"] = torch::tensor(vS);
+            //feat = splitPrivatePublicSadLegacy(vS, game);
+            //feat = {{p}}
+            feat = {{"priv_s", torch::tensor(vS)}};
         } else {
             feat = convertSad(vS, vA, game);
         }
@@ -132,38 +134,21 @@ std::tuple<rela::TensorDict, std::vector<int>, std::vector<float>> beliefModelOb
     auto obs = hle::HanabiObservation(state, playerIdx, true);
     auto encoder = hle::CanonicalObservationEncoder(&game);
 
-    printf("showOwnCards: %d\n", showOwnCards);
-    printf("sadLegacy: %d\n", sadLegacy);
-
-    //std::vector<float> vs = encoder.encode(
-            //obs,
-            //showOwnCards,
-            //std::vector<int>(),  // shuffle card
-            //shuffleColor,
-            //colorPermute,
-            //invColorPermute,
-            //hideAction);
-    std::vector<float> vs = encoder.encode(
+    std::vector<float> vS = encoder.Encode(
             obs,
-            true,
+            showOwnCards,
             std::vector<int>(),  // shuffle card
             shuffleColor,
             colorPermute,
             invColorPermute,
             hideAction);
 
-    printf("vS observation size: %lu\n", vS.size());
-
     rela::TensorDict feat = splitPrivatePublic(vS, game);
-
-    cout << "priv_s size: " << feat["priv_s"].sizes() << endl;
-    cout << "publ_s size: " << feat["publ_s"].sizes() << endl;
 
     if (sadLegacy) {
         auto vA = encoder.EncodeLastAction(obs, 
                     std::vector<int>(), shuffleColor, colorPermute);
         vS.insert(vS.end(), vA.begin(), vA.end());
-        printf("vS observation size after vA: %lu\n", vS.size());
         feat["priv_s"] = torch::tensor(vS);
     } 
 

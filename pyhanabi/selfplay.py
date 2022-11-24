@@ -12,6 +12,8 @@ import pprint
 import json
 import wandb
 import gc
+import pprint
+pprint = pprint.pprint
 
 import numpy as np
 import torch
@@ -38,7 +40,7 @@ def selfplay(args):
     saver = common_utils.TopkSaver(args.save_dir, 5)
 
     common_utils.set_all_seeds(args.seed)
-    pprint.pprint(vars(args))
+    pprint(vars(args))
 
     if args.method == "vdn":
         args.batchsize = int(np.round(args.batchsize / args.num_player))
@@ -135,6 +137,7 @@ def selfplay(args):
     )
 
     belief_model = None
+    belief_config = None
     if args.off_belief and args.belief_model != "None":
         print(f"load belief model from {args.belief_model}")
         from belief_model import ARBeliefModel
@@ -176,6 +179,7 @@ def selfplay(args):
         replay_buffer,
         args.off_belief,
         belief_model,
+        belief_config,
         convention,
         convention_act_override,
         args.convention_fict_act_override,
@@ -223,11 +227,6 @@ def selfplay(args):
         tachometer.start()
         stat.reset()
         stopwatch.reset()
-
-        print("Times")
-        time_stats_all = [np.array(x.get_time_stats()) for x in threads]
-        time_stats_avg = [np.mean(k) for k in zip(*time_stats_all)]
-        print(time_stats_avg)
 
         for batch_idx in range(args.epoch_len):
             num_update = batch_idx + epoch * args.epoch_len
