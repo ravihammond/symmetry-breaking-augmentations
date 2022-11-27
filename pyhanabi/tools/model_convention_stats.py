@@ -81,6 +81,11 @@ def load_weights(args):
 def run_evaluation(args, weight_files, conventions):
     num_game_multiplier = 1 if len(conventions) == 0 else len(conventions)
 
+    if args.convention_index == -1:
+        convention_indexes = None
+    else:
+        convention_indexes = [args.convention_index, args.convention_index]
+
     score, perfect, _, scores, actors = evaluate_saved_model(
         weight_files,
         args.num_game * num_game_multiplier,
@@ -91,6 +96,7 @@ def run_evaluation(args, weight_files, conventions):
         convention=args.convention,
         override=[args.override0, args.override1],
         sad_legacy=args.sad_legacy,
+        convention_indexes=convention_indexes,
     )
 
     return scores, actors
@@ -198,6 +204,8 @@ if __name__ == "__main__":
     parser.add_argument("--colour_max", default=1, type=float)
     parser.add_argument("--split", default=0, type=int)
     parser.add_argument("--sad_legacy", default="0,0", type=str)
+    parser.add_argument("--num_parameters", default=0, type=str)
+    parser.add_argument("--convention_index", default=-1, type=int)
     args = parser.parse_args()
 
     args.sad_legacy = [int(x) for x in args.sad_legacy.split(",")]

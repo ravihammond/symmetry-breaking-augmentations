@@ -19,6 +19,7 @@ import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
 import pprint
 pprint = pprint.pprint
+import copy
 
 lib_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(lib_path)
@@ -48,28 +49,130 @@ def belief_cross_play(args):
     data = []
     xlabels = []
     ylabels = []
+    min_value = float("inf")
+    max_value = float("-inf")
 
     policy_conventions = load_json_list(args.policy_conventions)
     belief_conventions = load_json_list(args.belief_conventions)
 
-    loaded_agent = utils.load_agent(args.policy, {
-        "vdn": False,
-        "device": args.device,
-        "uniform_priority": True,
-    })
+    loaded_agents = load_agents(args)
+    belief_model = load_belief_model(args)
 
+    num_policies = len(policy_conventions)
+    if args.policy_root != "None":
+        num_policies = len(loaded_agents)
+
+    for policy_index in range(num_policies):
+        policy_name = create_policy_name(
+                args, policy_index, policy_conventions)
+        print("collecting data:", policy_name)
+
+        belief_losses, xlabels, new_min, new_max = calculate_belief_loss_for_policy(
+            args, loaded_agents, policy_index, 
+            policy_conventions, belief_model, belief_conventions)
+
+        min_value = min(min_value, new_min)
+        max_value = max(max_value, new_max)
+
+        ylabels.append(policy_name)
+        data.append(belief_losses)
+
+    if not args.auto_maxmin:
+        min_value = args.colour_min
+        max_value = args.colour_max
+
+    return {
+        "data": data,
+        "xlabels": xlabels,
+        "ylabels": ylabels,
+        "min_value": min_value,
+        "max_value": max_value,
+    }
+
+
+def load_agents(args):
+    loaded_agents = []
+
+    default_cfg = {
+        "act_base_eps": 0.1,
+        "act_eps_alpha": 7,
+        "num_game_per_thread": 80,
+        "num_player": 2,
+        "train_bomb": 0,
+        "max_len": 80,
+        "sad": 1,
+        "shuffle_color": 0,
+        "hide_action": 0,
+        "multi_step": 1,
+        "gamma": 0.999,
+        "parameterized": 0,
+    }
+
+    policy_list = [args.policy]
+    if args.policy_root != "None":
+        policy_list = common_utils.get_all_files(args.policy_root)
+
+    for policy in policy_list:
+        if args.sad_legacy:
+            agent = utils.load_sad_model(policy, args.device)
+            cfg = default_cfg
+        else:
+            agent, cfg = utils.load_agent(policy, {
+                "vdn": False,
+                "device": args.device,
+                "uniform_priority": True,
+            })
+
+        if agent.boltzmann:
+            boltzmann_beta = utils.generate_log_uniform(
+                1 / cfg["max_t"], 1 / cfg["min_t"], cfg["num_t"]
+            )
+            boltzmann_t = [1 / b for b in boltzmann_beta]
+        else:
+            boltzmann_t = []
+
+        loaded_agents.append((agent, cfg, boltzmann_t))
+
+    return loaded_agents
+
+def load_belief_model(args):
     belief_config = utils.get_train_config(args.belief_model)
 
-    print("loading file from: ", args.belief_model)
-    belief_model = ARBeliefModel.load(
+    print("loading belief from: ", args.belief_model)
+    return ARBeliefModel.load(
         args.belief_model,
         args.device,
         5,
         10,
         belief_config["fc_only"],
         belief_config["parameterized"],
-        belief_config["num_conventions"],
+        belief_config["num_parameters"],
+        sad_legacy=args.sad_legacy,
     )
+
+def create_policy_name(args, policy_index, policy_conventions):
+    if args.policy_root != "None":
+        return f"{policy_index + 1}"
+    return conv_str(policy_conventions[policy_index])
+
+def create_belief_name(args, belief_index, belief_conventions):
+    if args.belief_num_parameters > 0:
+        return f"{belief_index + 1}"
+    return conv_str(belief_conventions[belief_index])
+
+def calculate_belief_loss_for_policy(
+        args, 
+        loaded_agents, 
+        policy_index, 
+        policy_conventions,
+        belief_model,
+        belief_conventions,
+):
+    belief_losses = []
+    xlabels = []
+    min_value = float("inf")
+    max_value = float("-inf")
+
     belief_model_for_runner = None
     if args.belief_runner:
         belief_model_for_runner = belief_model
@@ -77,59 +180,65 @@ def belief_cross_play(args):
     assert((args.num_game * 2) % args.batch_size == 0)
     num_batches = (int)((args.num_game * 2) / args.batch_size)
 
-    for i, policy_convention_index in enumerate(range(len(policy_conventions))):
-        policy_convention_str = conv_str(policy_conventions[policy_convention_index])
-        print(f"collecting data: {policy_convention_str}")
-        replay_buffer = generate_replay_data(
-            loaded_agent,
-            args.num_game, 
-            args.seed, 
-            0,
-            device=args.device,
-            convention=args.policy_conventions,
-            convention_index=policy_convention_index,
-            belief_model=belief_model_for_runner,
-            override=[args.override, args.override],
-        )
-        row = []
+    num_belief_params = len(belief_conventions)
+    if args.belief_num_parameters > 0:
+        num_belief_params = args.belief_num_parameters
 
-        for belief_convention_index in range(len(belief_conventions)):
-            for batch_index in range(num_batches):
-                range_start = batch_index * args.batch_size
-                range_end = batch_index * args.batch_size + args.batch_size
-                sample_id_list = [*range(range_start, range_end, 1)]
+    agent = loaded_agents[0]
+    if args.policy_root != "None":
+        agent = loaded_agents[policy_index]
 
-                batch, _ = replay_buffer.sample_from_list(
-                        args.batch_size, args.device, sample_id_list)
+    convention_index = policy_index
+    if args.policy_root != "None":
+        convention_index = 0
 
-                values = []
-                if args.loss_type == "per_card":
-                    loss = belief_model.loss_no_grad(batch, 
-                        convention_index_override=belief_convention_index)
-                    (_, avg_xent, _, _) = loss
-                    values.append(avg_xent.mean().item())
+    replay_buffer = generate_replay_data(
+        agent,
+        args.num_game, 
+        args.seed, 
+        0,
+        num_thread=args.num_thread,
+        device=args.device,
+        convention=args.policy_conventions,
+        convention_index=convention_index,
+        belief_model=belief_model_for_runner,
+        override=[args.override, args.override],
+        sad_legacy=args.sad_legacy,
+    )
 
-                elif args.loss_type == "response_playable":
-                    loss = belief_model.loss_response_playable(batch,
-                        convention_index_override=belief_convention_index)
-                    values.append(loss)
+    for belief_index in range(num_belief_params):
+        for batch_index in range(num_batches):
+            range_start = batch_index * args.batch_size
+            range_end = batch_index * args.batch_size + args.batch_size
+            sample_id_list = [*range(range_start, range_end, 1)]
 
-            row.append(np.mean(values))
+            batch, _ = replay_buffer.sample_from_list(
+                    args.batch_size, args.device, sample_id_list)
 
-            if i == 0:
-                belief_convention_str = conv_str(
-                        belief_conventions[belief_convention_index])
-                xlabels.append(belief_convention_str)
+            values = []
+            if args.loss_type == "per_card":
+                loss = belief_model.loss_no_grad(batch, 
+                    convention_index_override=belief_index)
+                (_, avg_xent, _, _) = loss
+                values.append(avg_xent.mean().item())
 
-        ylabels.append(policy_convention_str)
-        data.append(row)
+            elif args.loss_type == "response_playable":
+                loss = belief_model.loss_response_playable(batch,
+                    convention_index_override=belief_index)
+                values.append(loss)
 
-    return {
-        "data": data,
-        "xlabels": xlabels,
-        "ylabels": ylabels,
-    }
+        value_mean = copy.copy(np.mean(values))
 
+        min_value = min(min_value, value_mean)
+        max_value = max(max_value, value_mean)
+
+        belief_losses.append(value_mean)
+
+        belief_name = create_belief_name(
+                args, belief_index, belief_conventions)
+        xlabels.append(belief_name)
+
+    return belief_losses, xlabels, min_value, max_value
 
 def generate_replay_data(
     loaded_agent,
@@ -146,13 +255,9 @@ def generate_replay_data(
     override=[0, 0],
     belief_model=None,
     num_player=2,
+    sad_legacy=0,
 ):
-    agent, cfgs = loaded_agent
-
-    boltzmann_beta = utils.generate_log_uniform(
-        1 / cfgs["max_t"], 1 / cfgs["min_t"], cfgs["num_t"]
-    )
-    boltzmann_t = [1 / b for b in boltzmann_beta]
+    agent, cfgs, boltzmann_t = loaded_agent
 
     if num_game < num_thread:
         num_thread = num_game
@@ -226,6 +331,8 @@ def generate_replay_data(
                     False, # fictitiousOverride
                     True, # useExperience
                     belief_stats, # beliefStats
+                    sad_legacy, # sadLegacy
+                    False, # beliefSadLegacy
                 )
 
                 if belief_stats:
@@ -243,7 +350,8 @@ def generate_replay_data(
             thread_games.append(games[g_idx])
             seed += 1
 
-        thread = hanalearn.HanabiThreadLoop(thread_games, thread_actors, True)
+        thread = hanalearn.HanabiThreadLoop(
+                thread_games, thread_actors, True, t_idx)
         threads.append(thread)
         context.push_thread_loop(thread)
 
@@ -273,13 +381,15 @@ def load_json_list(convention_path):
 def create_figures(plot_data, args):
     print("creating figures")
     data = plot_data["data"]
-    title = f"{args.loss_type}: obl1f_all_colours vs pbelief1_obl1f_all_colours"
+    title = f"{args.loss_type}: sad vs pbelief_sad"
     ylabel = "Ground Truth Convention"
     xlabel = "Belief Convention"
     xticklabels = plot_data["xlabels"]
     yticklabels = plot_data["ylabels"]
+    colour_max = plot_data["max_value"]
+    colour_min = plot_data["min_value"]
 
-    norm = mcolors.Normalize(vmin=args.colour_min, vmax=args.colour_max)
+    norm = mcolors.Normalize(vmin=colour_min, vmax=colour_max)
     # see note above: this makes all pcolormesh calls consistent:
     colour_map = "cividis_r" if args.reverse_colour else "cividis"
     pc_kwargs = {'rasterized': True, 'cmap': colour_map, 'norm': norm}
@@ -304,11 +414,14 @@ def create_figures(plot_data, args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--policy", type=str, required=True)
+    parser.add_argument("--policy", type=str, default="None")
+    parser.add_argument("--policy_root", type=str, default="None")
     parser.add_argument("--belief_model", type=str, required=True)
     parser.add_argument("--policy_conventions", default="None", type=str)
     parser.add_argument("--belief_conventions", default="None", type=str)
+    parser.add_argument("--belief_num_parameters", default=0, type=int)
     parser.add_argument("--num_game", default=1000, type=int)
+    parser.add_argument("--num_thread", default=10, type=int)
     parser.add_argument("--seed", default=0, type=int)
     parser.add_argument("--batch_size", type=int, default=100)
     parser.add_argument("--device", type=str, default="cuda:0")
@@ -318,6 +431,8 @@ if __name__ == "__main__":
     parser.add_argument("--colour_min", type=float, default=0)
     parser.add_argument("--reverse_colour", type=float, default=0)
     parser.add_argument("--override", type=int, default=3)
+    parser.add_argument("--sad_legacy", type=int, default=0)
+    parser.add_argument("--auto_maxmin", type=int, default=0)
 
     args = parser.parse_args()
 

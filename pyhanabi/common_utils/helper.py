@@ -6,6 +6,7 @@
 #
 import os
 import random
+import re
 
 import numpy as np
 import torch
@@ -21,8 +22,18 @@ def to_device(data, device):
     elif isinstance(data, list):
         return [to_device(v, device) for v in data]
 
+def atoi(text):
+    return int(text) if text.isdigit() else text
 
-def get_all_files(root, file_extension, contain=None):
+def natural_keys(text):
+    '''
+    alist.sort(key=natural_keys) sorts in human order
+    http://nedbatchelder.com/blog/200712/human_sorting.html
+    (See Toothy's implementation in the comments)
+    '''
+    return [ atoi(c) for c in re.split(r'(\d+)', text) ]
+
+def get_all_files_with_extention(root, file_extension, contain=None):
     files = []
     for folder, _, fs in os.walk(root):
         for f in fs:
@@ -33,6 +44,21 @@ def get_all_files(root, file_extension, contain=None):
             else:
                 if contain in f:
                     files.append(os.path.join(folder, f))
+    files.sort(key=natural_keys)
+    return files
+
+def get_all_files(root, contain=None):
+    files = []
+    file_extension = ".pthw"
+    for folder, _, fs in os.walk(root):
+        for f in fs:
+            if f.endswith(file_extension):
+                if contain is None or contain in os.path.join(folder, f):
+                    files.append(os.path.join(folder, f))
+            else:
+                if contain in f:
+                    files.append(os.path.join(folder, f))
+    files.sort(key=natural_keys)
     return files
 
 
