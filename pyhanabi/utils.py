@@ -133,6 +133,7 @@ def flatten_dict(d, new_dict):
             new_dict[k] = v
 
 def load_sad_model(weight_file, device):
+    print("loading sad model:", weight_file)
     state_dict = torch.load(weight_file, map_location=device)
     input_dim = state_dict["net.0.weight"].size()[1]
     hid_dim = 512

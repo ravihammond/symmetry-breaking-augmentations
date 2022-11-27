@@ -16,6 +16,7 @@ import numpy as np
 import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
 import copy
+import re
 
 
 lib_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -25,68 +26,116 @@ import common_utils
 import utils
 from tools import model_zoo
 
-
 def run_cross_play(args):
-    models = common_utils.get_all_files(args.root, "model0.pthw")
-    if args.include is not None:
-        models = filter_include(models, args.include)
-    if args.exclude is not None:
-        models = filter_exclude(models, args.exclude)
+    margs = extract_model_args(args)
 
-    models = sorted(models, key=str.lower)
+    models = []
 
-    pprint(models)
-
-    if args.convention == "None":
-        data = cross_play(models, args, 1)
-    else:
-        if len(models) > 1:
-            sys.exit("model length needs to be 1 when testing conventions")
-        data = cross_play_conventions(models[0], args, 1)
-
-    create_figures(data)
-
-
-def filter_include(entries, includes):
-    if not isinstance(includes, list):
-        includes = [includes]
-
-    keep = []
-    for entry in entries:
-        for include in includes:
-            if include in entry:
-                keep.append(entry)
-    return keep
-
-
-def filter_exclude(entries, excludes):
-    if not isinstance(excludes, list):
-        excludes = [excludes]
-    keep = []
-    for entry in entries:
-        for exclude in excludes:
-            if exclude in entry:
-                break
+    for marg in margs:
+        if marg["all_models"]:
+            models.append(common_utils.get_all_files(marg["root"]))
         else:
-            keep.append(entry)
-    return keep
+            models.append(common_utils.get_all_files_with_extention(
+                marg["root"], args.model_epoch))
+
+    data = cross_play(models, args, margs)
+
+    create_figure(data)
 
 
-def cross_play(models, args, seed):
-    combs = list(itertools.combinations_with_replacement(models, args.num_player))
-    perfs = defaultdict(list)
+def extract_model_args(args):
+    model_args1 = {
+        "root": args.root1,
+        "all_models": args.all_models1,
+        "convention": args.convention1,
+        "num_parameters": args.num_parameters1,
+        "override": args.override1,
+        "sad_legacy": args.sad_legacy1,
+    }
 
-    for comb in combs:
-        num_model = len(set(comb))
-        score = evaluate_saved_model(comb, args.num_game, seed, 0)[0]
-        perfs[num_model].append(score)
+    if args.root2 == "None":
+        return [model_args1, model_args1]
 
-    for num_model, scores in perfs.items():
-        print(
-            f"#model: {num_model}, #groups {len(scores)}, "
-            f"score: {np.mean(scores):.2f} "
-            f"+/- {np.std(scores) / np.sqrt(len(scores) - 1):.2f}"
-        )
+    model_args2 = {
+        "root": args.root2,
+        "all_models": args.all_models2,
+        "convention": args.convention2,
+        "num_parameters": args.num_parameters2,
+        "override": args.override2,
+        "sad_legacy": args.sad_legacy2,
+    }
+
+    return [model_args1, model_args2]
+
+
+def cross_play(all_models, args, margs):
+    all_scores = []
+    labels = []
+
+    conventions = [ 
+        load_json_list(margs[i]["convention"]) 
+        for i in range(args.num_player) 
+    ]
+
+    num_parameters = [ 
+        len(conventions[i]) 
+        if len(conventions[i]) > 0 else 
+        margs[i]["num_parameters"]
+        for i in range(args.num_player)
+    ]
+
+    num_parameters = []
+    for i in range(args.num_player):
+        if len(all_models[i]) > 1:
+            num_parameters.append(len(all_models[i]))
+            continue
+        if len(conventions[i]) > 0:
+            num_parameters.append(len(conventions[i]))
+            continue
+        if margs[i]["num_parameters"] > 0:
+            num_parameters.append(margs[i]["num_parameters"])
+            continue
+    assert(len(num_parameters) == args.num_player)
+
+    sad_legacy = [margs[i]["sad_legacy"] for i in range(2)]
+
+    for i in range(num_parameters[0]):
+        row = []
+        for j in range(num_parameters[1]):
+            print(f"evaluating: sad_{i + 1}, pobl1_sad_{j + 1}")
+
+            models = []
+            model_idx = [i, j]
+            for k in range(args.num_player):
+                if margs[k]["num_parameters"] > 0:
+                    models.append(all_models[k][0])
+                else:
+                    models.append(all_models[k][model_idx[k]])
+
+            convention_indexes = [i, j]
+
+            scores = evaluate_saved_model(
+                    models,
+                    args.num_game, 
+                    args.seed, 
+                    0,
+                    convention=args.convention1,
+                    override=[args.override1, args.override2],
+                    convention_indexes=convention_indexes,
+                    device=args.device,
+                    sad_legacy=sad_legacy,
+            )[0]
+
+            value_mean = copy.copy(np.mean(scores))
+            row.append(value_mean)
+
+        labels.append(f"{i + 1}")
+        all_scores.append(row)
+
+    return {
+        "scores": all_scores,
+        "labels": labels,
+    }
 
 
 def load_json_list(convention_path):
@@ -101,48 +150,17 @@ def conv_str(conv):
     return f"{conv[0]}{conv[1]}"
 
 
-def cross_play_conventions(model, args, seed):
-    all_scores = []
-    labels = []
+def create_model_key(i, conventions):
+    if len(conventions) == 0:
+        return f"{i + 1}"
+    return conv_str(conventions[i])
 
-    conventions = load_json_list(args.convention)
-    model_name = os.path.basename(os.path.dirname(model))
 
-    pre_loaded_data = load_agents([model, model])
-
-    for i in range(len(conventions)):
-        row = []
-        for j in range(len(conventions)):
-            model_key = f"{conv_str(conventions[i])}" + \
-                        f":{conv_str(conventions[j])}" 
-            print("evaluating:", model_key)
-            scores = evaluate_saved_model(
-                    [model, model], 
-                    args.num_game, 
-                    seed, 
-                    0,
-                    convention=args.convention,
-                    override=[args.override, args.override],
-                    convention_indexes=[i, j],
-                    device="cuda:1",
-                    pre_loaded_data=pre_loaded_data,
-            )[0]
-            row.append(copy.copy(np.mean(scores)))
-            del scores
-
-        labels.append(f"{conv_str(conventions[i])}")
-        all_scores.append(row)
-
-    return {
-        "scores": all_scores,
-        "labels": labels,
-    }
-
-def create_figures(plot_data, colour_max=25):
+def create_figure(plot_data, colour_max=25):
     data = plot_data["scores"]
-    title = "POBL2 All Conventions"
-    ylabel = "Player 1 Agent"
-    xlabel = "Player 2 Agent"
+    title = "XP SAD vs POBL1_SAD"
+    ylabel = "Player 1 Agent (SAD)"
+    xlabel = "Player 2 Agent (POBL1_SAD)"
     xticklabels = plot_data["labels"]
     yticklabels = plot_data["labels"]
 
@@ -170,13 +188,24 @@ def create_figures(plot_data, colour_max=25):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--root", default=None, type=str)
-    parser.add_argument("--num_player", default=2, type=int)
-    parser.add_argument("--include", default=None, type=str, nargs="+")
-    parser.add_argument("--exclude", default=None, type=str, nargs="+")
-    parser.add_argument("--convention", default="None", type=str)
     parser.add_argument("--num_game", default=1000, type=int)
-    parser.add_argument("--override", default=0, type=int)
+    parser.add_argument("--model_epoch", default="model0.pthw", type=str)
+    parser.add_argument("--num_player", default=2, type=int)
+    parser.add_argument("--seed", default=0, type=int)
+    parser.add_argument("--device", default="cuda:1", type=str)
+    parser.add_argument("--root1", default="None", type=str, required=True)
+    parser.add_argument("--root2", default="None", type=str)
+    parser.add_argument("--all_models1", default=0, type=int)
+    parser.add_argument("--all_models2", default=0, type=int)
+    parser.add_argument("--convention1", default="None", type=str)
+    parser.add_argument("--convention2", default="None", type=str)
+    parser.add_argument("--num_parameters1", default=0, type=int)
+    parser.add_argument("--num_parameters2", default=0, type=int)
+    parser.add_argument("--override1", default=0, type=int)
+    parser.add_argument("--override2", default=0, type=int)
+    parser.add_argument("--sad_legacy1", default=0, type=int)
+    parser.add_argument("--sad_legacy2", default=0, type=int)
+    parser.add_argument("--save_values", default=0, type=int)
 
     args = parser.parse_args()
 
