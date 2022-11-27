@@ -172,6 +172,9 @@ class ActGroup:
                         sad = self.cfgs[agent_idx]["sad"]
                         hide_action = self.cfgs[agent_idx]["hide_action"]
                         weight = "cosca"
+                        belief_sad_legacy = False
+                        if self.belief_cfg is not None:
+                            belief_sad_legacy = self.belief_cfg["sad_legacy"],
                         if k > 0 and self.static_partner:
                             runner = self.partner_runners[t_idx % self.num_runners][partner_idx]
                             sad = self.partner_cfgs[partner_idx]["sad"]
@@ -202,7 +205,7 @@ class ActGroup:
                             self.use_experience[k],
                             self.belief_stats,
                             self.sad_legacy,
-                            self.belief_cfg["sad_legacy"],
+                            belief_sad_legacy,
                         )
 
                         if self.off_belief:
@@ -220,7 +223,8 @@ class ActGroup:
 
                     thread_actors.append(game_actors)
 
-                    parameter_index = (parameter_index + 1) % self.num_parameters
+                    if self.num_parameters > 0:
+                        parameter_index = (parameter_index + 1) % self.num_parameters
 
 
                 actors.append(thread_actors)

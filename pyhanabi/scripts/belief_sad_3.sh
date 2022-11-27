@@ -1,9 +1,9 @@
 #!/bin/bash
 python train_belief.py \
-       --save_dir exps/test \
+       --save_dir exps/belief0_sad_3.sh \
        --num_thread 24 \
        --num_game_per_thread 80 \
-       --seed 89321672 \
+       --seed 987389232 \
        --lr 6.25e-05 \
        --eps 1.5e-05 \
        --grad_clip 5 \
@@ -17,7 +17,7 @@ python train_belief.py \
        --act_device cuda:1 \
        --explore 1 \
        --num_player 2 \
-       --policy ../models/sad_models/sad_2p_3.pthw \
+       --policy ../models/sad_2p_models/sad_3.pthw \
        --sad_legacy 1 \
 
 #python train_belief.py \

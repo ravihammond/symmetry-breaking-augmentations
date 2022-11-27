@@ -93,6 +93,7 @@ def train_belief(args):
             parameterized=args.parameterized,
             num_parameters=args.num_parameters,
             sad_legacy=args.sad_legacy,
+            weight_file=args.save_dir,
         ).to(args.train_device)
 
     optim = torch.optim.Adam(model.parameters(), lr=args.lr, eps=args.eps)
@@ -187,6 +188,7 @@ def create_rl_context(args):
         replay_buffer, # replay_buffer
         False,  # off_belief
         None,  # belief_model
+        None,  # belief_cfg
         convention, # convention
         act_override, # convention_act_override
         False, # convention_fict_act_override
