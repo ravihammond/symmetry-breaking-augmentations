@@ -102,7 +102,7 @@ def cross_play(all_models, args, margs):
     for i in range(num_parameters[0]):
         row = []
         for j in range(num_parameters[1]):
-            print(f"evaluating: sad_{i + 1}, pobl1_sad_{j + 1}")
+            print(f"evaluating: pobl1_sad_{i + 1}, pobl1_sad_{j + 1}")
 
             models = []
             model_idx = [i, j]

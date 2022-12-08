@@ -178,6 +178,10 @@ class ActGroup:
                             hide_action = self.partner_cfgs[partner_idx]["hide_action"]
                             weight = self.partner_cfgs[partner_idx]["weight"]
 
+                        belief_sad = 0
+                        if self.belief_cfg is not None:
+                            belief_sad = self.belief_cfg["sad_legacy"]
+
                         actor = hanalearn.R2D2Actor(
                             runner,
                             self.seed,
@@ -202,7 +206,7 @@ class ActGroup:
                             self.use_experience[k],
                             self.belief_stats,
                             self.sad_legacy,
-                            self.belief_cfg["sad_legacy"],
+                            belief_sad,
                         )
 
                         if self.off_belief:
@@ -220,7 +224,8 @@ class ActGroup:
 
                     thread_actors.append(game_actors)
 
-                    parameter_index = (parameter_index + 1) % self.num_parameters
+                    if self.num_parameters > 0:
+                        parameter_index = (parameter_index + 1) % self.num_parameters
 
 
                 actors.append(thread_actors)

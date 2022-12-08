@@ -31,3 +31,4 @@ training_models/*
 .gitlab-ci.yml
 .pypirc
 .vscode/
+keys/*

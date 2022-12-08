@@ -1,60 +1,36 @@
-# DEV 
-FROM ravihammond/cudaconda AS dev
+# ===== DEV =====
+#FROM binary-tools-setup AS dev
+FROM ravihammond/cuda-conda AS dev
 
-RUN apt-get update && apt-get install -y \
-    net-tools=1.60+git20180626.aebd88e-1ubuntu1 \
-    iputils-ping=3:20190709-3 \
-    build-essential=12.8ubuntu1.1 \
-    cmake=3.16.3-1ubuntu1 \
-    zip=3.0-11build1 \
-    p7zip-full=16.02+dfsg-7build1 \
-    p7zip-rar=16.02-3build1 \
-    bzip2=1.0.8-2 \
-    imagemagick=8:6.9.10.23+dfsg-2.1ubuntu11.4 \
-    ffmpeg \
-    libopenmpi-dev=4.0.3-0ubuntu1 \
-    libomp5=1:10.0-50~exp1\
-    sudo=1.8.31-1ubuntu1.2 \
-    libx11-6=2:1.6.9-2ubuntu1.2 
-
-RUN pip install \
-    psutil==5.8.0
-
-COPY conda_environment.yml /
-
-RUN conda env update --file /conda_environment.yml --prune
-
-COPY cpp/ /app/cpp/
-
-WORKDIR /app/build
-
-RUN cmake ../cpp && make -j10
-
-RUN git config --global --add safe.directory /app
+#RUN git config --global --add safe.directory /app
 
 WORKDIR /app
 
-# PROD
-FROM ravihammond/cudaconda AS prod
+ENTRYPOINT ["/bin/bash", "-c"]
 
-RUN /opt/conda/bin/conda install -yc conda-forge \
-    easydict=1.9=py_0 \ 
-    wandb=0.12.11=pyhd8ed1ab_0
 
-COPY --from=dev /app/build /app/build
+# ===== BUILDER =====
+FROM ravihammond/cuda-conda AS builder
 
+COPY cpp/ /app/cpp/
+WORKDIR /app/build
+RUN cmake ../cpp && make -j10
+
+
+# ===== PROD =====
+FROM ravihammond/cuda-conda AS prod
+
+COPY --from=builder /app/build /app/build
 COPY /pyhanabi /app/pyhanabi/
-
 COPY /training_models /app/training_models/
 
 COPY resolv.conf resolv.conf
-
 RUN touch /etc/resolv.conf
+
+RUN git config --global --add safe.directory /app
 
 WORKDIR /app/pyhanabi
 
 RUN chmod +x scripts/*
 
-RUN git config --global --add safe.directory /app
-
-ENTRYPOINT ["scripts/iql_convention.sh"]
+ENTRYPOINT ["scripts/run.sh"]

@@ -14,7 +14,7 @@ import wandb
 import gc
 import pprint
 pprint = pprint.pprint
-
+import copy
 import numpy as np
 import torch
 from torch import nn
@@ -29,6 +29,7 @@ import utils
 
 from convention_belief import ConventionBelief
 from tools.wandb_logger import log_wandb
+from google_cloud_handler import GoogleCloudHandler
 
 
 def selfplay(args):
@@ -162,7 +163,7 @@ def selfplay(args):
     convention = load_json_list(args.convention)
 
     convention_act_override = [0, args.convention_act_override]
-    use_experience = [1, 0] 
+    use_experience = [1, args.use_partner_experience] 
 
     act_group = ActGroup(
         args.act_device,
@@ -200,12 +201,22 @@ def selfplay(args):
         games,
     )
 
+    gc_save_dir = os.path.basename(args.save_dir)
+    gc_handler = GoogleCloudHandler(
+        "aiml-reid-research",
+        "Ravi",
+        "hanabi-conventions/" + gc_save_dir,
+        "/app/pyhanabi/exps/" + gc_save_dir,
+    )
+    gc_handler.assert_directory_doesnt_exist()
+
+
     act_group.start()
     context.start()
     while replay_buffer.size() < args.burn_in_frames:
         print("warming up replay buffer:", replay_buffer.size())
         time.sleep(1)
-        
+
 
     print("Success, Done")
     print("=======================")
@@ -220,9 +231,11 @@ def selfplay(args):
 
     last_loss = 0
 
-    for epoch in range(args.num_epoch):
+
+    # for epoch in range(args.num_epoch):
+    epoch = 0
+    while True:
         print("beginning of epoch:", epoch)
-        print("replay buffer size:", replay_buffer.size())
         print(common_utils.get_mem_usage())
         tachometer.start()
         stat.reset()
@@ -276,62 +289,117 @@ def selfplay(args):
         stopwatch.summary()
         stat.summary(epoch)
 
-        eval_seed = (9917 + epoch * 999999) % 7777777
-        eval_agent.load_state_dict(agent.state_dict())
-        eval_agents = [eval_agent for _ in range(args.num_player)]
+        run_evaluation(
+            args,
+            agent,
+            eval_agent,
+            epoch,
+            5000,
+            0,  # explore eps
+            convention,
+            convention_act_override,
+            partner_agents,
+            partner_cfgs,
+            saver,
+            clone_bot,
+            act_group,
+            last_loss,
+        )
 
-        score, perfect, scores, _, eval_actors = evaluate(
-            eval_agents,
+        if args.google_cloud_upload:
+            upload_to_google_cloud(args, gc_handler, epoch)
+
+        epoch += 1
+        print("==========", flush=True)
+
+def run_evaluation(
+    args,
+    agent,
+    eval_agent,
+    epoch,
+    num_game,
+    explore_eps,
+    convention,
+    convention_act_override,
+    partner_agents,
+    partner_cfgs,
+    saver,
+    clone_bot,
+    act_group,
+    last_loss,
+):
+    eval_seed = (9917 + epoch * 999999) % 7777777
+    eval_agent.load_state_dict(agent.state_dict())
+    eval_agents = [eval_agent for _ in range(args.num_player)]
+
+    score, perfect, scores, _, eval_actors = evaluate(
+        eval_agents,
+        num_game,
+        eval_seed,
+        args.eval_bomb,
+        explore_eps,
+        args.sad,
+        args.hide_action,
+        device=args.train_device,
+        convention=convention,
+        override=convention_act_override,
+        act_parameterized=[args.parameterized, args.parameterized],
+        partner_agents=partner_agents,
+        partner_cfgs=partner_cfgs,
+        num_parameters=args.num_parameters,
+    )
+
+    if args.wandb:
+        log_wandb(score, perfect, scores, eval_actors, last_loss, convention)
+
+    force_save_name = None
+    if epoch > 0 and epoch % args.save_checkpoints == 0:
+        force_save_name = "model_epoch%d" % epoch
+    model_saved = saver.save(
+        None, agent.online_net.state_dict(), score, force_save_name=force_save_name
+    )
+    model_saved = False
+    print(
+        "epoch %d, eval score: %.4f, perfect: %.2f, model saved: %s"
+        % (epoch, score, perfect * 100, model_saved)
+    )
+
+    if clone_bot is not None:
+        score, perfect, _, scores, eval_actors = evaluate(
+            [clone_bot] + [eval_agent for _ in range(args.num_player - 1)],
             1000,
             eval_seed,
             args.eval_bomb,
             0,  # explore eps
             args.sad,
             args.hide_action,
-            device=args.train_device,
-            convention=convention,
-            override=convention_act_override,
-            act_parameterized=[args.parameterized, args.parameterized],
-            partner_agents=partner_agents,
-            partner_cfgs=partner_cfgs,
-            num_parameters=args.num_parameters
         )
+        print(f"clone bot score: {np.mean(score)}")
 
-        if args.wandb:
-            log_wandb(score, perfect, scores, eval_actors, last_loss, convention)
-
-        force_save_name = None
-        if epoch > 0 and epoch % args.save_checkpoints == 0:
-            force_save_name = "model_epoch%d" % epoch
-        model_saved = saver.save(
-            None, agent.online_net.state_dict(), score, force_save_name=force_save_name
-        )
+    if args.off_belief:
+        actors = common_utils.flatten(act_group.actors)
+        success_fict = [actor.get_success_fict_rate() for actor in actors]
         print(
-            "epoch %d, eval score: %.4f, perfect: %.2f, model saved: %s"
-            % (epoch, score, perfect * 100, model_saved)
+            "epoch %d, success rate for sampling ficticious state: %.2f%%"
+            % (epoch, 100 * np.mean(success_fict))
         )
 
-        if clone_bot is not None:
-            score, perfect, _, scores, eval_actors = evaluate(
-                [clone_bot] + [eval_agent for _ in range(args.num_player - 1)],
-                1000,
-                eval_seed,
-                args.eval_bomb,
-                0,  # explore eps
-                args.sad,
-                args.hide_action,
-            )
-            print(f"clone bot score: {np.mean(score)}")
 
-        if args.off_belief:
-            actors = common_utils.flatten(act_group.actors)
-            success_fict = [actor.get_success_fict_rate() for actor in actors]
-            print(
-                "epoch %d, success rate for sampling ficticious state: %.2f%%"
-                % (epoch, 100 * np.mean(success_fict))
-            )
+def upload_to_google_cloud(args, gc_handler, epoch):
+    # Upload log file
+    gc_handler.upload_from_file_name("train.log")
 
-        print("==========", flush=True)
+    # Upload latest model
+    gc_handler.upload_from_file_name("latest.pthw")
+
+    # Upload top k models
+    for i in range(5):
+        gc_handler.upload_from_file_name(f"model{i}.pthw")
+
+    # Upload forced saved model
+    if epoch > 0 and epoch % args.save_checkpoints == 0:
+        force_save_name = "model_epoch%d.pthw" % epoch
+        gc_handler.upload_from_file_name(force_save_name)
 
 
 def load_json_list(convention_path):
@@ -467,6 +535,8 @@ def parse_args():
     parser.add_argument("--partner_models", type=str, default="None")
     parser.add_argument("--belief_stats", type=int, default=0)
     parser.add_argument("--runner_div", type=str, default="duplicated")
+    parser.add_argument("--use_partner_experience", type=int, default=1)
+    parser.add_argument("--google_cloud_upload", type=int, default=0)
 
     args = parser.parse_args()
     if args.off_belief == 1:

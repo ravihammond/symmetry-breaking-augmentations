@@ -251,8 +251,4 @@ dependencies:
   - zipp=3.7.0=pyhd3eb1b0_0
   - zlib=1.2.11=h7b6447c_3
   - zstd=1.5.0=ha4553b6_1
-  - pip:
-    - torch==1.10.2+cu113
-    - torchaudio==0.10.2+cu113
-    - torchvision==0.11.3+cu113
 prefix: /opt/conda
