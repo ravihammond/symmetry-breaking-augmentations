@@ -1,15 +1,15 @@
 [
-    "../models/sad_models/sad_2p_1.pthw",
-    "../models/sad_models/sad_2p_2.pthw",
-    "../models/sad_models/sad_2p_3.pthw",
-    "../models/sad_models/sad_2p_4.pthw",
-    "../models/sad_models/sad_2p_5.pthw",
-    "../models/sad_models/sad_2p_6.pthw",
-    "../models/sad_models/sad_2p_7.pthw",
-    "../models/sad_models/sad_2p_8.pthw",
-    "../models/sad_models/sad_2p_9.pthw",
-    "../models/sad_models/sad_2p_10.pthw",
-    "../models/sad_models/sad_2p_11.pthw",
-    "../models/sad_models/sad_2p_12.pthw",
-    "../models/sad_models/sad_2p_13.pthw"
+    "../training_models/sad_2p_models/sad_1.pthw",
+    "../training_models/sad_2p_models/sad_2.pthw",
+    "../training_models/sad_2p_models/sad_3.pthw",
+    "../training_models/sad_2p_models/sad_4.pthw",
+    "../training_models/sad_2p_models/sad_5.pthw",
+    "../training_models/sad_2p_models/sad_6.pthw",
+    "../training_models/sad_2p_models/sad_7.pthw",
+    "../training_models/sad_2p_models/sad_8.pthw",
+    "../training_models/sad_2p_models/sad_9.pthw",
+    "../training_models/sad_2p_models/sad_10.pthw",
+    "../training_models/sad_2p_models/sad_11.pthw",
+    "../training_models/sad_2p_models/sad_12.pthw",
+    "../training_models/sad_2p_models/sad_13.pthw"
 ]

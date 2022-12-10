@@ -39,8 +39,7 @@ def evaluate(
     num_parameters=0,
     belief_stats=False,
     belief_model_path="None",
-    partner_agents=None,
-    partner_cfgs=None,
+    partners=None,
     sad_legacy=[0, 0],
 ):
     """
@@ -55,17 +54,14 @@ def evaluate(
     if not isinstance(sad, list):
         sad = [sad for _ in range(num_player)]
 
-    # Create Batch Runners only if agent is a learned r2d2 agent.
     runners = []
     for i, agent in enumerate(agents):
-        if partner_agents is not None and i > 0:
-            runners.append(None)
-            break
         runners.append(rela.BatchRunner(agent.clone(device), device, 1000, ["act"]))
 
     partner_runners = []
-    if partner_agents is not None:
-        for agent in partner_agents:
+    if partners is not None:
+        for partner in partners:
+            agent = partner["agent"]
             partner_runners.append(
                 rela.BatchRunner(agent.clone(device), device, 1000, ["act"])
             )
@@ -97,13 +93,14 @@ def evaluate(
                 sad_setting = sad[i]
                 hide_action_setting = hide_action[i]
                 act_parameterized_setting = act_parameterized[i]
-                agent_str = "exps/poblf1_CR-P0/model0.pthw"
+                sad_legacy_setting = sad_legacy[i]
 
-                if i > 0 and partner_agents is not None:
+                if i > 0 and partners is not None:
                     runner = partner_runners[partner_idx]
-                    sad_setting = partner_cfgs[partner_idx]["sad"]
-                    hide_action_setting = partner_cfgs[partner_idx]["hide_action"]
-                    act_parameterized_setting = partner_cfgs[partner_idx]["parameterized"]
+                    sad_setting = partners[partner_idx]["sad"]
+                    hide_action_setting = partners[partner_idx]["hide_action"]
+                    act_parameterized_setting = partners[partner_idx]["parameterized"]
+                    sad_legacy_setting = partners[partner_idx]["sad_legacy"]
 
                 if convention_indexes is not None:
                     convention_index = convention_indexes[i]
@@ -120,7 +117,7 @@ def evaluate(
                     convention_index, # conventionIndex
                     override[i], # conventionOverride
                     belief_stats, # beliefStats
-                    sad_legacy[i], # sadLegacy
+                    sad_legacy_setting, # sadLegacy
                 )
 
                 if belief_stats:
@@ -133,14 +130,14 @@ def evaluate(
                 all_actors.append(actor)
 
             for i in range(num_player):
-                partners = actors[:]
-                partners[i] = None
-                actors[i].set_partners(partners)
+                act_partners = actors[:]
+                act_partners[i] = None
+                actors[i].set_partners(act_partners)
 
             thread_actors.append(actors)
             thread_games.append(games[g_idx])
-            if len(partner_runners) > 0:
-                partner_idx = (partner_idx + 1) % len(partner_runners)
+            if partners is not None:
+                partner_idx = (partner_idx + 1) % len(partners)
 
             if convention_indexes is None and len(convention) > 0:
                 convention_index = (convention_index + 1) % len(convention)

@@ -39,8 +39,7 @@ class ActGroup:
         convention,
         convention_act_override,
         convention_fict_act_override,
-        partner_agents,
-        partner_cfgs,
+        partners,
         static_partner,
         use_experience,
         belief_stats,
@@ -62,7 +61,8 @@ class ActGroup:
         self.convention = convention
         self.convention_act_override = convention_act_override
         self.convention_fict_act_override = convention_fict_act_override
-        self.partner_cfgs = partner_cfgs
+        self.partners = partners
+        self.num_partners = len(partners)
         self.static_partner = static_partner
         self.use_experience = use_experience
         self.belief_stats = belief_stats
@@ -78,16 +78,24 @@ class ActGroup:
             self.trinary = True
         self.num_agents = len(agents)
 
-        (self.model_runners, self.belief_runner, self.partner_runners) = \
-                self.load_runners( 
-            agents, self.devices, num_thread, off_belief, runner_div, belief_model)
+        (self.model_runners, 
+         self.belief_runner, 
+         self.partner_runners) = self.load_runners( 
+            agents, 
+            self.devices, 
+            num_thread, 
+            off_belief, 
+            runner_div, 
+            belief_model, 
+            partners,
+        )
 
         self.num_runners = len(self.model_runners)
 
         self.actors = self.create_r2d2_actors()
 
     def load_runners(self, agents, devices, num_thread, off_belief, 
-            runner_div, belief_model):
+            runner_div, belief_model, partners):
         model_runners = []
         belief_runner = None
         partner_runners = []
@@ -115,6 +123,14 @@ class ActGroup:
         if belief_model is not None:
             for bm in belief_model:
                 belief_runner = rela.BatchRunner(bm, bm.device, 5000, ["sample"])
+    
+        if partners is not None:
+            for i, partner in enumerate(partners):
+                dev = devices[i % len(devices)]
+                agent = partner["agent"]
+                runner = rela.BatchRunner(agent.clone(dev), dev)
+                runner.add_method("act", 5000)
+                partner_runners.append(runner)
 
         return model_runners, belief_runner, partner_runners
 
@@ -160,30 +176,28 @@ class ActGroup:
                 runner_idx = t_idx % (self.num_agents * len(self.devices))
                 if self.runner_div == "round_robin":
                     runner_idx = t_idx % self.num_agents
+                partner_idx = t_idx % self.num_partners
+                partner = self.partners[partner_idx]
 
                 for g_idx in range(self.num_game_per_thread):
                     game_actors = []
-
-                    if len(self.partner_runners) > 0:
-                        partner_idx = (partner_idx + 1) % len(self.partner_runners)
 
                     for k in range(self.num_player):
                         runner = self.model_runners[runner_idx]
                         sad = self.cfgs[agent_idx]["sad"]
                         hide_action = self.cfgs[agent_idx]["hide_action"]
-                        weight = "cosca"
                         belief_sad_legacy = False
+                        parameterized = self.cfgs[agent_idx]["parameterized"]
+                        sad_legacy = self.sad_legacy
                         if self.belief_cfg is not None:
-                            belief_sad_legacy = self.belief_cfg["sad_legacy"],
-                        if k > 0 and self.static_partner:
-                            runner = self.partner_runners[t_idx % self.num_runners][partner_idx]
-                            sad = self.partner_cfgs[partner_idx]["sad"]
-                            hide_action = self.partner_cfgs[partner_idx]["hide_action"]
-                            weight = self.partner_cfgs[partner_idx]["weight"]
+                            belief_sad_legacy = self.belief_cfg["sad_legacy"]
 
-                        belief_sad = 0
-                        if self.belief_cfg is not None:
-                            belief_sad = self.belief_cfg["sad_legacy"]
+                        if k > 0 and self.static_partner:
+                            runner = self.partner_runners[partner_idx]
+                            sad = partner["sad"]
+                            hide_action = partner["hide_action"]
+                            parameterized = partner["parameterized"]
+                            sad_legacy = partner["sad_legacy"]
 
                         actor = hanalearn.R2D2Actor(
                             runner,
@@ -202,14 +216,14 @@ class ActGroup:
                             self.cfgs[agent_idx]["max_len"],
                             self.cfgs[agent_idx]["gamma"],
                             self.convention,
-                            self.cfgs[agent_idx]["parameterized"],
+                            parameterized,
                             parameter_index,
                             self.convention_act_override[k],
                             self.convention_fict_act_override,
                             self.use_experience[k],
                             self.belief_stats,
-                            self.sad_legacy,
-                            belief_sad,
+                            sad_legacy,
+                            belief_sad_legacy,
                         )
 
                         if self.off_belief:
@@ -227,8 +241,12 @@ class ActGroup:
 
                     thread_actors.append(game_actors)
 
+                    if len(self.partner_runners) > 0:
+                        partner_idx = (partner_idx + 1) % len(self.partner_runners)
+
                     if self.num_parameters > 0:
                         parameter_index = (parameter_index + 1) % self.num_parameters
+
 
 
                 actors.append(thread_actors)
@@ -239,9 +257,8 @@ class ActGroup:
         for runner in self.model_runners:
             runner.start()
 
-        for runners in self.partner_runners:
-            for runner in runners:
-                runner.start()
+        for runner in self.partner_runners:
+            runner.start()
 
         if self.belief_runner is not None:
             self.belief_runner.start()
@@ -250,9 +267,8 @@ class ActGroup:
         for runner in self.model_runners:
             runner.stop()
 
-        for runners in self.partner_runners:
-            for runner in runners:
-                runner.stop()
+        for runner in self.partner_runners:
+            runner.stop()
 
         if self.belief_runner is not None:
             self.belief_runner.stop()

@@ -158,12 +158,13 @@ def selfplay(args):
                 args.belief_model,
             ))
 
-    partner_agents, partner_cfgs = load_partner_agents(args.partner_models)
+    train_partners = load_partner_agents(args, "train")
+    test_partners = load_partner_agents(args, "test")
 
     convention = load_json_list(args.convention)
 
     convention_act_override = [0, args.convention_act_override]
-    use_experience = [1, args.use_partner_experience] 
+    use_experience = [1, 0 if args.static_partner else 1]
 
     act_group = ActGroup(
         args.act_device,
@@ -184,8 +185,7 @@ def selfplay(args):
         convention,
         convention_act_override,
         args.convention_fict_act_override,
-        partner_agents,
-        partner_cfgs,
+        train_partners,
         args.static_partner,
         use_experience,
         args.belief_stats,
@@ -201,14 +201,15 @@ def selfplay(args):
         games,
     )
 
-    gc_save_dir = os.path.basename(args.save_dir)
-    gc_handler = GoogleCloudHandler(
-        "aiml-reid-research",
-        "Ravi",
-        "hanabi-conventions/" + gc_save_dir,
-        "/app/pyhanabi/exps/" + gc_save_dir,
-    )
-    gc_handler.assert_directory_doesnt_exist()
+    if args.gcloud_upload:
+        gc_save_dir = os.path.basename(args.save_dir)
+        gc_handler = GoogleCloudHandler(
+            "aiml-reid-research",
+            "Ravi",
+            "hanabi-conventions/" + gc_save_dir,
+            "/app/pyhanabi/exps/" + gc_save_dir,
+        )
+        gc_handler.assert_directory_doesnt_exist()
 
 
     act_group.start()
@@ -289,7 +290,7 @@ def selfplay(args):
         stopwatch.summary()
         stat.summary(epoch)
 
-        run_evaluation(
+        test_score = run_evaluation(
             args,
             agent,
             eval_agent,
@@ -298,15 +299,25 @@ def selfplay(args):
             0,  # explore eps
             convention,
             convention_act_override,
-            partner_agents,
-            partner_cfgs,
+            train_partners,
+            test_partners,
             saver,
             clone_bot,
             act_group,
             last_loss,
         )
 
-        if args.google_cloud_upload:
+        force_save_name = None
+        if epoch > 0 and epoch % args.save_checkpoints == 0:
+            force_save_name = "model_epoch%d" % epoch
+        saver.save(
+            None, 
+            agent.online_net.state_dict(), 
+            test_score, 
+            force_save_name=force_save_name,
+        )
+
+        if args.gcloud_upload:
             upload_to_google_cloud(args, gc_handler, epoch)
 
         epoch += 1
@@ -321,8 +332,8 @@ def run_evaluation(
     explore_eps,
     convention,
     convention_act_override,
-    partner_agents,
-    partner_cfgs,
+    train_partners,
+    test_partners,
     saver,
     clone_bot,
     act_group,
@@ -332,57 +343,50 @@ def run_evaluation(
     eval_agent.load_state_dict(agent.state_dict())
     eval_agents = [eval_agent for _ in range(args.num_player)]
 
-    score, perfect, scores, _, eval_actors = evaluate(
-        eval_agents,
-        num_game,
-        eval_seed,
-        args.eval_bomb,
-        explore_eps,
-        args.sad,
-        args.hide_action,
-        device=args.train_device,
-        convention=convention,
-        override=convention_act_override,
-        act_parameterized=[args.parameterized, args.parameterized],
-        partner_agents=partner_agents,
-        partner_cfgs=partner_cfgs,
-        num_parameters=args.num_parameters,
-    )
-
-    if args.wandb:
-        log_wandb(score, perfect, scores, eval_actors, last_loss, convention)
-
-    force_save_name = None
-    if epoch > 0 and epoch % args.save_checkpoints == 0:
-        force_save_name = "model_epoch%d" % epoch
-    model_saved = saver.save(
-        None, agent.online_net.state_dict(), score, force_save_name=force_save_name
-    )
-    model_saved = False
-    print(
-        "epoch %d, eval score: %.4f, perfect: %.2f, model saved: %s"
-        % (epoch, score, perfect * 100, model_saved)
-    )
-
-    if clone_bot is not None:
-        score, perfect, _, scores, eval_actors = evaluate(
-            [clone_bot] + [eval_agent for _ in range(args.num_player - 1)],
-            1000,
+    def eval(partners):
+        return evaluate(
+            eval_agents,
+            # num_game,
+            30,
             eval_seed,
             args.eval_bomb,
-            0,  # explore eps
+            explore_eps,
             args.sad,
             args.hide_action,
+            device=args.train_device,
+            convention=convention,
+            override=convention_act_override,
+            act_parameterized=[args.parameterized, args.parameterized],
+            partners=partners,
+            num_parameters=args.num_parameters,
         )
-        print(f"clone bot score: {np.mean(score)}")
 
-    if args.off_belief:
-        actors = common_utils.flatten(act_group.actors)
-        success_fict = [actor.get_success_fict_rate() for actor in actors]
-        print(
-            "epoch %d, success rate for sampling ficticious state: %.2f%%"
-            % (epoch, 100 * np.mean(success_fict))
-        )
+    train_score, train_perfect, train_scores, _, train_eval_actors = eval(
+        train_partners)
+
+    test_score, test_perfect, test_scores, _, test_eval_actors = eval(
+        test_partners)
+
+    print("epoch %d" % epoch)
+    print("train score: %.4f, train perfect: %.2f" % \
+            (train_score, train_perfect * 100))
+    print("test score: %.4f, test perfect: %.2f" % \
+            (test_score, test_perfect * 100))
+
+    if args.wandb:
+        log_wandb(
+            train_score, 
+            train_perfect, 
+            train_scores, 
+            train_eval_actors, 
+            last_loss, 
+            test_score, 
+            test_perfect, 
+            test_scores, 
+            test_eval_actors, 
+            convention)
+
+    return copy.copy(test_score)
 
 
 def upload_to_google_cloud(args, gc_handler, epoch):
@@ -409,22 +413,42 @@ def load_json_list(convention_path):
     return json.load(convention_file)
 
 
-def load_partner_agents(partner_models):
-    if partner_models is "None":
+def load_partner_agents(args, partner_type):
+    if args.partner_models is "None":
         return None, None
 
-    partner_model_paths = load_json_list(partner_models)
+    print(f"loading {partner_type} agents")
 
-    partner_agents = []
-    partner_cfgs = []
+    model_paths = load_json_list(args.partner_models)
+    train_set_indexes = load_json_list(
+            args.train_test_splits)[args.split_index][partner_type]
+    train_model_paths = [model_paths[i] for i in train_set_indexes]
 
-    for partner_model_path in partner_model_paths:
-        partner_cfg = {"sad": False, "hide_action": False}
+    partners = []
+
+    for partner_model_path in train_model_paths:
+        partner_cfg = {
+            "sad": False, 
+            "hide_action": False,
+            "weight": partner_model_path,
+            "sad_legacy": False,
+        }
 
         overwrite = {}
         overwrite["vdn"] = False
         overwrite["device"] = "cuda:0"
         overwrite["boltzmann_act"] = False
+
+        if args.partner_sad_legacy:
+            partner_cfg["agent"] = utils.load_sad_model(
+                    partner_model_path, args.train_device)
+            partner_cfg["sad"] = True
+            partner_cfg["hide_action"] = False
+            partner_cfg["parameterized"] = False
+            partner_cfg["sad_legacy"] = True
+            partners.append(partner_cfg)
+            continue
+
         try: 
             state_dict = torch.load(partner_model_path)
         except:
@@ -443,11 +467,11 @@ def load_partner_agents(partner_models):
             partner_cfg["sad"] = False
             partner_cfg["hide_action"] = False
             partner_cfg["parameterized"] = False
+        partner_cfg["agent"] = partner_agent
 
-        partner_agents.append(partner_agent)
-        partner_cfgs.append(partner_cfg)
+        partners.append(partner_cfg)
 
-    return partner_agents, partner_cfgs
+    return partners
 
 def parse_args():
     parser = argparse.ArgumentParser(description="train dqn on hanabi")
@@ -529,14 +553,15 @@ def parse_args():
     parser.add_argument("--no_evaluation", type=int, default=0)
     parser.add_argument("--convention_act_override", type=int, default=0)
     parser.add_argument("--convention_fict_act_override", type=int, default=0)
-    parser.add_argument("--partner_model", type=str, default=0)
+    parser.add_argument("--partner_models", type=str, default="None")
+    parser.add_argument("--partner_sad_legacy", type=int, default=0)
+    parser.add_argument("--train_test_splits", type=str, default="None")
+    parser.add_argument("--split_index", type=int, default=0)
     parser.add_argument("--static_partner", type=int, default=0)
     parser.add_argument("--wandb", type=int, default=0)
-    parser.add_argument("--partner_models", type=str, default="None")
     parser.add_argument("--belief_stats", type=int, default=0)
     parser.add_argument("--runner_div", type=str, default="duplicated")
-    parser.add_argument("--use_partner_experience", type=int, default=1)
-    parser.add_argument("--google_cloud_upload", type=int, default=0)
+    parser.add_argument("--gcloud_upload", type=int, default=0)
 
     args = parser.parse_args()
     if args.off_belief == 1:
@@ -545,6 +570,13 @@ def parse_args():
         assert args.net in ["publ-lstm"], "should only use publ-lstm style network"
         assert not args.shuffle_color
     assert args.method in ["vdn", "iql"]
+
+    if args.static_partner and args.partner_models != "None" \
+            and args.train_test_splits != "None":
+        indexes = load_json_list(args.train_test_splits)[args.split_index]["train"]
+        indexes = [x + 1 for x in indexes]
+        args.save_dir = args.save_dir + "_" + '_'.join(str(x) for x in indexes)
+
     return args
 
 def setup_wandb(args):
@@ -589,7 +621,6 @@ def setup_wandb(args):
         # convention setting
         "convention": args.convention,
         "convention_override": args.convention_act_override,
-        "partner_model": args.partner_model,
         "static_partner": args.static_partner,
         "partner_models": args.partner_models,
     }

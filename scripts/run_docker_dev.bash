@@ -8,6 +8,6 @@ docker run --rm -it \
     --ipc host \
     --volume=${GCLOUD_PATH}:/gcloud_creds.json:rw \
     --env GOOGLE_APPLICATION_CREDENTIALS=/gcloud_creds.json \
-    --env WANDB_TOKEN=$(cat wandb_api_key.txt) \
+    --env WANDB_TOKEN=$(cat keys/wandb_api_key.txt) \
     ravihammond/hanabi-project:dev \
     ${@:-bash}

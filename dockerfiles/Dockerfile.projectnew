@@ -2,7 +2,7 @@
 #FROM binary-tools-setup AS dev
 FROM ravihammond/cuda-conda AS dev
 
-#RUN git config --global --add safe.directory /app
+RUN git config --global --add safe.directory /app
 
 WORKDIR /app
 
