@@ -15,154 +15,159 @@
 #include "rlcc/hanabi_env.h"
 
 class R2D2Actor {
-public:
+  public:
     R2D2Actor(
-            std::shared_ptr<rela::BatchRunner> runner,
-            int seed,
-            int numPlayer,                       // total number os players
-            int playerIdx,                       // player idx for this player
-            const std::vector<float>& epsList,   // list of eps to sample from
-            const std::vector<float>& tempList,  // list of temp to sample from
-            bool vdn,
-            bool sad,
-            bool shuffleColor,
-            bool hideAction,
-            bool trinary,  // trinary aux task or full aux
-            std::shared_ptr<rela::RNNPrioritizedReplay> replayBuffer,
-            // if replay buffer is None, then all params below are not used
-            int multiStep,
-            int seqLen,
-            float gamma,
+        std::shared_ptr<rela::BatchRunner> runner,
+        int seed,
+        int numPlayer,                       // total number os players
+        int playerIdx,                       // player idx for this player
+        const std::vector<float>& epsList,   // list of eps to sample from
+        const std::vector<float>& tempList,  // list of temp to sample from
+        bool vdn,
+        bool sad,
+        bool shuffleColor,
+        bool hideAction,
+        bool trinary,  // trinary aux task or full aux
+        std::shared_ptr<rela::RNNPrioritizedReplay> replayBuffer,
+        // if replay buffer is None, then all params below are not used
+        int multiStep,
+        int seqLen,
+        float gamma,
+
+        // My changes
+        std::vector<std::vector<std::vector<std::string>>> convention,
+        bool actParameterized,
+        int conventionIdx,
+        int conventionOverride,
+        bool conventionFictitiousOverride,
+        bool useExperience,
+        bool beliefStats,
+        bool sadLegacy,
+        bool beliefSadLegacy,
+        bool colorShuffleSync)
+          : runner_(std::move(runner))
+            , rng_(seed)
+            , numPlayer_(numPlayer)
+            , playerIdx_(playerIdx)
+            , epsList_(epsList)
+            , tempList_(tempList)
+            , vdn_(vdn)
+            , sad_(sad)
+            , shuffleColor_(shuffleColor)
+            , hideAction_(hideAction)
+            , trinary_(trinary)
+            , batchsize_(vdn_ ? numPlayer : 1)
+            , playerEps_(batchsize_)
+            , playerTemp_(batchsize_)
+            , colorPermutes_(batchsize_)
+            , invColorPermutes_(batchsize_)
+            , replayBuffer_(std::move(replayBuffer))
+            , r2d2Buffer_(std::make_unique<rela::R2D2Buffer>(multiStep, seqLen, gamma))
 
             // My changes
-            std::vector<std::vector<std::vector<std::string>>> convention,
-            bool actParameterized,
-            int conventionIdx,
-            int conventionOverride,
-            bool conventionFictitiousOverride,
-            bool useExperience,
-            bool beliefStats,
-            bool sadLegacy,
-            bool beliefSadLegacy)
-        : runner_(std::move(runner))
-          , rng_(seed)
-          , numPlayer_(numPlayer)
-          , playerIdx_(playerIdx)
-          , epsList_(epsList)
-          , tempList_(tempList)
-          , vdn_(vdn)
-          , sad_(sad)
-          , shuffleColor_(shuffleColor)
-          , hideAction_(hideAction)
-          , trinary_(trinary)
-          , batchsize_(vdn_ ? numPlayer : 1)
-          , playerEps_(batchsize_)
-          , playerTemp_(batchsize_)
-          , colorPermutes_(batchsize_)
-          , invColorPermutes_(batchsize_)
-          , replayBuffer_(std::move(replayBuffer))
-          , r2d2Buffer_(std::make_unique<rela::R2D2Buffer>(multiStep, seqLen, gamma))
+            , convention_(convention) 
+            , conventionIdx_(conventionIdx) 
+            , conventionOverride_(conventionOverride) 
+            , conventionFictitiousOverride_(conventionFictitiousOverride)
+            , actParameterized_(actParameterized)
+            , recordStats_(false)
+            , useExperience_(useExperience)
+            , logStats_(false) 
+            , livesBeforeMove_(-1) 
+            , currentTwoStep_("X") 
+            , beliefStats_(beliefStats) 
+            , sadLegacy_(sadLegacy) 
+            , beliefSadLegacy_(beliefSadLegacy) 
+            , sentSignal_(false)
+            , sentSignalStats_(false)
+            , beliefStatsSignalReceived_(false) 
+            , colorShuffleSync_(colorShuffleSync) {
+              if (beliefStats_ && convention_.size() > 0) {
+                auto responseMove = strToMove(convention_[conventionIdx_][0][1]);
+                beliefStatsResponsePosition_ = responseMove.CardIndex();
+              }
 
-          // My changes
-          , convention_(convention) 
-          , conventionIdx_(conventionIdx) 
-          , conventionOverride_(conventionOverride) 
-          , conventionFictitiousOverride_(conventionFictitiousOverride)
-          , actParameterized_(actParameterized)
-          , recordStats_(false)
-          , useExperience_(useExperience)
-          , logStats_(false) 
-          , livesBeforeMove_(-1) 
-          , currentTwoStep_("X") 
-          , beliefStats_(beliefStats) 
-          , sadLegacy_(sadLegacy) 
-          , beliefSadLegacy_(beliefSadLegacy) 
-          , sentSignal_(false)
-          , sentSignalStats_(false)
-          , beliefStatsSignalReceived_(false) {
-        if (beliefStats_ && convention_.size() > 0) {
-            auto responseMove = strToMove(convention_[conventionIdx_][0][1]);
-            beliefStatsResponsePosition_ = responseMove.CardIndex();
-        }
+              if (sadLegacy_) {
+                showOwnCards_ = false;
+              } else {
+                showOwnCards_ = true;
+              }
+            }
 
-        if (sadLegacy_) {
-            showOwnCards_ = false;
-        } else {
-            showOwnCards_ = true;
-        }
-    }
 
     // simpler constructor for eval mode
     R2D2Actor(
-            std::shared_ptr<rela::BatchRunner> runner,
-            int numPlayer,
-            int playerIdx,
-            bool vdn,
-            bool sad,
-            bool hideAction,
+        std::shared_ptr<rela::BatchRunner> runner,
+        int numPlayer,
+        int playerIdx,
+        bool vdn,
+        bool sad,
+        bool hideAction,
 
-            // My changes
-            std::vector<std::vector<std::vector<std::string>>> convention,
-            bool actParameterized,
-            int conventionIdx,
-            int conventionOverride,
-            bool beliefStats,
-            bool sadLegacy)
-        : runner_(std::move(runner))
-          , rng_(1)  // not used in eval mode
-          , numPlayer_(numPlayer)
-          , playerIdx_(playerIdx)
-          , epsList_({0})
-          , vdn_(vdn)
-          , sad_(sad)
-          , shuffleColor_(false)
-          , hideAction_(hideAction)
-          , trinary_(true)
-          , batchsize_(vdn_ ? numPlayer : 1)
-          , playerEps_(batchsize_)
-          , colorPermutes_(batchsize_)
-          , invColorPermutes_(batchsize_)
-          , replayBuffer_(nullptr)
-          , r2d2Buffer_(nullptr)
+        // My changes
+        std::vector<std::vector<std::vector<std::string>>> convention,
+        bool actParameterized,
+        int conventionIdx,
+        int conventionOverride,
+        bool beliefStats,
+        bool sadLegacy,
+        bool shuffleColor)
+      : runner_(std::move(runner))
+        , rng_(1)  // not used in eval mode
+        , numPlayer_(numPlayer)
+        , playerIdx_(playerIdx)
+        , epsList_({0})
+        , vdn_(vdn)
+        , sad_(sad)
+        , shuffleColor_(shuffleColor)
+        , hideAction_(hideAction)
+        , trinary_(true)
+        , batchsize_(vdn_ ? numPlayer : 1)
+        , playerEps_(batchsize_)
+        , colorPermutes_(batchsize_)
+        , invColorPermutes_(batchsize_)
+        , replayBuffer_(nullptr)
+        , r2d2Buffer_(nullptr)
 
-          // My changes
-          , convention_(convention) 
-          , conventionIdx_(conventionIdx) 
-          , conventionOverride_(conventionOverride) 
-          , conventionFictitiousOverride_(false)
-          , actParameterized_(actParameterized)
-          , recordStats_(true)
-          , useExperience_(false)
-          , logStats_(true) 
-          , livesBeforeMove_(-1) 
-          , currentTwoStep_("X") 
-          , beliefStats_(beliefStats) 
-          , sadLegacy_(sadLegacy) 
-          , sentSignal_(false)
-          , sentSignalStats_(false)
-          , beliefStatsSignalReceived_(false) {
-        if (beliefStats_ && convention_.size() > 0) {
+        // My changes
+        , convention_(convention) 
+        , conventionIdx_(conventionIdx) 
+        , conventionOverride_(conventionOverride) 
+        , conventionFictitiousOverride_(false)
+        , actParameterized_(actParameterized)
+        , recordStats_(true)
+        , useExperience_(false)
+        , logStats_(true) 
+        , livesBeforeMove_(-1) 
+        , currentTwoStep_("X") 
+        , beliefStats_(beliefStats) 
+        , sadLegacy_(sadLegacy) 
+        , sentSignal_(false)
+        , sentSignalStats_(false)
+        , beliefStatsSignalReceived_(false)
+        , colorShuffleSync_(false) {
+          if (beliefStats_ && convention_.size() > 0) {
             auto responseMove = strToMove(convention_[conventionIdx_][0][1]);
             beliefStatsResponsePosition_ = responseMove.CardIndex();
-        }
+          }
 
-        if (sadLegacy_) {
+          if (sadLegacy_) {
             showOwnCards_ = false;
-        } else {
+          } else {
             showOwnCards_ = true;
+          }
         }
-    }
 
     void setPartners(std::vector<std::shared_ptr<R2D2Actor>> partners) {
-        partners_.reserve(partners.size());
-        for (size_t i = 0; i < partners.size(); i++) {
-            if ((int)i == playerIdx_) {
-                partners_.push_back(std::weak_ptr<R2D2Actor>());
-                continue;
-            }
-            partners_.emplace_back(std::move(partners[i]));
+      partners_.reserve(partners.size());
+      for (size_t i = 0; i < partners.size(); i++) {
+        if ((int)i == playerIdx_) {
+          partners_.push_back(std::weak_ptr<R2D2Actor>());
+          continue;
         }
-        assert((int)partners_.size() == numPlayer_);
+        partners_.emplace_back(std::move(partners[i]));
+      }
+      assert((int)partners_.size() == numPlayer_);
     }
 
     void reset(const HanabiEnv& env);
@@ -175,49 +180,49 @@ public:
     void moveHid(rela::TensorDict& from, rela::TensorDict& hid);
 
     void setBeliefRunner(std::shared_ptr<rela::BatchRunner>& beliefModel) {
-        assert(!vdn_ && batchsize_ == 1);
-        beliefRunner_ = beliefModel;
-        offBelief_ = true;
-        // OBL does not need Other-Play, and does not support Other-Play
-        assert(!shuffleColor_);
+      assert(!vdn_ && batchsize_ == 1);
+      beliefRunner_ = beliefModel;
+      offBelief_ = true;
+      // OBL does not need Other-Play, and does not support Other-Play
+      assert(!shuffleColor_);
     }
 
     float getSuccessFictRate() {
-        float rate = (float)successFict_ / totalFict_;
-        successFict_ = 0;
-        totalFict_ = 0;
-        return rate;
+      float rate = (float)successFict_ / totalFict_;
+      successFict_ = 0;
+      totalFict_ = 0;
+      return rate;
     }
 
     std::tuple<int, int, int, int> getPlayedCardInfo() const {
-        return {noneKnown_, colorKnown_, rankKnown_, bothKnown_};
+      return {noneKnown_, colorKnown_, rankKnown_, bothKnown_};
     }
 
     // My changes
     void setBeliefRunnerStats(std::shared_ptr<rela::BatchRunner>& beliefModel) {
-        assert(!vdn_ && batchsize_ == 1);
-        beliefRunner_ = beliefModel;
-        // OBL does not need Other-Play, and does not support Other-Play
-        assert(!shuffleColor_);
+      assert(!vdn_ && batchsize_ == 1);
+      beliefRunner_ = beliefModel;
+      // OBL does not need Other-Play, and does not support Other-Play
+      assert(!shuffleColor_);
     }
     void pushToReplayBuffer();
     std::unordered_map<std::string, float> getStats() const { return stats_; }
     int getConventionIndex() { return conventionIdx_; }
 
-private:
+  private:
     rela::TensorDict getH0(int numPlayer, std::shared_ptr<rela::BatchRunner>& runner) {
-        std::vector<torch::jit::IValue> input{numPlayer};
-        auto model = runner->jitModel();
-        auto output = model.get_method("get_h0")(input);
-        auto h0 = rela::tensor_dict::fromIValue(output, torch::kCPU, true);
-        return h0;
+      std::vector<torch::jit::IValue> input{numPlayer};
+      auto model = runner->jitModel();
+      auto output = model.get_method("get_h0")(input);
+      auto h0 = rela::tensor_dict::fromIValue(output, torch::kCPU, true);
+      return h0;
     }
 
     // My changes
     void conventionReset(const HanabiEnv& env);
     void incrementStat(std::string key);
     virtual void incrementStatsBeforeMove(
-            const HanabiEnv& env, hle::HanabiMove move);
+        const HanabiEnv& env, hle::HanabiMove move);
     void incrementStatsConvention(const HanabiEnv& env, hle::HanabiMove move);
     void incrementStatsConventionRole(bool shouldHavePlayed, std::string role,
         hle::HanabiMove movePlayed, hle::HanabiMove moveRole);
@@ -225,27 +230,27 @@ private:
     std::string conventionString();
     virtual void incrementStatsAfterMove(const HanabiEnv& env);
     hle::HanabiMove overrideMove(const HanabiEnv& env, hle::HanabiMove move,
-            std::vector<float> actionQ, bool exploreAction,
-            std::vector<float> legalMoves);
+        std::vector<float> actionQ, bool exploreAction,
+        std::vector<float> legalMoves);
     bool moveInVector(std::vector<hle::HanabiMove> moves, hle::HanabiMove move);
     std::tuple<hle::HanabiMove, bool> availableSignalMove( const HanabiEnv& env, 
-            std::vector<std::vector<std::string>> convention);
+        std::vector<std::vector<std::string>> convention);
     hle::HanabiMove matchingResponseMove(
-            std::vector<std::vector<std::string>> convention,
+        std::vector<std::vector<std::string>> convention,
         hle::HanabiMove signalMove);
     hle::HanabiMove different_action(const HanabiEnv& env, 
-            std::vector<hle::HanabiMove> exclude,
-            std::vector<float> actionQ, bool exploreAction,
-            std::vector<float> legalMoves);
+        std::vector<hle::HanabiMove> exclude,
+        std::vector<float> actionQ, bool exploreAction,
+        std::vector<float> legalMoves);
     bool movePlayableOnFireworks(const HanabiEnv& env, hle::HanabiMove move, int player);
     bool discardMovePlayable(const HanabiEnv& env, hle::HanabiMove move);
     hle::HanabiMove strToMove(std::string key);
     std::tuple<int,int,std::vector<int>> beliefConventionPlayable(
-            const HanabiEnv& env);
+        const HanabiEnv& env);
     bool playedCardPossiblySignalledCard(hle::HanabiMove playedMove,
-            std::shared_ptr<hle::HanabiHand> playedHand);
+        std::shared_ptr<hle::HanabiHand> playedHand);
     void possibleResponseCards(const HanabiEnv& env,
-            std::vector<int>& playableCards);
+        std::vector<int>& playableCards);
 
     std::shared_ptr<rela::BatchRunner> runner_;
     std::shared_ptr<rela::BatchRunner> classifier_;
@@ -312,9 +317,9 @@ private:
     bool useExperience_;
     bool logStats_;
     std::unordered_map<char, int> colourMoveToIndex_{
-        {'R', 0}, {'Y', 1}, {'G', 2}, {'W', 3}, {'B', 4} };
+      {'R', 0}, {'Y', 1}, {'G', 2}, {'W', 3}, {'B', 4} };
     std::unordered_map<char, int> rankMoveToIndex_{
-        {'1', 0}, {'2', 1}, {'3', 2}, {'4', 3}, {'5', 4} };
+      {'1', 0}, {'2', 1}, {'3', 2}, {'4', 3}, {'5', 4} };
     int livesBeforeMove_;
     std::string currentTwoStep_;
     bool beliefStats_;
@@ -326,5 +331,5 @@ private:
     bool beliefStatsSignalReceived_;
     int beliefStatsResponsePosition_;
     std::shared_ptr<hle::HanabiHand> previousHand_ = nullptr;
+    bool colorShuffleSync_;
 };
-

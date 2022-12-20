@@ -41,6 +41,7 @@ def evaluate(
     belief_model_path="None",
     partners=None,
     sad_legacy=[0, 0],
+    shuffle_colour=[0, 0],
 ):
     """
     evaluate agents as long as they have a "act" function
@@ -118,6 +119,7 @@ def evaluate(
                     override[i], # conventionOverride
                     belief_stats, # beliefStats
                     sad_legacy_setting, # sadLegacy
+                    shuffle_colour[i], #shuffleColor
                 )
 
                 if belief_stats:

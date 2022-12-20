@@ -11,7 +11,7 @@ import argparse
 import pprint
 import pickle
 import json
-
+import wandb
 import numpy as np
 import torch
 
@@ -22,6 +22,7 @@ import common_utils
 import rela
 import utils
 import belief_model
+from google_cloud_handler import GoogleCloudHandler
 
 def train_belief(args):
     logger_path = os.path.join(args.save_dir, "train.log")
@@ -50,6 +51,16 @@ def train_belief(args):
         # only for getting feature size
         games = create_envs(1, 1, args.num_player, 0, args.max_len)
         cfgs = {"sad": False}
+
+    if args.gcloud_upload:
+        gc_save_dir = os.path.basename(args.save_dir)
+        gc_handler = GoogleCloudHandler(
+            "aiml-reid-research",
+            "Ravi",
+            "hanabi-conventions/" + gc_save_dir,
+            "/app/pyhanabi/exps/" + gc_save_dir,
+        )
+        gc_handler.assert_directory_doesnt_exist()
 
     while replay_buffer.size() < args.burn_in_frames:
         print("warming up replay buffer:", replay_buffer.size())
@@ -134,14 +145,25 @@ def train_belief(args):
         force_save_name = None
         if epoch > 0 and epoch % 100 == 0:
             force_save_name = "model_epoch%d" % epoch
+        loss_mean = stat["loss"].mean()
         saver.save(
             None,
             model.state_dict(),
-            -stat["loss"].mean(),
+            -loss_mean,
             True,
             force_save_name=force_save_name,
         )
+
+        if args.gcloud_upload:
+            upload_to_google_cloud(args, gc_handler, epoch)
+
         stat.summary(epoch)
+
+        if args.wandb:
+            wandb.log({
+                "loss": loss_mean
+            })
+
         print("===================")
 
 
@@ -193,12 +215,12 @@ def create_rl_context(args):
         act_override, # convention_act_override
         False, # convention_fict_act_override
         None, # partner_agent
-        "None", # partner_cfg
         False, # static_partner
         [1,1], # use_experience
         False, # belief_stats
         args.sad_legacy, # sad_legacy
-        runner_div=args.runner_div, # runner_div
+        runner_div=args.runner_div, 
+        shuffle_color_sync=args.shuffle_color,
     )
 
     context, threads = create_threads(
@@ -224,7 +246,7 @@ def load_agents(args):
         "train_bomb": 0,
         "max_len": 80,
         "sad": 1,
-        "shuffle_color": 0,
+        "shuffle_color": args.shuffle_color,
         "hide_action": 0,
         "multi_step": 1,
         "gamma": 0.999,
@@ -234,6 +256,9 @@ def load_agents(args):
     model_paths = [args.policy]
     if args.policy_list != "None":
         model_paths = load_json(args.policy_list)
+        model_indexes = load_json(
+                args.train_test_splits)[args.split_index]["train"]
+        model_paths = [model_paths[i] for i in model_indexes]
 
     devices = args.train_device.split(",")
 
@@ -247,7 +272,6 @@ def load_agents(args):
         else:
             agent, cfg = utils.load_agent(model_path, agent_overwrite)
 
-        assert cfg["shuffle_color"] == False
         assert args.explore
 
         cfgs.append(cfg)
@@ -317,6 +341,22 @@ def create_sl_context(args):
 
     return data_gen, replay_buffer
 
+def upload_to_google_cloud(args, gc_handler, epoch):
+    # Upload log file
+    gc_handler.upload_from_file_name("train.log")
+
+    # Upload latest model
+    gc_handler.upload_from_file_name("latest.pthw")
+
+    # Upload top k models
+    for i in range(5):
+        gc_handler.upload_from_file_name(f"model{i}.pthw")
+
+    # Upload forced saved model
+    if epoch > 0 and epoch % 100 == 0:
+        force_save_name = "model_epoch%d.pthw" % epoch
+        gc_handler.upload_from_file_name(force_save_name)
+
 
 def load_json(path):
     if path == "None":
@@ -378,13 +418,38 @@ def parse_args():
     parser.add_argument("--policy_list", type=str, default="None")
     parser.add_argument("--runner_div", type=str, default="duplicated")
 
+    parser.add_argument("--train_test_splits", type=str, default="None")
+    parser.add_argument("--split_index", type=int, default=0)
+
+    parser.add_argument("--wandb", type=int, default=0)
+    parser.add_argument("--gcloud_upload", type=int, default=0)
+
     args = parser.parse_args()
+
+    if args.policy_list != "None" and args.train_test_splits != "None": 
+        splits = load_json(args.train_test_splits)
+        indexes = splits[args.split_index]["train"]
+        indexes = [x + 1 for x in indexes]
+        args.save_dir = args.save_dir + "_" + '_'.join(str(x) for x in indexes)
     return args
+
+
+def setup_wandb(args):
+    if not args.wandb:
+        return 
+    run_name = os.path.basename(os.path.normpath(args.save_dir))
+    wandb.init(
+        project="hanabi-conventions", 
+        entity="ravihammond",
+        config=args,
+        name=run_name,
+    )
 
 
 if __name__ == "__main__":
     torch.backends.cudnn.benchmark = True
     args = parse_args()
+    setup_wandb(args)
 
     if not os.path.exists(args.save_dir):
         os.makedirs(args.save_dir)

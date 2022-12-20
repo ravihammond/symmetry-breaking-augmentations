@@ -47,6 +47,7 @@ class ActGroup:
         *,
         runner_div="duplicated",
         num_parameters=0,
+        shuffle_color_sync=False,
     ):
         self.devices = devices.split(",")
         self.method = method
@@ -62,7 +63,7 @@ class ActGroup:
         self.convention_act_override = convention_act_override
         self.convention_fict_act_override = convention_fict_act_override
         self.partners = partners
-        self.num_partners = len(partners)
+        self.num_partners = 0 if partners is None else len(partners)
         self.static_partner = static_partner
         self.use_experience = use_experience
         self.belief_stats = belief_stats
@@ -74,6 +75,7 @@ class ActGroup:
         self.belief_runner = None
         self.runner_div = runner_div
         self.num_parameters = num_parameters
+        self.shuffle_color_sync = shuffle_color_sync
         if self.sad_legacy:
             self.trinary = True
         self.num_agents = len(agents)
@@ -139,6 +141,8 @@ class ActGroup:
         parameter_index = 0
 
         actors = []
+        shuffle_color_sync = [False, self.shuffle_color_sync]
+
         if self.method == "vdn":
             for i in range(self.num_thread):
                 thread_actors = []
@@ -176,8 +180,9 @@ class ActGroup:
                 runner_idx = t_idx % (self.num_agents * len(self.devices))
                 if self.runner_div == "round_robin":
                     runner_idx = t_idx % self.num_agents
-                partner_idx = t_idx % self.num_partners
-                partner = self.partners[partner_idx]
+                if self.partners is not None:
+                    partner_idx = t_idx % self.num_partners
+                    partner = self.partners[partner_idx]
 
                 for g_idx in range(self.num_game_per_thread):
                     game_actors = []
@@ -189,6 +194,7 @@ class ActGroup:
                         belief_sad_legacy = False
                         parameterized = self.cfgs[agent_idx]["parameterized"]
                         sad_legacy = self.sad_legacy
+                        shuffle_colour = self.cfgs[agent_idx]["shuffle_color"]
                         if self.belief_cfg is not None:
                             belief_sad_legacy = self.belief_cfg["sad_legacy"]
 
@@ -198,6 +204,7 @@ class ActGroup:
                             hide_action = partner["hide_action"]
                             parameterized = partner["parameterized"]
                             sad_legacy = partner["sad_legacy"]
+                            shuffle_colour = 0
 
                         actor = hanalearn.R2D2Actor(
                             runner,
@@ -208,7 +215,7 @@ class ActGroup:
                             self.boltzmann_t[agent_idx],
                             False,
                             sad,
-                            self.cfgs[agent_idx]["shuffle_color"],
+                            shuffle_colour,
                             hide_action,
                             self.trinary,
                             self.replay_buffer,
@@ -224,6 +231,7 @@ class ActGroup:
                             self.belief_stats,
                             sad_legacy,
                             belief_sad_legacy,
+                            shuffle_color_sync[k],
                         )
 
                         if self.off_belief:

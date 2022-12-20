@@ -3,7 +3,7 @@
 #
 # This source code is licensed under the license found in the
 # LICENSE file in the root directory of this source tree.
-#
+
 import time
 import os
 import sys
@@ -30,7 +30,6 @@ import utils
 from convention_belief import ConventionBelief
 from tools.wandb_logger import log_wandb
 from google_cloud_handler import GoogleCloudHandler
-
 
 def selfplay(args):
     if not os.path.exists(args.save_dir):
@@ -164,34 +163,34 @@ def selfplay(args):
     convention = load_json_list(args.convention)
 
     convention_act_override = [0, args.convention_act_override]
-    use_experience = [1, 0 if args.static_partner else 1]
+    use_experience = [1, 1 - args.static_partner]
 
     act_group = ActGroup(
-        args.act_device,
-        [agent],
-        [cfgs],
-        args.seed,
-        args.num_thread,
-        args.num_player,
-        args.num_game_per_thread,
-        [explore_eps],
-        [boltzmann_t],
-        args.method,
+        args.act_device, # devices
+        [agent], # agents
+        [cfgs], # cfgs
+        args.seed, # seed
+        args.num_thread, # num_thread
+        args.num_player, # num_player
+        args.num_game_per_thread, # num_game_per_thread
+        [explore_eps], # explore_eps
+        [boltzmann_t], # boltzmann_t
+        args.method, # method
         True,  # trinary, 3 bits for aux task
-        replay_buffer,
-        args.off_belief,
-        belief_model,
-        belief_config,
-        convention,
-        convention_act_override,
-        args.convention_fict_act_override,
-        train_partners,
-        args.static_partner,
-        use_experience,
-        args.belief_stats,
-        False,
-        runner_div=args.runner_div,
-        num_parameters=args.num_parameters,
+        replay_buffer, # replay_buffer
+        args.off_belief, # off_belief
+        belief_model, # belief_model
+        belief_config, # belief_cfg
+        convention, # convention
+        convention_act_override, # convention_act_overrided
+        args.convention_fict_act_override, # convention_fic_act_override
+        train_partners, # partners
+        args.static_partner, # # static_partner
+        use_experience, # use_experience
+        args.belief_stats, # belief_stats
+        False, # sad_legacy
+        runner_div=args.runner_div, # runner_div
+        num_parameters=args.num_parameters, # num_parameters
     )
 
     context, threads = create_threads(
@@ -233,9 +232,7 @@ def selfplay(args):
     last_loss = 0
 
 
-    # for epoch in range(args.num_epoch):
-    epoch = 0
-    while True:
+    for epoch in range(args.num_epoch):
         print("beginning of epoch:", epoch)
         print(common_utils.get_mem_usage())
         tachometer.start()
@@ -290,13 +287,12 @@ def selfplay(args):
         stopwatch.summary()
         stat.summary(epoch)
 
-        test_score = run_evaluation(
+        train_eval_score = run_evaluation(
             args,
             agent,
             eval_agent,
             epoch,
-            5000,
-            0,  # explore eps
+            0, 
             convention,
             convention_act_override,
             train_partners,
@@ -313,7 +309,7 @@ def selfplay(args):
         saver.save(
             None, 
             agent.online_net.state_dict(), 
-            test_score, 
+            train_eval_score, 
             force_save_name=force_save_name,
         )
 
@@ -328,7 +324,6 @@ def run_evaluation(
     agent,
     eval_agent,
     epoch,
-    num_game,
     explore_eps,
     convention,
     convention_act_override,
@@ -343,11 +338,10 @@ def run_evaluation(
     eval_agent.load_state_dict(agent.state_dict())
     eval_agents = [eval_agent for _ in range(args.num_player)]
 
-    def eval(partners):
+    def eval(partners, convention_act_override, shuffle_colour):
         return evaluate(
             eval_agents,
-            # num_game,
-            30,
+            args.num_eval_games,
             eval_seed,
             args.eval_bomb,
             explore_eps,
@@ -359,19 +353,27 @@ def run_evaluation(
             act_parameterized=[args.parameterized, args.parameterized],
             partners=partners,
             num_parameters=args.num_parameters,
+            shuffle_colour=shuffle_colour,
         )
 
     train_score, train_perfect, train_scores, _, train_eval_actors = eval(
-        train_partners)
+        train_partners, convention_act_override, [args.shuffle_color, 0])
+
+    test_convention_override = [0,0]
+    test_shuffle_colour = [0,0]
 
     test_score, test_perfect, test_scores, _, test_eval_actors = eval(
-        test_partners)
+        test_partners, test_convention_override, test_shuffle_colour)
 
     print("epoch %d" % epoch)
     print("train score: %.4f, train perfect: %.2f" % \
             (train_score, train_perfect * 100))
     print("test score: %.4f, test perfect: %.2f" % \
             (test_score, test_perfect * 100))
+
+    convention_for_stats = []
+    if args.record_convention_stats:
+        convention_for_stats = convention
 
     if args.wandb:
         log_wandb(
@@ -384,7 +386,7 @@ def run_evaluation(
             test_perfect, 
             test_scores, 
             test_eval_actors, 
-            convention)
+            convention_for_stats)
 
     return copy.copy(test_score)
 
@@ -559,9 +561,11 @@ def parse_args():
     parser.add_argument("--split_index", type=int, default=0)
     parser.add_argument("--static_partner", type=int, default=0)
     parser.add_argument("--wandb", type=int, default=0)
+    parser.add_argument("--gcloud_upload", type=int, default=0)
     parser.add_argument("--belief_stats", type=int, default=0)
     parser.add_argument("--runner_div", type=str, default="duplicated")
-    parser.add_argument("--gcloud_upload", type=int, default=0)
+    parser.add_argument("--num_eval_games", type=int, default=1000)
+    parser.add_argument("--record_convention_stats", type=int, default=0)
 
     args = parser.parse_args()
     if args.off_belief == 1:
@@ -582,53 +586,12 @@ def parse_args():
 def setup_wandb(args):
     if not args.wandb:
         return 
-    wandb_config = {
-        "seed": args.seed,
-        "gamma": args.gamma,
-        "eta": args.eta,
-        "train_bomb": args.train_bomb,
-        "eval_bomb": args.eval_bomb,
 
-        # optimization/training settings
-        "learning_rate": args.lr,
-        "adam_epsilon": args.eps,
-        "grad_clip": args.grad_clip,
-        "num_lstm_layer": args.num_lstm_layer,
-        "rnn_hid_dim": args.rnn_hid_dim,
-        "net": args.net,
-        "batch_size": args.batchsize,
-        "num_epochs": args.num_epoch,
-        "epoch_length": args.epoch_len,
-        "num_update_between_sync": args.num_update_between_sync,
-
-        # replay buffer settings
-        "replay_buffer_burn_in_frames": args.burn_in_frames,
-        "replay_buffer_size": args.replay_buffer_size,
-        "replay_buffer_priority_exponent": args.priority_exponent,
-        "replay_buffer_priority_weight": args.priority_weight,
-        "replay_buffer_max_seq_length": args.max_len,
-        "replay_buffer_prefetch_batch": args.prefetch,
-
-        # thread setting
-        "num_thread": args.num_thread,
-        "num_game_per_thread": args.num_game_per_thread,
-
-        # actor setting
-        "actor_base_eps": args.act_base_eps,
-        "actor_eps_alpha": args.act_eps_alpha,
-        "actor_sync_freq": args.actor_sync_freq,
-
-        # convention setting
-        "convention": args.convention,
-        "convention_override": args.convention_act_override,
-        "static_partner": args.static_partner,
-        "partner_models": args.partner_models,
-    }
     run_name = os.path.basename(os.path.normpath(args.save_dir))
     wandb.init(
         project="hanabi-conventions", 
         entity="ravihammond",
-        config=wandb_config,
+        config=args,
         name=run_name,
     )
     
@@ -637,3 +600,4 @@ if __name__ == "__main__":
     args = parse_args()
     setup_wandb(args)
     selfplay(args)
+

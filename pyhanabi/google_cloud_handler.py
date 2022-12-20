@@ -1,4 +1,5 @@
 import os
+import time
 
 from google.cloud import storage
 
@@ -16,14 +17,22 @@ class GoogleCloudHandler:
         blobs = list(self._client.list_blobs(self._bucket, prefix=path))
         assert len(blobs) == 0, f"Google Cloud Error: Path {path} already exists."
 
-    def upload_from_file_name(self, file_name):
+    def upload_from_file_name(self, file_name, except_retry_wait=1):
         file_path = os.path.join(self._local_path, file_name)
         if not os.path.exists(file_path):
             return
 
         blob_name = os.path.join(self._user, self._gc_path, file_name)
         blob = self._bucket.blob(blob_name)
-        blob.upload_from_filename(file_path)
+
+        while True:
+            try:
+                blob.upload_from_filename(file_path)
+                break
+            except Exception as e:
+                print(e)
+                time.sleep(except_retry_wait)
+
 
     def list_user_blobs(self):
         for blob in self._client.list_blobs(self._bucket):

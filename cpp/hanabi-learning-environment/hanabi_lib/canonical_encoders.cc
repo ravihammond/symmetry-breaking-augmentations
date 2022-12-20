@@ -51,7 +51,7 @@ int CardIndex(int color,
         bool shuffle_color,
         const std::vector<int>& color_permute) {
     if (shuffle_color) {
-        // std::cout << "mapping: " << color << " to " << color_permute[color] << std::endl;
+        //printf("mapping %d to %d\n", color, color_permute[color]);
         color = color_permute[color];
     }
     return color * num_ranks + rank;
@@ -87,7 +87,6 @@ int EncodeHands(const HanabiGame& game,
         const std::vector<HanabiCard>& cards = hands[player].Cards();
         int num_cards = 0;
 
-        // for (const HanabiCard& card : cards) {
         for (int i = 0; i < cards.size(); ++i) {
             int card_i = i;
             if (player != 0 && order.size() > 0) {

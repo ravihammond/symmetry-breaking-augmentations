@@ -21,6 +21,7 @@ docker run --rm -it \
     --env=XAUTHORITY=$xauth \
     --volume=$(pwd):/app/:rw \
     --volume=$xsock:$xsock:rw \
+    --env WANDB_TOKEN=$(cat keys/wandb_api_key.txt) \
     --network=host \
     --cpus=$cpus \
     --memory=$mem \

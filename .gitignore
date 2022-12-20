@@ -27,8 +27,10 @@ temp
 test.cpp
 */wandb/*
 pyhanabi/wandb/
+pyhanabi/wandb_data/
 training_models/*
 .gitlab-ci.yml
 .pypirc
 .vscode/
 keys/*
+wandb_api_key.txt
