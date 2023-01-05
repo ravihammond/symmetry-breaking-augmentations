@@ -13,7 +13,7 @@ python train_belief.py \
        --burn_in_frames 10000 \
        --replay_buffer_size 100000 \
        --epoch_len 1000 \
-       --num_epoch 1001 \
+       --num_epoch 501 \
        --train_device cuda:0 \
        --act_device cuda:1,cuda:2,cuda:3 \
        --explore 1 \
@@ -29,8 +29,8 @@ python train_belief.py \
 
 #python train_belief.py \
        #--save_dir exps/belief_sba_sad \
-       #--num_thread 1 \
-       #--num_game_per_thread 1 \
+       #--num_thread 8 \
+       #--num_game_per_thread 2 \
        #--seed 0 \
        #--lr 6.25e-05 \
        #--eps 1.5e-05 \

@@ -25,5 +25,8 @@ python tools/eval_model_verbose.py --weight1 exps/poblf1_CR-P0/model0.pthw --con
 == CROSS PLAY ==
 python tools/cross_play.py --root ../training_models/obl1 --convention conventions/all_colours.json --override 3
 
-== RUN FLAGS ==
-ASAN_OPTIONS=detect_leaks=1
+== SAD LEGACY ==
+python tools/eval_model_verbose.py --weight1 ../models/sad_2p_models/sad_1.pthw --sad_legacy 1
+
+== BR vs SAD SPLIT ==
+python tools/eval_model_verbose.py --weight1 temp/br_sad_1_3_6_7_8_12/model_epoch1000.pthw --partner_models agent_groups/all_sad.json --train_test_splits sad_train_test_splits.json --split_index 0

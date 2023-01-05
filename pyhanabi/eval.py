@@ -223,7 +223,8 @@ def evaluate_saved_model(
     belief_model="None",
     partner_models_path="None",
     pre_loaded_data=None,
-    sad_legacy=[0, 0]
+    sad_legacy=[0, 0],
+    partner_model_type="train",
 ):
     if pre_loaded_data is None:
         pre_loaded_data = load_agents(
@@ -244,7 +245,7 @@ def evaluate_saved_model(
     if belief_model != "None" and belief_stats:
         belief_model_path = belief_model
 
-    partner_agents, partner_cfgs = load_partner_agents(partner_models_path)
+    partners = load_partner_agents(partner_models_path, partner_model_type, True)
 
     scores = []
     perfect = 0
@@ -263,8 +264,7 @@ def evaluate_saved_model(
             override=override,
             belief_stats=belief_stats,
             belief_model_path=belief_model_path,
-            partner_agents=partner_agents,
-            partner_cfgs=partner_cfgs,
+            partners=partners,
             act_parameterized=parameterized,
             sad_legacy=sad_legacy,
         )
@@ -308,13 +308,7 @@ def load_agents(
 
     # Load models from weight files
     for i, weight_file in enumerate(weight_files):
-        assert os.path.exists(weight_file)
-        if i > 0 and partner_models_path is not "None":
-            agents.append(None)
-            sad.append(False)
-            hide_action.append(False)
-            parameterized.append(False)
-            break
+        assert os.path.exists(weight_file), f"path file not found: {weight_file}"
 
         if sad_legacy[i]:
             agent = utils.load_sad_model(weight_file, device)
@@ -360,22 +354,41 @@ def load_json_list(convention_path):
     return json.load(convention_file)
 
 
-def load_partner_agents(partner_models):
-    if partner_models is "None":
-        return None, None
+def load_partner_agents(
+        partner_models, 
+        partner_type,
+        partner_sad_legacy,
+    ):
+    if partner_models is "None" or len(partner_models) == 0:
+        return None
 
-    partner_model_paths = load_json_list(partner_models)
+    print(f"loading {partner_type} agents")
 
-    partner_agents = []
-    partner_cfgs = []
+    partners = []
 
-    for partner_model_path in partner_model_paths:
-        partner_cfg = {"sad": False, "hide_action": False}
+    for partner_model_path in partner_models:
+        partner_cfg = {
+            "sad": False, 
+            "hide_action": False,
+            "weight": partner_model_path,
+            "sad_legacy": False,
+        }
 
         overwrite = {}
         overwrite["vdn"] = False
         overwrite["device"] = "cuda:0"
         overwrite["boltzmann_act"] = False
+
+        if partner_sad_legacy:
+            partner_cfg["agent"] = utils.load_sad_model(
+                    partner_model_path, "cuda:0")
+            partner_cfg["sad"] = True
+            partner_cfg["hide_action"] = False
+            partner_cfg["parameterized"] = False
+            partner_cfg["sad_legacy"] = True
+            partners.append(partner_cfg)
+            continue
+
         try: 
             state_dict = torch.load(partner_model_path)
         except:
@@ -390,12 +403,12 @@ def load_partner_agents(partner_models):
             partner_cfg["weight"] = partner_model_path
         else:
             partner_agent = utils.load_supervised_agent(
-                    args.partner_agent, args.act_device)
+                    partner_model_path, "cuda:0")
             partner_cfg["sad"] = False
             partner_cfg["hide_action"] = False
             partner_cfg["parameterized"] = False
+        partner_cfg["agent"] = partner_agent
 
-        partner_agents.append(partner_agent)
-        partner_cfgs.append(partner_cfg)
+        partners.append(partner_cfg)
 
-    return partner_agents, partner_cfgs
+    return partners

@@ -264,10 +264,14 @@ class SADAgent(torch.jit.ScriptModule):
         """
         priv_s = obs["priv_s"]
         legal_move = obs["legal_move"]
-        eps = obs["eps"]
         h0 = obs["h0"]
         c0 = obs["c0"]
 
+        if "eps" in obs:
+            eps = obs["eps"]
+        else:
+            eps = torch.zeros((priv_s.size(0),1), device=priv_s.device)
+        
         priv_s = priv_s.unsqueeze(0)
         legal_move = legal_move.unsqueeze(0)
 

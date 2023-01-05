@@ -5,6 +5,7 @@ import numpy as np
 import re
 import json
 import pprint
+import csv
 pprint = pprint.pprint
 
 lib_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -20,15 +21,23 @@ def evaluate_model(args):
 
     weight_files = load_weights(args)
     score, perfect, scores, actors = run_evaluation(args, weight_files)
-    conventions = load_convention(args.convention)
+
+    if args.csv_name != "None":
+        wrapped_scores = [[x] for x in scores]
+        file = open(args.csv_name, 'w+', newline ='')
+        with file:
+            write = csv.writer(file)
+            write.writerows(wrapped_scores)
+
+    conventions = load_json_list(args.convention)
     convention_strings = extract_convention_strings(conventions)
 
     stats = collect_stats(score, perfect, scores, actors, conventions)
 
-    print()
+    # print()
     print_scores(stats)
-    print_move_stats(stats, 0)
-    print_move_stats(stats, 1)
+    # print_move_stats(stats, 0)
+    # print_move_stats(stats, 1)
 
     for convention_string in convention_strings:
         if not any(convention_string in key for key in stats.keys()):
@@ -63,6 +72,13 @@ def run_evaluation(args, weight_files):
     if args.convention_index is not None:
         convention_indexes = [args.convention_index, args.convention_index]
 
+    partner_model_paths = []
+    if args.partner_models != "None":
+        model_paths = load_json_list(args.partner_models)
+        all_indexes =load_json_list(args.train_test_splits)
+        test_indexes = all_indexes[args.split_index]["train"]
+        partner_model_paths = [model_paths[i] for i in test_indexes]
+
     score, _, perfect,scores, actors = evaluate_saved_model(
         weight_files,
         args.num_game,
@@ -75,9 +91,11 @@ def run_evaluation(args, weight_files):
         verbose=False,
         belief_stats=args.belief_stats,
         belief_model=args.belief_model,
-        partner_models_path=args.partner_models,
+        partner_models_path=partner_model_paths,
         convention_indexes=convention_indexes,
         sad_legacy=args.sad_legacy,
+        # partner_model_type="test",
+        partner_model_type="train",
     )
 
     return score, perfect, scores, actors
@@ -93,11 +111,12 @@ def print_actor_stats(stats, player, convention_string):
 
 def print_scores(stats, convention=""):
     score = stats[f"{convention}score"]
+    score_std = stats[f"{convention}score_std"]
     perfect = stats[f"{convention}perfect"] * 100
     non_zero_mean = stats[f"{convention}non_zero_mean"]
     bomb_out_rate = stats[f"{convention}bomb_out_rate"] * 100
 
-    print(f"{convention}score: {score:.4f}")
+    print(f"{convention}score: {score:.2f} ± {score_std:.2f}")
     print(f"{convention}perfect: {perfect:.2f}%")
     print(f"{convention}non_zero_mean: {non_zero_mean:.4f}")
     print(f"{convention}bomb_out_rate: {bomb_out_rate:.2f}%")
@@ -165,11 +184,11 @@ def print_convention_should_be_playable_stats(stats, player, convention_string):
     print(f"{playable}: {stats[playable]} ({playable_percent:.1f}%)")
 
 
-def load_convention(convention_path):
-    if convention_path == "None":
+def load_json_list(path):
+    if path == "None":
         return []
-    convention_file = open(convention_path)
-    return json.load(convention_file)
+    file = open(path)
+    return json.load(file)
 
 
 def extract_convention_strings(conventions):
@@ -210,6 +229,9 @@ if __name__ == "__main__":
     parser.add_argument("--belief_model", default="None", type=str)
     parser.add_argument("--partner_models", default="None", type=str)
     parser.add_argument("--sad_legacy", default="0,0", type=str)
+    parser.add_argument("--train_test_splits", type=str, default="None")
+    parser.add_argument("--split_index", default=0, type=int)
+    parser.add_argument("--csv_name", default="None", type=str)
     args = parser.parse_args()
 
     args.sad_legacy = [int(x) for x in args.sad_legacy.split(",")]

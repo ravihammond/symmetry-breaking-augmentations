@@ -279,6 +279,12 @@ void R2D2Actor::observeBeforeAct(HanabiEnv& env) {
 
   addHid(input, hidden_);
 
+  //printf("Input ===========\n");
+  //for (auto& kv: input) {
+    //std::cout << kv.first << " " << kv.second.sizes() << std::endl;
+  //}
+  //printf("^^^^^^^^^^^\n");
+
   // no-blocking async call to neural network
   futReply_ = runner_->call("act", input);
 
@@ -444,7 +450,8 @@ void R2D2Actor::act(HanabiEnv& env, const int curPlayer) {
   auto hand = all_hands[playerIdx_];
   previousHand_ = std::make_shared<hle::HanabiHand>(hand);
 
-  if(PR)printf("Playing move: %s\n", move.ToString().c_str());
+  if(PR)printf("Playing move: %s%s\n", move.ToString().c_str(),
+      sadLegacy_ ? " (SAD)" : "");
   env.step(move);
 }
 

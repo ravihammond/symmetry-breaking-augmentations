@@ -28,7 +28,7 @@ import r2d2
 import utils
 
 from convention_belief import ConventionBelief
-from tools.wandb_logger import log_wandb
+from tools.wandb_logger import log_wandb, log_wandb_test
 from google_cloud_handler import GoogleCloudHandler
 
 def selfplay(args):
@@ -157,8 +157,20 @@ def selfplay(args):
                 args.belief_model,
             ))
 
-    train_partners = load_partner_agents(args, "train")
-    test_partners = load_partner_agents(args, "test")
+    train_partners = load_partner_agents(
+            args, 
+            args.train_partner_models, 
+            args.train_partner_sad_legacy, 
+            "train")
+    if args.test_partner_models != "None":
+        test_partners = load_partner_agents(
+                args, 
+                args.test_partner_models, 
+                args.test_partner_sad_legacy, 
+                "test")
+    else: 
+        test_partners = None 
+
 
     convention = load_json_list(args.convention)
 
@@ -360,35 +372,48 @@ def run_evaluation(
         train_partners, convention_act_override, [args.shuffle_color, 0])
 
     test_convention_override = [0,0]
-    test_shuffle_colour = [0,0]
-
-    test_score, test_perfect, test_scores, _, test_eval_actors = eval(
-        test_partners, test_convention_override, test_shuffle_colour)
-
     print("epoch %d" % epoch)
     print("train score: %.4f, train perfect: %.2f" % \
             (train_score, train_perfect * 100))
-    print("test score: %.4f, test perfect: %.2f" % \
-            (test_score, test_perfect * 100))
+
+    if args.test_partner_models != "None":
+        test_shuffle_colour = [0,0]
+        test_score, test_perfect, test_scores, _, test_eval_actors = eval(
+            test_partners, test_convention_override, test_shuffle_colour)
+
+        print("test score: %.4f, test perfect: %.2f" % \
+                (test_score, test_perfect * 100))
 
     convention_for_stats = []
     if args.record_convention_stats:
         convention_for_stats = convention
 
     if args.wandb:
-        log_wandb(
-            train_score, 
-            train_perfect, 
-            train_scores, 
-            train_eval_actors, 
-            last_loss, 
-            test_score, 
-            test_perfect, 
-            test_scores, 
-            test_eval_actors, 
-            convention_for_stats)
+        if args.test_partner_models != "None":
+            log_wandb_test(
+                train_score, 
+                train_perfect, 
+                train_scores, 
+                train_eval_actors, 
+                last_loss, 
+                test_score, 
+                test_perfect, 
+                test_scores, 
+                test_eval_actors, 
+                convention_for_stats)
+        else:
+            log_wandb(
+                train_score, 
+                train_perfect, 
+                train_scores, 
+                train_eval_actors, 
+                last_loss, 
+                convention_for_stats)
 
-    return copy.copy(test_score)
+    if args.test_partner_models != "None":
+        return copy.copy(test_score)
+    
+    return copy.copy(train_score)
 
 
 def upload_to_google_cloud(args, gc_handler, epoch):
@@ -408,27 +433,31 @@ def upload_to_google_cloud(args, gc_handler, epoch):
         gc_handler.upload_from_file_name(force_save_name)
 
 
-def load_json_list(convention_path):
-    if convention_path == "None":
+def load_json_list(path):
+    print("load_json_list:", path)
+    if path == "None":
         return []
-    convention_file = open(convention_path)
-    return json.load(convention_file)
+    file = open(path)
+    return json.load(file)
 
 
-def load_partner_agents(args, partner_type):
-    if args.partner_models is "None":
-        return None, None
+def load_partner_agents(args, partner_models, sad_legacy, partner_type):
+    if partner_models is "None":
+        return None
 
-    print(f"loading {partner_type} agents")
+    if type(partner_models) is list:
+        model_paths = partner_models
+    else:
+        print(f"loading {partner_type} agents")
+        model_paths = load_json_list(partner_models)
 
-    model_paths = load_json_list(args.partner_models)
-    train_set_indexes = load_json_list(
-            args.train_test_splits)[args.split_index][partner_type]
-    train_model_paths = [model_paths[i] for i in train_set_indexes]
+        train_set_indexes = load_json_list(
+                args.train_test_splits)[args.split_index][partner_type]
+        model_paths = [model_paths[i] for i in train_set_indexes]
 
     partners = []
 
-    for partner_model_path in train_model_paths:
+    for partner_model_path in model_paths:
         partner_cfg = {
             "sad": False, 
             "hide_action": False,
@@ -441,7 +470,7 @@ def load_partner_agents(args, partner_type):
         overwrite["device"] = "cuda:0"
         overwrite["boltzmann_act"] = False
 
-        if args.partner_sad_legacy:
+        if sad_legacy:
             partner_cfg["agent"] = utils.load_sad_model(
                     partner_model_path, args.train_device)
             partner_cfg["sad"] = True
@@ -555,8 +584,11 @@ def parse_args():
     parser.add_argument("--no_evaluation", type=int, default=0)
     parser.add_argument("--convention_act_override", type=int, default=0)
     parser.add_argument("--convention_fict_act_override", type=int, default=0)
-    parser.add_argument("--partner_models", type=str, default="None")
-    parser.add_argument("--partner_sad_legacy", type=int, default=0)
+    parser.add_argument("--train_partner_models", type=str, default="None")
+    parser.add_argument("--train_partner_model", type=str, default="None")
+    parser.add_argument("--test_partner_models", type=str, default="None")
+    parser.add_argument("--test_partner_sad_legacy", type=int, default=0)
+    parser.add_argument("--train_partner_sad_legacy", type=int, default=0)
     parser.add_argument("--train_test_splits", type=str, default="None")
     parser.add_argument("--split_index", type=int, default=0)
     parser.add_argument("--static_partner", type=int, default=0)
@@ -568,6 +600,7 @@ def parse_args():
     parser.add_argument("--record_convention_stats", type=int, default=0)
 
     args = parser.parse_args()
+
     if args.off_belief == 1:
         args.method = "iql"
         args.multi_step = 1
@@ -575,11 +608,23 @@ def parse_args():
         assert not args.shuffle_color
     assert args.method in ["vdn", "iql"]
 
-    if args.static_partner and args.partner_models != "None" \
-            and args.train_test_splits != "None":
+    # Add training split indexes to save directory name
+    if args.train_partner_models != "None" and \
+            args.train_test_splits != "None":
         indexes = load_json_list(args.train_test_splits)[args.split_index]["train"]
         indexes = [x + 1 for x in indexes]
         args.save_dir = args.save_dir + "_" + '_'.join(str(x) for x in indexes)
+
+    # Single training partner being used
+    if args.train_partner_model != "None" and \
+            args.train_partner_models == "None":
+        args.train_partner_models = [args.train_partner_model]
+
+    # Add pastplay model to save directory
+    if args.load_model and args.static_partner:
+        model_name = os.path.basename(os.path.dirname(args.load_model))
+        args.save_dir = args.save_dir + "_" + model_name
+        print(args.save_dir)
 
     return args
 

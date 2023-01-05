@@ -7,9 +7,12 @@ CARD_INDEX_MAP = ["0", "1", "2", "3", "4"]
 COLOUR_MOVE_MAP = ["red", "yellow", "green", "white", "blue"]
 RANK_MOVE_MAP = ["1", "2", "3", "4", "5"]
 
-def collect_stats(score, perfect, scores, actors, conventions, stat_type, stats=None):
+def collect_stats(score, perfect, scores, actors, 
+        conventions, stat_type="", stats=None):
     if stats is None:
         stats = defaultdict(int)
+    if stat_type != "":
+        stat_type += "_"
     record_total_scores(stats, score, perfect, scores, stat_type)
     convention_strings = extract_convention_strings(conventions)
 
@@ -36,14 +39,16 @@ def collect_stats(score, perfect, scores, actors, conventions, stat_type, stats=
 
 
 def record_total_scores(stats, score, perfect, scores, stat_type):
+    score_std = np.std(scores)
     non_zero_scores = [s for s in scores if s > 0]
     non_zero_mean = 0 if len(non_zero_scores) == 0 else np.mean(non_zero_scores)
     bomb_out_rate = (1 - len(non_zero_scores) / len(scores))
 
-    stats[f"{stat_type}_score"] = score
-    stats[f"{stat_type}_perfect"] = perfect
-    stats[f"{stat_type}_non_zero_mean"] = non_zero_mean
-    stats[f"{stat_type}_bomb_out_rate"] = bomb_out_rate
+    stats[f"{stat_type}score"] = score
+    stats[f"{stat_type}score_std"] = score_std
+    stats[f"{stat_type}perfect"] = perfect
+    stats[f"{stat_type}non_zero_mean"] = non_zero_mean
+    stats[f"{stat_type}bomb_out_rate"] = bomb_out_rate
 
 
 def calculate_scores(stats, conventions, convention_scores_stat_type):
@@ -100,7 +105,7 @@ def move_stats(stats, actor_stats, player, stat_type, convention=None):
 
 def move_type_stats(stats, actor_stats, player, move_map, move_type, 
         convention, stat_type, move_type_suffix=""):
-    prefix = f"{stat_type}_actor{player}"
+    prefix = f"{stat_type}actor{player}"
     if convention != None:
         prefix = convention + "_" + prefix
     move_with_suffix = f"{move_type}{move_type_suffix}"
@@ -176,7 +181,7 @@ def move_percentages(stats, player, stat_type, convention=None):
 
 def percent_move_type(stats, player, move_map, move_type, 
         convention, stat_type, move_type_suffix=""):
-    actor_str = f"{stat_type}_actor{player}"
+    actor_str = f"{stat_type}actor{player}"
     if convention != None:
         actor_str = convention + "_" + actor_str
     move_with_suffix = f"{move_type}{move_type_suffix}"

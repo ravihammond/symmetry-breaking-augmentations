@@ -144,6 +144,28 @@ def load_sad_model(weight_file, device):
     return agent
 
 
+def load_sad_weight(model, weight_file, device):
+    state_dict = torch.load(weight_file, map_location=device)
+    source_state_dict = OrderedDict()
+    target_state_dict = model.state_dict()
+
+    for k, v in target_state_dict.items():
+        if k not in state_dict:
+            # print("warning: %s not loaded" % k)
+            state_dict[k] = v
+    for k in state_dict:
+        if k not in target_state_dict:
+            # print(target_state_dict.keys())
+            print("removing: %s not used" % k)
+            # state_dict.pop(k)
+        else:
+            source_state_dict[k] = state_dict[k]
+
+
+    model.load_state_dict(source_state_dict)
+    return
+
+
 def load_agent(weight_file, overwrite):
     """
     overwrite has to contain "device"
@@ -332,28 +354,6 @@ def load_weight(model, weight_file, device, *, state_dict=None):
 
     model.load_state_dict(source_state_dict)
     return
-
-def load_sad_weight(model, weight_file, device):
-    state_dict = torch.load(weight_file, map_location=device)
-    source_state_dict = OrderedDict()
-    target_state_dict = model.state_dict()
-
-    for k, v in target_state_dict.items():
-        if k not in state_dict:
-            # print("warning: %s not loaded" % k)
-            state_dict[k] = v
-    for k in state_dict:
-        if k not in target_state_dict:
-            # print(target_state_dict.keys())
-            print("removing: %s not used" % k)
-            # state_dict.pop(k)
-        else:
-            source_state_dict[k] = state_dict[k]
-
-
-    model.load_state_dict(source_state_dict)
-    return
-
 
 # returns the number of steps in all actors
 def get_num_acts(actors):

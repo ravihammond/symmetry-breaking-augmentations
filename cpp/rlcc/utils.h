@@ -77,9 +77,7 @@ rela::TensorDict observe(
     bool legacySad);
 
 inline rela::TensorDict observe(
-    const hle::HanabiState& state, 
-    int playerIdx, 
-    bool hideAction) {
+    const hle::HanabiState& state, int playerIdx, bool hideAction) {
   return observe(
       state,
       playerIdx,
@@ -125,7 +123,7 @@ inline std::unique_ptr<hle::HanabiHistoryItem> getLastNonDealMoveReverse(
     const std::vector<hle::HanabiHistoryItem>& past_moves) {
   auto it = std::find_if(
       past_moves.rbegin(), past_moves.rend(), [](const hle::HanabiHistoryItem& item) {
-      return item.move.MoveType() != hle::HanabiMove::Type::kDeal;
+        return item.move.MoveType() != hle::HanabiMove::Type::kDeal;
       });
   if (it == past_moves.rend()) {
     return nullptr;
@@ -134,25 +132,25 @@ inline std::unique_ptr<hle::HanabiHistoryItem> getLastNonDealMoveReverse(
 }
 
 inline std::tuple<
-rela::TensorDict,
+  rela::TensorDict,
   std::unique_ptr<hle::HanabiHistoryItem>,
   std::vector<int>,
   hle::HanabiHand>
-  observeForSearch(
-      const hle::HanabiState& state, 
-      int playerIdx, 
-      bool hideAction, 
-      bool publCount) {
-    assert(!state.IsTerminal());
-    auto feat = ::observe(state, playerIdx, hideAction);
-    auto obs = hle::HanabiObservation(state, playerIdx, false);
-    auto lastMove = getLastNonDealMove(obs.LastMoves());
-    auto cardCount = hle::ComputeCardCount(
-        *state.ParentGame(), obs, false, std::vector<int>(), publCount);
-    hle::HanabiHand myHand = state.Hands()[playerIdx];
+observeForSearch(
+    const hle::HanabiState& state, 
+    int playerIdx, 
+    bool hideAction, 
+    bool publCount) {
+  assert(!state.IsTerminal());
+  auto feat = ::observe(state, playerIdx, hideAction);
+  auto obs = hle::HanabiObservation(state, playerIdx, false);
+  auto lastMove = getLastNonDealMove(obs.LastMoves());
+  auto cardCount = hle::ComputeCardCount(
+      *state.ParentGame(), obs, false, std::vector<int>(), publCount);
+  hle::HanabiHand myHand = state.Hands()[playerIdx];
 
-    return {feat, std::move(lastMove), cardCount, myHand};
-  }
+  return {feat, std::move(lastMove), cardCount, myHand};
+}
 
 std::tuple<rela::TensorDict, std::vector<int>, std::vector<float>> beliefModelObserve(
     const hle::HanabiState& state,

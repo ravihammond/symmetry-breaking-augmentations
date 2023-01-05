@@ -60,58 +60,6 @@ rela::TensorDict observe(
       colorPermute,
       invColorPermute,
       hideAction);
-  //printf("colour permute: { ");
-  //for (int colour: colorPermute) {
-  //printf("%d ", colour);
-  //}
-  //printf("}\n");
-  //printf("inverse colour permute: { ");
-  //for (int colour: invColorPermute) {
-  //printf("%d ", colour);
-  //}
-  //printf("}\n");
-
-  //printf("observation size: %lu\n", vS.size());
-  //char colours[5] = {'R','Y','G','W','Y'};
-  //int offset = 0;
-  //for (int player = 0; player < 2; player++) {
-  //printf("Player %d hand: ", player);
-  //for (int card = 0; card < 5; card ++) {
-  //int card_i = 0;
-  //for (int i = 0; i < 25; i ++) {
-  //if (vS[player*125 + card*25 + i] == 1) {
-  //card_i = i;
-  //break;
-  //}
-  //}
-  //auto cardValue = game.IndexToCard(card_i);
-  //printf("%s ", cardValue.ToString().c_str());
-  //}
-  //printf("\n");
-  //}
-  ////Hands
-  //offset += 252;
-  ////Deck
-  //offset += 40;
-  //printf("Fireworks: ");
-  //for (int card = 0; card < 5; card++) {
-  //int rank_i = 0;
-  //for (int rank = 0; rank < 5; rank++) {
-  //if (vS[offset + card*5 + rank] == 1) {
-  //rank_i = rank + 1;
-  //break;
-  //}
-  //}
-  //printf("%c%d ", colours[card], rank_i);
-  //}
-  //printf("\n");
-  ////Fireworks
-  //offset += 25;
-  ////Info Tokens
-  //offset += 8;
-  ////Life Tokens
-  //offset += 3;
-
 
   rela::TensorDict feat;
   if (!sad) {
@@ -122,8 +70,6 @@ rela::TensorDict observe(
         std::vector<int>(), shuffleColor, colorPermute);
     if (legacySad) {
       vS.insert(vS.end(), vA.begin(), vA.end());
-      //feat = splitPrivatePublicSadLegacy(vS, game);
-      //feat = {{p}}
       feat = {{"priv_s", torch::tensor(vS)}};
     } else {
       feat = convertSad(vS, vA, game);
@@ -204,8 +150,8 @@ std::tuple<rela::TensorDict, std::vector<int>, std::vector<float>> beliefModelOb
     feat["priv_s"] = torch::tensor(vS);
   } 
 
-  auto [v0, privCardCount] =
-    encoder.EncodePrivateV0Belief(obs, std::vector<int>(), shuffleColor, colorPermute);
+  auto [v0, privCardCount] = encoder.EncodePrivateV0Belief(
+      obs, std::vector<int>(), shuffleColor, colorPermute);
   feat["v0"] = torch::tensor(v0);
   return {feat, privCardCount, v0};
 }
