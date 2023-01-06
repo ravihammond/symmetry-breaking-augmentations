@@ -33,9 +33,10 @@ class HanabiThreadLoop : public rela::ThreadLoop {
 
     virtual void mainLoop() override {
       clock_t t;
+      int game_turn = 0;
       while (!terminated()) {
         if(PR)printf("\n=======================================\n");
-        if(PR)printf("Game Turn: %d\n", envs_[0]->numStep());
+        if(PR)printf("Game Turn: %d\n", game_turn);
         // go over each envs in sequential order
         // call in seperate for-loops to maximize parallization
 
@@ -182,6 +183,7 @@ class HanabiThreadLoop : public rela::ThreadLoop {
         t = clock() - t;
         timeStats_[4] = approxRollingAverage(
             timeStats_[4], ((double)t)/CLOCKS_PER_SEC);
+        game_turn = envs_[0]->numStep();
       }
     }
 

@@ -110,7 +110,8 @@ PYBIND11_MODULE(hanalearn, m) {
       .def("set_belief_runner_stats", &R2D2Actor::setBeliefRunnerStats)
       .def("get_success_fict_rate", &R2D2Actor::getSuccessFictRate)
       .def("get_stats", &R2D2Actor::getStats)
-      .def("get_convention_index", &R2D2Actor::getConventionIndex);
+      .def("get_convention_index", &R2D2Actor::getConventionIndex)
+      .def("set_compare_runners", &R2D2Actor::setCompareRunners);
 
   m.def("observe", py::overload_cast<const hle::HanabiState&, int, bool>(&observe));
 

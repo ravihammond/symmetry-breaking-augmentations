@@ -17,8 +17,6 @@ using namespace std;
 
 void R2D2Actor::addHid(rela::TensorDict& to, rela::TensorDict& hid) {
   for (auto& kv : hid) {
-    // hid: [num_layer, batch/num_player, dim]
-    // -> batched hid: [batchsize, num_layer, batch/num_player, dim]
     auto ret = to.emplace(kv.first, kv.second);
     assert(ret.second);
   }
@@ -135,6 +133,11 @@ std::tuple<bool, bool> analyzeCardBelief(const std::vector<float>& b) {
 void R2D2Actor::reset(const HanabiEnv& env) {
   conventionReset(env);
   hidden_ = getH0(batchsize_, runner_);
+
+  for (size_t i = 0; i < compHidden_.size(); i++) {
+    compHidden_[i] = getH0(batchsize_, compRunners_[i]);
+  }
+
   if (beliefRunner_ != nullptr) {
     beliefHidden_ = getH0(batchsize_, beliefRunner_);
   }
@@ -284,9 +287,12 @@ void R2D2Actor::observeBeforeAct(HanabiEnv& env) {
     //std::cout << kv.first << " " << kv.second.sizes() << std::endl;
   //}
   //printf("^^^^^^^^^^^\n");
+  //
 
   // no-blocking async call to neural network
   futReply_ = runner_->call("act", input);
+
+  callCompareAct(env);
 
   if (!offBelief_ && !beliefStats_) {
     return;
@@ -329,6 +335,8 @@ void R2D2Actor::act(HanabiEnv& env, const int curPlayer) {
   auto& state = env.getHleState();
   auto reply = futReply_.get();
   moveHid(reply, hidden_);
+
+  replyCompareAct(reply);
 
   if (replayBuffer_ != nullptr) {
     r2d2Buffer_->pushAction(reply);

@@ -21,6 +21,43 @@ void R2D2Actor::conventionReset(const HanabiEnv& env) {
   beliefStatsResponsePosition_ = responseMove.CardIndex();
 }
 
+void R2D2Actor::callCompareAct(HanabiEnv& env) {
+  const auto& state = env.getHleState();
+  for (size_t i = 0; i < compRunners_.size(); i++) {
+    rela::TensorDict input;
+    input = observe(
+        state,
+        playerIdx_,
+        shuffleColor_,
+        colorPermutes_[0],
+        invColorPermutes_[0],
+        compHideAction_[i],
+        trinary_,
+        compSad_[i],
+        showOwnCards_,
+        compSadLegacy_[i]);
+    // add features such as eps and temperature
+    input["eps"] = torch::tensor(playerEps_);
+    if (playerTemp_.size() > 0) {
+      input["temperature"] = torch::tensor(playerTemp_);
+    }
+    input["convention_idx"] = torch::tensor(conventionIdx_);
+    addHid(input, compHidden_[i]);
+    compFutReply_[i] = compRunners_[i]->call("act", input);
+  }
+}
+
+void R2D2Actor::replyCompareAct(rela::TensorDict& actorReply) {
+  for (size_t i = 0; i < compRunners_.size(); i++) {
+    auto reply = compFutReply_[i].get();
+    vector<string> keys;
+    for (auto& kv: reply) {
+      string newKey = compNames_[i] + ":" + kv.first;
+      actorReply[newKey] = kv.second;
+    }
+  }
+}
+
 hle::HanabiMove R2D2Actor::overrideMove(const HanabiEnv& env, hle::HanabiMove move, 
     vector<float> actionQ, bool exploreAction, vector<float> legalMoves) {
   if (conventionOverride_ == 0|| convention_.size() == 0 || 

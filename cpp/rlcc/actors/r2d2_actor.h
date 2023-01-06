@@ -33,7 +33,6 @@ class R2D2Actor {
         int multiStep,
         int seqLen,
         float gamma,
-
         // My changes
         std::vector<std::vector<std::vector<std::string>>> convention,
         bool actParameterized,
@@ -199,15 +198,38 @@ class R2D2Actor {
     }
 
     // My changes
+    
     void setBeliefRunnerStats(std::shared_ptr<rela::BatchRunner>& beliefModel) {
       assert(!vdn_ && batchsize_ == 1);
       beliefRunner_ = beliefModel;
       // OBL does not need Other-Play, and does not support Other-Play
       assert(!shuffleColor_);
     }
+
     void pushToReplayBuffer();
+    
     std::unordered_map<std::string, float> getStats() const { return stats_; }
+
     int getConventionIndex() { return conventionIdx_; }
+
+    void setCompareRunners(
+        std::vector<std::shared_ptr<rela::BatchRunner>> compRunners,
+        std::vector<bool> compSad,
+        std::vector<bool> compSadLegacy,
+        std::vector<bool> compHideAction,
+        std::vector<std::string> compNames) {
+
+      for (auto compRunner: compRunners) {
+        compRunners_.push_back(std::move(compRunner));
+        compHidden_.push_back(rela::TensorDict());
+        compFutReply_.push_back(rela::FutureReply());
+      }
+
+      compSad_ = compSad;
+      compSadLegacy_ = compSadLegacy;
+      compHideAction_ = compHideAction;
+      compNames_ = compNames;
+    }
 
   private:
     rela::TensorDict getH0(int numPlayer, std::shared_ptr<rela::BatchRunner>& runner) {
@@ -251,6 +273,8 @@ class R2D2Actor {
         std::shared_ptr<hle::HanabiHand> playedHand);
     void possibleResponseCards(const HanabiEnv& env,
         std::vector<int>& playableCards);
+    void callCompareAct(HanabiEnv& env);
+    void replyCompareAct(rela::TensorDict& actorReply);
 
     std::shared_ptr<rela::BatchRunner> runner_;
     std::shared_ptr<rela::BatchRunner> classifier_;
@@ -332,4 +356,12 @@ class R2D2Actor {
     int beliefStatsResponsePosition_;
     std::shared_ptr<hle::HanabiHand> previousHand_ = nullptr;
     bool colorShuffleSync_;
+
+    std::vector<std::shared_ptr<rela::BatchRunner>> compRunners_;
+    std::vector<rela::TensorDict> compHidden_;
+    std::vector<bool> compSad_;
+    std::vector<bool> compSadLegacy_;
+    std::vector<bool> compHideAction_;
+    std::vector<std::string> compNames_;
+    std::vector<rela::FutureReply> compFutReply_;
 };

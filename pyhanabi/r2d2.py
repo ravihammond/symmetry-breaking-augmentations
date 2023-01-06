@@ -183,6 +183,7 @@ class R2D2Agent(torch.jit.ScriptModule):
         output: {'a' : actions}, a long Tensor of shape
             [batchsize] or [batchsize, num_player]
         """
+        # print("act() r2d2.py=======")
         priv_s = obs["priv_s"]
         publ_s = obs["publ_s"]
         legal_move = obs["legal_move"]
