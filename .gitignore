@@ -5,6 +5,7 @@ cmake-build-debug/
 */__pycache__/*
 .DS_Store
 pyhanabi/exps
+pyhanabi/similarity_data
 sweep
 sweep_*
 plot.png
@@ -34,3 +35,4 @@ training_models/*
 .vscode/
 keys/*
 wandb_api_key.txt
+

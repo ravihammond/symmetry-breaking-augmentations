@@ -1,12 +1,16 @@
+import sys
+import os
 import argparse
 import pprint
 pprint = pprint.pprint
 import numpy as np
+import matplotlib.pyplot as plt
 
 from create import *
 import rela
 import r2d2
 import utils
+import csv
 
 def calculate_policy_differences(
     act_policy,
@@ -19,8 +23,11 @@ def calculate_policy_differences(
     comp_sad_legacy,
     device,
     comp_names,
+    output_dir,
 ):
+    print("\nact policy")
     act_agent = load_agent(act_policy, act_sad_legacy, device)
+    print("comp policies")
     comp_agents = load_agents(comp_policies, comp_sad_legacy, device)
 
     replay_buffer = generate_replay_data(
@@ -34,6 +41,7 @@ def calculate_policy_differences(
     )
 
     data = extract_data(replay_buffer, batch_size, "cpu", comp_names)
+    save_data(data, act_policy, comp_policies, comp_names, output_dir)
 
 
 def load_agents(policies, sad_legacy, device):
@@ -222,8 +230,6 @@ def extract_data(replay_buffer, batch_size, device, comp_names):
     assert(replay_buffer.size() % batch_size == 0)
     num_batches = (int)(replay_buffer.size() / batch_size)
 
-    action
-
     for batch_index in range(num_batches):
         range_start = batch_index * batch_size
         range_end = batch_index * batch_size + batch_size
@@ -232,26 +238,105 @@ def extract_data(replay_buffer, batch_size, device, comp_names):
         batch, _ = replay_buffer.sample_from_list(
                 batch_size, device, sample_id_list)
 
-        get_similarities(batch, comp_names)
+        similarities = get_similarities(batch, comp_names)
+
+    return similarities
 
 
 def get_similarities(batch, comp_names):
-    action = np.array(batch.action["a"])
+    seq_len = np.array(batch.seq_len)
+
+    actions = np.array(batch.action["a"])
+    actions = clean_actions(actions, seq_len)
 
     comp_actions = {}
     for name in comp_names:
         action_key = name + ":a"
         comp_action = np.array(batch.action[action_key])
         comp_action = np.expand_dims(comp_action, axis=2)
+        comp_action = clean_actions(comp_action, seq_len)
         comp_actions[action_key] = comp_action
 
-    compared_actions = {}
+    similarities = {}
     for name in comp_names:
         action_key = name + ":a"
-        action_diff = np.array(action == comp_actions[action_key], dtype=int)
-        compared_actions[action_key] = action_diff
+
+        # Sum number of same actions
+        action_diff = np.array(actions == comp_actions[action_key], dtype=int)
+        invalid = np.array(actions == 20, dtype=int)
+        diff_without_invalid = np.subtract(action_diff, invalid)
+        summed = diff_without_invalid.sum(axis=1, keepdims=True)
+
+        # Get totals
+        invalid_summed = np.sum(invalid, axis=1, keepdims=True)
+        totals = np.full(summed.shape, actions.shape[1])
+        totals_no_invalid = np.subtract(totals, invalid_summed)
+
+        # Calculate similarity
+        similarity = np.divide(summed, totals_no_invalid,
+                            out=np.zeros(summed.shape), 
+                            where=totals_no_invalid!=0)
+
+        similarities[action_key] = similarity.squeeze(axis=1)
+
+    return similarities
 
 
+def clean_actions(actions, seq_len):
+    seq_list = np.arange(actions.shape[0])
+    mask = np.invert(seq_list < seq_len[..., None])
+    mask_t = np.transpose(mask)
+    seq_mask = np.expand_dims(mask_t, axis=2)
+    actions[seq_mask] = 20
+    return actions
+
+
+def save_data(data, act_policy, comp_policies, comp_names, output_dir):
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+
+    # act_policy_no_ext = os.path.splitext(act_policy)[0]
+    # base_actor = os.path.basename(act_policy_no_ext)
+    base_actor = os.path.basename(os.path.dirname(act_policy))
+
+    for i, comp_policy in enumerate(comp_policies):
+        comp_full_name = os.path.basename(os.path.dirname(comp_policy))
+        filename = comp_full_name + "_vs_" + base_actor + ".csv"
+
+        save_dir = os.path.join(output_dir, comp_names[i])
+        if not os.path.exists(save_dir):
+            os.makedirs(save_dir)
+
+        save_path = os.path.join(save_dir, filename)
+        data_key = comp_names[i] + ":a"
+        np.savetxt(save_path, data[data_key], delimiter=",",fmt='%1.4f')
+
+
+def action_to_string(action):
+    action_to_string_map = {
+        0: "(D0)",
+        1: "(D1)",
+        2: "(D2)",
+        3: "(D3)",
+        4: "(D4)",
+        5: "(P0)",
+        6: "(P1)",
+        7: "(P2)",
+        8: "(P3)",
+        9: "(P4)",
+        10: "(CR)",
+        11: "(CY)",
+        12: "(CG)",
+        13: "(CW)",
+        14: "(CB)",
+        15: "(R1)",
+        16: "(R2)",
+        17: "(R3)",
+        18: "(R4)",
+        19: "(R5)",
+        20: "    ",
+    }
+    return action_to_string_map[action]
 
 
 def parse_args():
@@ -266,6 +351,7 @@ def parse_args():
     parser.add_argument("--batch_size", type=int, default=None)
     parser.add_argument("--device", type=str, default="cuda:0")
     parser.add_argument("--comp_names", type=str, default="None")
+    parser.add_argument("--outdir", type=str, default="similarity_data")
     args = parser.parse_args()
 
     if args.comp_policies == "None":
@@ -303,4 +389,5 @@ if __name__ == "__main__":
         args.comp_sad_legacy,
         args.device,
         args.comp_names,
+        args.outdir,
     )
