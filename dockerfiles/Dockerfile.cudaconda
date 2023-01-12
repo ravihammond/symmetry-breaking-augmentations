@@ -73,6 +73,8 @@ RUN pip install \
     psutil==5.8.0
 
 RUN conda install -c conda-forge \
-    google-clou$HOME/.config/gcloud/application_default_credentials.jsond-storage
+    google-cloud-storage \
+    easydict 
+
 
 

@@ -5,6 +5,7 @@ import pprint
 pprint = pprint.pprint
 import numpy as np
 import matplotlib.pyplot as plt
+import torch
 
 from create import *
 import rela
@@ -12,8 +13,33 @@ import r2d2
 import utils
 import csv
 
+ACTION_TO_STRING = {
+    0: "(D0)",
+    1: "(D1)",
+    2: "(D2)",
+    3: "(D3)",
+    4: "(D4)",
+    5: "(P0)",
+    6: "(P1)",
+    7: "(P2)",
+    8: "(P3)",
+    9: "(P4)",
+    10: "(CR)",
+    11: "(CY)",
+    12: "(CG)",
+    13: "(CW)",
+    14: "(CB)",
+    15: "(R1)",
+    16: "(R2)",
+    17: "(R3)",
+    18: "(R4)",
+    19: "(R5)",
+    20: "----",
+}
+
 def calculate_policy_differences(
-    act_policy,
+    act_policy1,
+    act_policy2,
     comp_policies,
     num_game,
     num_thread,
@@ -24,6 +50,9 @@ def calculate_policy_differences(
     device,
     comp_names,
     output_dir,
+    rand_policy,
+    verbose,
+    compare_as_base,
 ):
     print("\nact policy")
     act_agent = load_agent(act_policy, act_sad_legacy, device)
@@ -40,8 +69,18 @@ def calculate_policy_differences(
         comp_names=comp_names
     )
 
-    data = extract_data(replay_buffer, batch_size, "cpu", comp_names)
-    save_data(data, act_policy, comp_policies, comp_names, output_dir)
+    comp_base_sad_legacy = None
+    if compare_as_base != "None":
+        print(f"Using {compare_as_base} as comparision base.")
+        comp_base_sad_legacy = comp_sad_legacy[comp_names.index(compare_as_base)]
+        comp_names.remove(compare_as_base)
+
+    data = extract_data(replay_buffer, batch_size, "cpu", comp_names,
+            act_sad_legacy, comp_sad_legacy, rand_policy, 
+            compare_as_base, comp_base_sad_legacy, verbose)
+
+    if output_dir is not None:
+        save_data(data, act_policy, comp_policies, comp_names, output_dir, rand_policy)
 
 
 def load_agents(policies, sad_legacy, device):
@@ -226,7 +265,17 @@ def generate_replay_data(
     return replay_buffer
 
 
-def extract_data(replay_buffer, batch_size, device, comp_names):
+def extract_data(
+        replay_buffer, 
+        batch_size, 
+        device, 
+        comp_names, 
+        act_sad_legacy, 
+        comp_sad_legacy, 
+        rand_policy, 
+        compare_as_base,
+        comp_base_sad_legacy,
+        verbose):
     assert(replay_buffer.size() % batch_size == 0)
     num_batches = (int)(replay_buffer.size() / batch_size)
 
@@ -238,24 +287,42 @@ def extract_data(replay_buffer, batch_size, device, comp_names):
         batch, _ = replay_buffer.sample_from_list(
                 batch_size, device, sample_id_list)
 
-        similarities = get_similarities(batch, comp_names)
+        similarities = get_similarities(batch, comp_names, act_sad_legacy, 
+                comp_sad_legacy, rand_policy, compare_as_base, 
+                comp_base_sad_legacy, verbose)
 
     return similarities
 
 
-def get_similarities(batch, comp_names):
+def get_similarities(batch, comp_names, act_sad_legacy, comp_sad_legacy, 
+        rand_policy, compare_as_base, comp_base_sad_legacy, verbose):
     seq_len = np.array(batch.seq_len)
 
     actions = np.array(batch.action["a"])
+    if not act_sad_legacy:
+        actions = np.expand_dims(actions, axis=2)
+    if compare_as_base != "None":
+        action_key = compare_as_base + ":a"
+        actions = np.array(batch.action[action_key])
+        if not comp_base_sad_legacy:
+            actions = np.expand_dims(actions, axis=2)
     actions = clean_actions(actions, seq_len)
 
     comp_actions = {}
-    for name in comp_names:
+    for i, name in enumerate(comp_names):
         action_key = name + ":a"
         comp_action = np.array(batch.action[action_key])
-        comp_action = np.expand_dims(comp_action, axis=2)
+        if not comp_sad_legacy[i]:
+            comp_action = np.expand_dims(comp_action, axis=2)
         comp_action = clean_actions(comp_action, seq_len)
+
         comp_actions[action_key] = comp_action
+
+    if rand_policy:
+        create_random_actions(batch, actions, comp_actions, comp_names)
+
+    if verbose:
+        print_games(actions, comp_actions, comp_names)
 
     similarities = {}
     for name in comp_names:
@@ -287,73 +354,114 @@ def clean_actions(actions, seq_len):
     mask = np.invert(seq_list < seq_len[..., None])
     mask_t = np.transpose(mask)
     seq_mask = np.expand_dims(mask_t, axis=2)
-    actions[seq_mask] = 20
+    actions[seq_mask] = 20 
     return actions
 
 
-def save_data(data, act_policy, comp_policies, comp_names, output_dir):
+def create_random_actions(batch, actions, comp_actions, comp_names):
+    comp_names.append("rand")
+    seq_len = np.array(batch.seq_len)
+
+    legal_moves = batch.action["legal_moves"]
+
+    # Add no-op legal moves to all moves after game has finished
+    seq_list = np.arange(legal_moves.shape[0])
+    mask = np.invert(seq_list < seq_len[..., None])
+    mask_t = np.transpose(mask)
+    seq_mask = np.expand_dims(mask_t, axis=2)
+    seq_mask = np.repeat(seq_mask, legal_moves.shape[2], axis=2).astype(float)
+    legal_moves_shape = list(legal_moves.shape)
+    legal_moves_shape[len(legal_moves_shape) - 1] -= 1
+    zeros_mask = np.zeros(legal_moves_shape)
+    seq_mask[:,:,0:legal_moves.shape[2] - 1] = zeros_mask
+    legal_moves = legal_moves + seq_mask
+
+    legal_moves_shape = list(legal_moves.shape)
+    legal_moves_shape[0] = 0
+    legal_moves_shape[len(legal_moves_shape) - 1] = 1
+
+    rand_actions = np.empty((legal_moves_shape))
+
+    for time_step in range(legal_moves.shape[0]):
+        legal_moves_slice = legal_moves[time_step]
+        rand_action = torch.multinomial(legal_moves[time_step], num_samples=1)
+        rand_action = np.expand_dims(rand_action.numpy(), axis=0)
+        rand_actions = np.vstack((rand_actions, rand_action))
+
+    comp_actions["rand:a"] = rand_actions.astype(int)
+
+
+def print_games(actions, comp_actions, comp_names):
+    print()
+    for game in range(actions.shape[1]):
+        print("base", end="")
+        for comp_name in comp_names:
+            print(f"\t{comp_name}", end="")
+        print("\t\t", end="")
+    print()
+
+    for time in range(actions.shape[0]):
+        for game in range(actions.shape[1]):
+            action = actions[time,game,0]
+            action_str = ACTION_TO_STRING[action]
+            print(f"{action} {action_str}", end="")
+            for comp_name in comp_names:
+                action = comp_actions[comp_name + ":a"][time,game,0]
+                action_str = ACTION_TO_STRING[action]
+                print(f"\t{action} {action_str}", end="")
+            print("\t\t", end="")
+        print()
+
+
+def save_data(data, act_policy, comp_policies, comp_names, output_dir, rand_policy):
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
-    # act_policy_no_ext = os.path.splitext(act_policy)[0]
-    # base_actor = os.path.basename(act_policy_no_ext)
-    base_actor = os.path.basename(os.path.dirname(act_policy))
+    act_policy_no_ext = os.path.splitext(act_policy)[0]
+    base_actor = os.path.basename(act_policy_no_ext)
+    # base_actor = os.path.basename(os.path.dirname(act_policy))
 
-    for i, comp_policy in enumerate(comp_policies):
-        comp_full_name = os.path.basename(os.path.dirname(comp_policy))
+    for i, comp_name in enumerate(comp_names):
+        if comp_name == "rand":
+            comp_full_name = comp_name
+        else:
+            comp_full_name = os.path.basename(os.path.dirname(comp_policies[i]))
         filename = comp_full_name + "_vs_" + base_actor + ".csv"
 
-        save_dir = os.path.join(output_dir, comp_names[i])
+        save_dir = os.path.join(output_dir, comp_name)
         if not os.path.exists(save_dir):
             os.makedirs(save_dir)
 
         save_path = os.path.join(save_dir, filename)
-        data_key = comp_names[i] + ":a"
+        print("saving:", save_path)
+        data_key = comp_name + ":a"
         np.savetxt(save_path, data[data_key], delimiter=",",fmt='%1.4f')
-
-
-def action_to_string(action):
-    action_to_string_map = {
-        0: "(D0)",
-        1: "(D1)",
-        2: "(D2)",
-        3: "(D3)",
-        4: "(D4)",
-        5: "(P0)",
-        6: "(P1)",
-        7: "(P2)",
-        8: "(P3)",
-        9: "(P4)",
-        10: "(CR)",
-        11: "(CY)",
-        12: "(CG)",
-        13: "(CW)",
-        14: "(CB)",
-        15: "(R1)",
-        16: "(R2)",
-        17: "(R3)",
-        18: "(R4)",
-        19: "(R5)",
-        20: "    ",
-    }
-    return action_to_string_map[action]
 
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--act_policy", type=str, required=True)
+    parser.add_argument("--act_policy1", type=str, required=True)
+    parser.add_argument("--act_policy2", type=str, required=True)
     parser.add_argument("--comp_policies", type=str, default="None")
-    parser.add_argument("--act_sad_legacy", type=int, default=0)
-    parser.add_argument("--comp_sad_legacy", type=str, default="0")
+    parser.add_argument("--act_sad_legacy", type=str, default="0,0")
+    parser.add_argument("--comp_sad_legacy", type=str, default="None")
+    parser.add_argument("--rand_policy", type=int, default=0)
     parser.add_argument("--num_game", type=int, default=1000)
     parser.add_argument("--num_thread", type=int, default=10)
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--batch_size", type=int, default=None)
     parser.add_argument("--device", type=str, default="cuda:0")
     parser.add_argument("--comp_names", type=str, default="None")
-    parser.add_argument("--outdir", type=str, default="similarity_data")
+    parser.add_argument("--outdir", type=str, default=None)
+    parser.add_argument("--verbose", type=int, default=0)
+    parser.add_argument("--compare_as_base", type=str, default="None")
     args = parser.parse_args()
 
+    args.act_sad_legacy = [int(x) for x in args.act_sad_legacy.split(",")]
+    assert(len(args.act_sad_legacy) <= 2)
+    if (len(args.act_sad_legacy) == 1):
+        args.act_sad_legacy *= 2
+    
     if args.comp_policies == "None":
         assert(args.comp_sad_legacy == "None")
         args.comp_policies = []
@@ -366,12 +474,17 @@ def parse_args():
         if (len(args.comp_sad_legacy) == 1):
             args.comp_sad_legacy *= len(args.comp_policies)
 
-    if args.comp_names != "None":
+    if args.comp_names == "None":
+        args.comp_names = []
+    else:
         args.comp_names = args.comp_names.split(",")
         assert(len(args.comp_names) == len(args.comp_policies))
 
     if args.batch_size is None:
         args.batch_size = args.num_game * 2
+
+    if args.outdir is not None:
+        args.outdir = os.path.join("similarity_data", args.out_dir)
 
     return args
 
@@ -379,7 +492,8 @@ if __name__ == "__main__":
     args = parse_args()
 
     calculate_policy_differences(
-        args.act_policy,
+        args.act_policy1,
+        args.act_policy2,
         args.comp_policies,
         args.num_game,
         args.num_thread,
@@ -390,4 +504,7 @@ if __name__ == "__main__":
         args.device,
         args.comp_names,
         args.outdir,
+        args.rand_policy,
+        args.verbose,
+        args.compare_as_base,
     )
