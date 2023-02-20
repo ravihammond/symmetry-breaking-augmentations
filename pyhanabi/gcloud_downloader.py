@@ -41,7 +41,11 @@ def download_from_gcloud(args):
         for blob in blob_list:
             filename = os.path.basename(blob.name)
             filepath = os.path.join(outdir, filename)
-            blob.download_to_filename(filepath)
+
+            accepted = ["train.log", "model_epoch1000.pthw"]
+            accepted_file = any([True for s in accepted if s in filepath])
+            if not args.last_only or accepted_file:
+                blob.download_to_filename(filepath)
 
 
 if __name__ == "__main__":
@@ -49,5 +53,6 @@ if __name__ == "__main__":
     parser.add_argument("--folder", type=str)
     parser.add_argument("--rename", type=str, default=None)
     parser.add_argument("--out", type=str)
+    parser.add_argument('--last_only', action="store_true")
     args = parser.parse_args()
     download_from_gcloud(args)

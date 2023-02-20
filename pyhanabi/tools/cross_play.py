@@ -13,7 +13,7 @@ pprint = pprint.pprint
 import itertools
 from collections import defaultdict
 import numpy as np
-import matplotlib.colors as mcolors
+import matplotlib.colors as mcolors 
 import matplotlib.pyplot as plt
 import copy
 import re
@@ -102,7 +102,7 @@ def cross_play(all_models, args, margs):
     for i in range(num_parameters[0]):
         row = []
         for j in range(num_parameters[1]):
-            print(f"evaluating: pobl1_sad_{i + 1}, pobl1_sad_{j + 1}")
+            print(f"evaluating: obl_{i + 1}, obl_{j + 1}")
 
             models = []
             model_idx = [i, j]

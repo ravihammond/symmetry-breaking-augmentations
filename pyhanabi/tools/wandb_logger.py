@@ -1,6 +1,5 @@
-import wandb
-import pprint
 import numpy as np
+import pprint
 pprint = pprint.pprint
 
 from tools.collect_actor_stats import collect_stats

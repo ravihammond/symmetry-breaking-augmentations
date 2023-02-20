@@ -587,8 +587,8 @@ def parse_args():
     parser.add_argument("--train_partner_models", type=str, default="None")
     parser.add_argument("--train_partner_model", type=str, default="None")
     parser.add_argument("--test_partner_models", type=str, default="None")
-    parser.add_argument("--test_partner_sad_legacy", type=int, default=0)
     parser.add_argument("--train_partner_sad_legacy", type=int, default=0)
+    parser.add_argument("--test_partner_sad_legacy", type=int, default=None)
     parser.add_argument("--train_test_splits", type=str, default="None")
     parser.add_argument("--split_index", type=int, default=0)
     parser.add_argument("--static_partner", type=int, default=0)
@@ -625,6 +625,12 @@ def parse_args():
         model_name = os.path.basename(os.path.dirname(args.load_model))
         args.save_dir = args.save_dir + "_" + model_name
         print(args.save_dir)
+
+    # Set test models to train if test arg not set
+    if args.test_partner_models == "None":
+        args.test_partner_models = args.train_partner_models
+    if args.test_partner_sad_legacy == None:
+        args.test_partner_sad_legacy = args.train_partner_sad_legacy
 
     return args
 

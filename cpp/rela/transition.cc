@@ -206,6 +206,60 @@ RNNTransition rela::makeBatch(
   return batch;
 }
 
+std::tuple<RNNTransition, RNNTransition> rela::makeBatchSplit(
+    const std::vector<RNNTransition>& transitions, const std::string& device) {
+  std::vector<RNNTransition> batches;
+  for (int player = 0; player < 2; player++) {
+    std::vector<TensorDict> obsVec;
+    std::vector<TensorDict> h0Vec;
+    std::vector<TensorDict> actionVec;
+    std::vector<torch::Tensor> rewardVec;
+    std::vector<torch::Tensor> terminalVec;
+    std::vector<torch::Tensor> bootstrapVec;
+    std::vector<torch::Tensor> seqLenVec;
+
+    for (size_t i = 0; i < transitions.size(); i++) {
+      TensorDict obs = transitions[i].obs;
+      int actorIndex = obs["actor_index"][0].item<int64_t>();
+      if (actorIndex != player) {
+        continue;
+      }
+      obsVec.push_back(transitions[i].obs);
+      h0Vec.push_back(transitions[i].h0);
+      actionVec.push_back(transitions[i].action);
+      rewardVec.push_back(transitions[i].reward);
+      terminalVec.push_back(transitions[i].terminal);
+      bootstrapVec.push_back(transitions[i].bootstrap);
+      seqLenVec.push_back(transitions[i].seqLen);
+    }
+
+    RNNTransition batch;
+    batch.obs = tensor_dict::stack(obsVec, 1);
+    batch.h0 = tensor_dict::stack(h0Vec, 1);  // 1 is batch for rnn hid
+    batch.action = tensor_dict::stack(actionVec, 1);
+    batch.reward = torch::stack(rewardVec, 1);
+    batch.terminal = torch::stack(terminalVec, 1);
+    batch.bootstrap = torch::stack(bootstrapVec, 1);
+    batch.seqLen = torch::stack(seqLenVec, 0);
+
+    if (device != "cpu") {
+      auto d = torch::Device(device);
+      auto toDevice = [&](const torch::Tensor& t) { return t.to(d); };
+      batch.obs = tensor_dict::apply(batch.obs, toDevice);
+      batch.h0 = tensor_dict::apply(batch.h0, toDevice);
+      batch.action = tensor_dict::apply(batch.action, toDevice);
+      batch.reward = batch.reward.to(d);
+      batch.terminal = batch.terminal.to(d);
+      batch.bootstrap = batch.bootstrap.to(d);
+      batch.seqLen = batch.seqLen.to(d);
+    }
+
+    batches.push_back(batch);
+  }
+
+  return std::make_tuple(batches[0], batches[1]);
+}
+
 TensorDict rela::makeBatch(
     const std::vector<TensorDict>& transitions, const std::string& device) {
   auto batch = tensor_dict::stack(transitions, 0);

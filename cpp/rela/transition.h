@@ -70,6 +70,9 @@ FFTransition makeBatch(
 RNNTransition makeBatch(
     const std::vector<RNNTransition>& transitions, const std::string& device);
 
+std::tuple<RNNTransition, RNNTransition> makeBatchSplit(
+    const std::vector<RNNTransition>& transitions, const std::string& device);
+
 TensorDict makeBatch(
     const std::vector<TensorDict>& transitions, const std::string& device);
 

@@ -10,6 +10,8 @@ from os import listdir
 from os.path import isfile, join
 from pprint import pprint
 
+SAMPLES_PER_PAIR = 5000
+
 
 def plot_differences(args):
     all_data = generate_plot_data(args)
@@ -25,12 +27,14 @@ def generate_plot_data(args):
         
         if comp_model in ["br", "sba"]:
             data_files = get_data_files_from_splits(args, comp_model)
+        elif comp_model == "sad":
+            data_files = get_all_sad_data_files(args)
         else:
             data_files = get_all_data_files(args, comp_model)
 
         (data.mean, 
-         data.stderr_high, 
-         data.stderr_low) = extract_data(data_files)
+         data.conf_high, 
+         data.conf_low) = extract_data(args, data_files)
 
         all_data.append(data)
 
@@ -48,11 +52,31 @@ def get_data_files_from_splits(args, comp_model):
         train_indexes = [x + 1 for x in train_indexes]
         train_indexes_str = '_'.join(str(x) for x in train_indexes)
 
-        test_indexes = splits[split_i]["test"]
+        test_indexes = splits[split_i][args.data_type]
         test_indexes = [x + 1 for x in test_indexes]
 
-        for policy_i in test_indexes:
-            filename = f"{comp_model}_sad_{train_indexes_str}_vs_sad_{policy_i}.csv"
+        for partner_i, policy_i in enumerate(test_indexes):
+            filename = f"{comp_model}_sad_{args.name_ext}{train_indexes_str}_vs_sad_{policy_i}.csv"
+            filepath = os.path.join(dir_path, filename)
+            if args.partner_indexes == "None" or \
+                split_i < len(args.split_indexes) - 1 or \
+                partner_i in args.partner_indexes:
+                data_files.append(filepath)
+
+    return data_files
+
+
+def get_all_sad_data_files(args):
+    data_files = []
+
+    for i in args.sad_indexes:
+        base_model = f"sad_{i + 1}"
+        dir_path = os.path.join(args.sad_dir, base_model)
+
+        for j in range(13):
+            if i == j:
+                continue
+            filename = f"{base_model}_vs_sad_{j + 1}.csv"
             filepath = os.path.join(dir_path, filename)
             data_files.append(filepath)
 
@@ -67,7 +91,7 @@ def get_all_data_files(args, comp_model):
     return data_files
 
 
-def extract_data(data_files):
+def extract_data(args, data_files):
     # similarity_data = np.zeros
     combined_data = np.zeros((args.datasize,0))
 
@@ -79,18 +103,32 @@ def extract_data(data_files):
     mean = np.mean(combined_data, axis=1)
     std = np.std(combined_data, axis=1)
     stderr = mean / np.sqrt(combined_data.shape[1])
-    stderr_high = mean + stderr
-    stderr_low = mean - stderr
 
-    return mean, stderr_high, stderr_low
+    splits = load_json_list(args.train_test_splits)
+    indexes = splits[0][args.data_type]
+
+    num_samples = combined_data.shape[1] * SAMPLES_PER_PAIR
+    bin_conf = np.sqrt((mean * (1 - mean)) / num_samples)
+
+    conf = bin_conf
+    if args.data_type == "stderr":
+        conf = stderr
+
+    conf_high = mean + conf
+    conf_low = mean - conf
+
+    return mean, conf_high, conf_low
 
 
 def plot_data(args, all_data):
-    time_steps = list(range(args.seq_end - args.seq_start))
+    time_steps = list(range(args.seq_start, args.seq_end))
 
     for data in all_data:
-        plt.plot(time_steps, data.mean, label=data.name)
-        plt.fill_between(time_steps, data.stderr_high, data.stderr_low, alpha=0.1)
+        mean = data.mean[args.seq_start:args.seq_end]
+        plt.plot(time_steps, mean, label=data.name)
+        conf_high = data.conf_high[args.seq_start:args.seq_end]
+        conf_low = data.conf_low[args.seq_start:args.seq_end]
+        plt.fill_between(time_steps, conf_high, conf_low, alpha=0.3)
 
     if len(args.split_indexes) == 1:
         args.title += f" - Split: {args.split_indexes[0]}"
@@ -112,14 +150,20 @@ def load_json_list(path):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--load_dir", type=str, required=True)
+    parser.add_argument("--sad_dir", type=str, default=None)
     parser.add_argument("--train_test_splits", type=str, default="None")
     parser.add_argument("--split_indexes", type=str, default="None")
+    parser.add_argument("--partner_indexes", type=str, default="None")
     parser.add_argument("--compare_models", type=str, default="None")
-    parser.add_argument("--seq_start", type=int, default=0)
-    parser.add_argument("--seq_end", type=int, default=80)
+    parser.add_argument("--seq_start", type=int, default=1)
+    parser.add_argument("--seq_end", type=int, default=70)
     parser.add_argument("--datasize", type=int, default=80)
     parser.add_argument("--title", type=str, default="SAD Policy Differences")
     parser.add_argument("--ylabel", type=str, default="Similarity vs SAD")
+    parser.add_argument("--data_type", type=str, default="test")
+    parser.add_argument("--conf_type", type=str, default="bin_conf")
+    parser.add_argument("--name_ext", type=str, default="")
+    parser.add_argument("--sad_indexes", type=str, default="None")
     args = parser.parse_args()
 
     if args.compare_models == "None":
@@ -132,7 +176,20 @@ if __name__ == "__main__":
     else:
         args.split_indexes = [int(x) for x in args.split_indexes.split(",")]
 
+    if args.sad_indexes == "None":
+        args.sad_indexes = []
+    else:
+        args.sad_indexes = [int(x) for x in args.sad_indexes.split(",")]
+
+    if args.partner_indexes != "None":
+        args.partner_indexes = [int(x) for x in args.partner_indexes.split(",")]
+
+    if args.name_ext != "":
+        args.name_ext += "_"
+
     args.load_dir = os.path.join("similarity_data", args.load_dir)
+    if args.sad_dir is not None:
+        args.sad_dir = os.path.join("similarity_data", args.sad_dir)
 
     plot_differences(args)
 

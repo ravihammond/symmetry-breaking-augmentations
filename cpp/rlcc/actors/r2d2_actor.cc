@@ -265,6 +265,7 @@ void R2D2Actor::observeBeforeAct(HanabiEnv& env) {
     input["response_card_position"] = torch::tensor(responseCardPosition);
     input["playable_cards"] = torch::tensor(playableCards);
   }
+  input["actor_index"] = torch::tensor(playerIdx_);
 
   // push before we add hidden
   if (replayBuffer_ != nullptr) {

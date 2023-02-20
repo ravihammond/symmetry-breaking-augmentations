@@ -317,6 +317,31 @@ class PrioritizedReplay {
       return std::make_tuple(batch, idList);
     }
 
+    std::tuple<DataType, DataType> sampleFromListSplit(
+        int batchsize, const std::string& device, std::vector<int> idList) {
+      std::unique_lock<std::mutex> lk(mSampler_);
+
+      float sum;
+      int size = storage_.safeSize(&sum);
+      assert(size >= (int)idList.size());
+
+      std::vector<DataType> samples;
+
+      for (int id:idList) {
+        DataType element = storage_.getElementAndMark(id);
+        samples.push_back(element);
+      }
+
+      assert((int)samples.size() == batchsize);
+
+      // safe to unlock, because <samples> contains copys
+      lk.unlock();
+
+      DataType batch1, batch2;
+      std::tie(batch1, batch2) = makeBatchSplit(samples, device);
+      return std::make_tuple(batch1, batch2);
+    }
+
   private:
     using SampleWeightIds = std::tuple<DataType, torch::Tensor, std::vector<int>>;
 

@@ -10,9 +10,13 @@ pprint = pprint.pprint
 
 PROJECT = "ravihammond/hanabi-conventions"
 SAVE_DIR = "/app/pyhanabi/wandb_data"
-SPLITS_PATH = "/app/pyhanabi/sad_train_test_splits.json"
-LOG_NAMES = ["test_score","train_score"]
-
+SPLITS_DIR = "/app/pyhanabi/train_test_splits"
+LOG_NAMES = [
+    "test_score",
+    "train_score",
+    "test_score_stderr",
+    "train_score_stderr"
+]
 
 def export_wandb(args):
     subprocess.call(["wandb", "login", os.environ["WANDB_TOKEN"]])
@@ -35,7 +39,8 @@ def export_wandb(args):
 
 def get_names(args):
     split_ids = [int(x) for x in args.splits.split(",")]
-    splits = load_json_list(SPLITS_PATH)
+    splits_path = os.path.join(SPLITS_DIR, args.splits_file + ".json")
+    splits = load_json_list(splits_path)
     models = args.models.split(",")
 
     names = []
@@ -65,6 +70,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--models", type=str, required=True)
     parser.add_argument("--splits", type=str, required=True)
+    parser.add_argument("--splits_file", type=str, required=True)
     parser.add_argument("--num_samples", type=int, default=1000)
     parser.parse_args()
     args = parser.parse_args()

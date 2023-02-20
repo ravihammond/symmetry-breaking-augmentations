@@ -6,6 +6,8 @@ pprint = pprint.pprint
 import numpy as np
 import matplotlib.pyplot as plt
 import torch
+import copy
+from easydict import EasyDict as edict
 
 from create import *
 import rela
@@ -37,50 +39,18 @@ ACTION_TO_STRING = {
     20: "----",
 }
 
-def calculate_policy_differences(
-    act_policy1,
-    act_policy2,
-    comp_policies,
-    num_game,
-    num_thread,
-    seed,
-    batch_size,
-    act_sad_legacy,
-    comp_sad_legacy,
-    device,
-    comp_names,
-    output_dir,
-    rand_policy,
-    verbose,
-    compare_as_base,
-):
-    print("\nact policy")
-    act_agent = load_agent(act_policy, act_sad_legacy, device)
-    print("comp policies")
-    comp_agents = load_agents(comp_policies, comp_sad_legacy, device)
+def run_policy_evaluation(args):
+    act_policies = [args.act_policy1, args.act_policy2]
+    act_agents = load_agents(act_policies, args.act_sad_legacy, args.device)
+    if len(args.comp_policies) > 0:
+        print("comp policies")
+    comp_agents = load_agents(args.comp_policies, args.comp_sad_legacy, args.device)
 
-    replay_buffer = generate_replay_data(
-        act_agent,
-        comp_agents,
-        num_game,
-        seed,
-        0,
-        num_thread=num_thread,
-        comp_names=comp_names
-    )
+    replay_buffer = generate_replay_data(args, act_agents, comp_agents)
+    data = extract_data(args, replay_buffer)
 
-    comp_base_sad_legacy = None
-    if compare_as_base != "None":
-        print(f"Using {compare_as_base} as comparision base.")
-        comp_base_sad_legacy = comp_sad_legacy[comp_names.index(compare_as_base)]
-        comp_names.remove(compare_as_base)
-
-    data = extract_data(replay_buffer, batch_size, "cpu", comp_names,
-            act_sad_legacy, comp_sad_legacy, rand_policy, 
-            compare_as_base, comp_base_sad_legacy, verbose)
-
-    if output_dir is not None:
-        save_data(data, act_policy, comp_policies, comp_names, output_dir, rand_policy)
+    if args.outdir is not None:
+        save_all_data(args, data)
 
 
 def load_agents(policies, sad_legacy, device):
@@ -128,26 +98,22 @@ def load_agent(policy, sad_legacy, device):
 
 
 def generate_replay_data(
-    act_agent,
-    comp_agents,
-    num_game,
-    seed,
-    bomb,
-    *,
-    num_thread=10,
-    max_len=80,
-    device="cuda:0",
-    num_player=2,
-    comp_names=[],
+    args,
+    act_agents,
+    comp_agents
 ):
-    agent, cfgs, boltzmann_t, sad_legacy = act_agent
+    seed = args.seed
+    num_player = 2
+    num_thread = args.num_thread
+    if args.num_game < num_thread:
+        num_thread = args.num_game
 
-    if num_game < num_thread:
-        num_thread = num_game
-
-    act_runner = rela.BatchRunner(agent.clone(device), device)
-    act_runner.add_method("act", 5000)
-    act_runner.add_method("compute_priority", 100)
+    act_runners = []
+    for agent, _, _, _ in act_agents:
+        act_runner = rela.BatchRunner(agent.clone(args.device), args.device)
+        act_runner.add_method("act", 5000)
+        act_runner.add_method("compute_priority", 100)
+        act_runners.append(act_runner)
 
     comp_runners = []
     comp_sad = []
@@ -156,7 +122,7 @@ def generate_replay_data(
 
     for comp_agent_tuple in comp_agents:
         comp_agent, comp_cfgs, _, comp_sad_legacy_temp = comp_agent_tuple
-        comp_runner = rela.BatchRunner(comp_agent.clone(device), device)
+        comp_runner = rela.BatchRunner(comp_agent.clone(args.device), args.device)
         comp_runner.add_method("act", 5000)
         comp_runners.append(comp_runner)
         comp_sad.append(comp_cfgs["sad"])
@@ -167,14 +133,14 @@ def generate_replay_data(
     threads = []
 
     games = create_envs(
-        num_game,
+        args.num_game,
         seed,
-        cfgs["num_player"],
-        cfgs["train_bomb"],
-        cfgs["max_len"]
+        2,
+        0, 
+        80
     )
 
-    replay_buffer_size = num_game * 2
+    replay_buffer_size = args.num_game * 2
 
     replay_buffer = rela.RNNPrioritizedReplay(
         replay_buffer_size,
@@ -184,8 +150,8 @@ def generate_replay_data(
         3, #prefetch
     )
 
-    assert num_game % num_thread == 0
-    game_per_thread = num_game // num_thread
+    assert args.num_game % num_thread == 0
+    game_per_thread = args.num_game // num_thread
     all_actors = []
 
     partner_idx = 0
@@ -196,8 +162,9 @@ def generate_replay_data(
         for g_idx in range(t_idx * game_per_thread, (t_idx + 1) * game_per_thread):
             actors = []
             for i in range(num_player):
+                cfgs = act_agents[i][1]
                 actor = hanalearn.R2D2Actor(
-                    act_runner, # runner
+                    act_runners[i], # runner
                     seed, # seed
                     num_player, # numPlayer
                     i, # playerIdx
@@ -219,18 +186,18 @@ def generate_replay_data(
                     False, # fictitiousOverride
                     True, # useExperience
                     False, # beliefStats
-                    sad_legacy, # sadLegacy
+                    act_agents[i][3], # sadLegacy
                     False, # beliefSadLegacy
                     False, # colorShuffleSync
                 )
 
-                if len(comp_runners) > 0:
+                if i == 0 and len(comp_runners) > 0:
                     actor.set_compare_runners(
                         comp_runners, 
                         comp_sad,
                         comp_sad_legacy,
                         comp_hide_action,
-                        comp_names)
+                        args.comp_names)
 
                 actors.append(actor)
                 all_actors.append(actor)
@@ -249,7 +216,8 @@ def generate_replay_data(
         threads.append(thread)
         context.push_thread_loop(thread)
 
-    act_runner.start()
+    for runner in act_runners:
+        runner.start()
 
     for runner in comp_runners:
         runner.start()
@@ -257,7 +225,8 @@ def generate_replay_data(
     context.start()
     context.join()
 
-    act_runner.stop()
+    for runner in act_runners:
+        runner.stop()
 
     for runner in comp_runners:
         runner.stop()
@@ -265,88 +234,101 @@ def generate_replay_data(
     return replay_buffer
 
 
-def extract_data(
-        replay_buffer, 
-        batch_size, 
-        device, 
-        comp_names, 
-        act_sad_legacy, 
-        comp_sad_legacy, 
-        rand_policy, 
-        compare_as_base,
-        comp_base_sad_legacy,
-        verbose):
-    assert(replay_buffer.size() % batch_size == 0)
-    num_batches = (int)(replay_buffer.size() / batch_size)
+def extract_data(args, replay_buffer):
+    assert(replay_buffer.size() % args.batch_size == 0)
+    num_batches = (int)(replay_buffer.size() / args.batch_size)
 
     for batch_index in range(num_batches):
-        range_start = batch_index * batch_size
-        range_end = batch_index * batch_size + batch_size
+        range_start = batch_index * args.batch_size
+        range_end = batch_index * args.batch_size + args.batch_size
         sample_id_list = [*range(range_start, range_end, 1)]
 
-        batch, _ = replay_buffer.sample_from_list(
-                batch_size, device, sample_id_list)
+        batch, _ = replay_buffer.sample_from_list_split(
+                args.batch_size, "cpu", sample_id_list)
+        
+        # batch = replay_buffer.sample_from_list(
+                # args.batch_size, "cpu", sample_id_list)
 
-        similarities = get_similarities(batch, comp_names, act_sad_legacy, 
-                comp_sad_legacy, rand_policy, compare_as_base, 
-                comp_base_sad_legacy, verbose)
+        similarities = get_similarities(args, batch)
 
     return similarities
 
 
-def get_similarities(batch, comp_names, act_sad_legacy, comp_sad_legacy, 
-        rand_policy, compare_as_base, comp_base_sad_legacy, verbose):
+def get_similarities(args, batch):
+    comp_base_sad_legacy = None
+
     seq_len = np.array(batch.seq_len)
 
     actions = np.array(batch.action["a"])
-    if not act_sad_legacy:
+
+    if not args.act_sad_legacy[0]:
         actions = np.expand_dims(actions, axis=2)
-    if compare_as_base != "None":
-        action_key = compare_as_base + ":a"
-        actions = np.array(batch.action[action_key])
-        if not comp_base_sad_legacy:
-            actions = np.expand_dims(actions, axis=2)
+
     actions = clean_actions(actions, seq_len)
 
     comp_actions = {}
-    for i, name in enumerate(comp_names):
+    for i, name in enumerate(args.comp_names):
         action_key = name + ":a"
+
         comp_action = np.array(batch.action[action_key])
-        if not comp_sad_legacy[i]:
+        if not args.comp_sad_legacy[i]:
             comp_action = np.expand_dims(comp_action, axis=2)
         comp_action = clean_actions(comp_action, seq_len)
 
         comp_actions[action_key] = comp_action
 
-    if rand_policy:
-        create_random_actions(batch, actions, comp_actions, comp_names)
+    if args.rand_policy:
+        create_random_actions(batch, actions, comp_actions, args.comp_names)
 
-    if verbose:
-        print_games(actions, comp_actions, comp_names)
+    if args.verbose:
+        print_games(actions, comp_actions, args.comp_names)
 
     similarities = {}
-    for name in comp_names:
-        action_key = name + ":a"
 
-        # Sum number of same actions
-        action_diff = np.array(actions == comp_actions[action_key], dtype=int)
-        invalid = np.array(actions == 20, dtype=int)
-        diff_without_invalid = np.subtract(action_diff, invalid)
-        summed = diff_without_invalid.sum(axis=1, keepdims=True)
+    if args.similarity_across_all:
+        if len(args.comp_names) == 0:
+            return similarities
 
-        # Get totals
-        invalid_summed = np.sum(invalid, axis=1, keepdims=True)
-        totals = np.full(summed.shape, actions.shape[1])
-        totals_no_invalid = np.subtract(totals, invalid_summed)
+        all_diffs = []
+        for name in args.comp_names:
+            action_key = name + ":a"
+            # Sum number of same actions
+            single_diff = np.array(actions == comp_actions[action_key], dtype=int)
+            all_diffs.append(single_diff)
 
-        # Calculate similarity
-        similarity = np.divide(summed, totals_no_invalid,
-                            out=np.zeros(summed.shape), 
-                            where=totals_no_invalid!=0)
+        action_diff = all_diffs[0]
+        for diff in all_diffs:
+            action_diff = action_diff | diff
 
-        similarities[action_key] = similarity.squeeze(axis=1)
+        similarity = calculate_similarity(actions, action_diff)
+        similarities["obl:a"] = similarity.squeeze(axis=1)
+    else:
+        for name in args.comp_names:
+            action_key = name + ":a"
+            # Sum number of same actions
+            action_diff = np.array(actions == comp_actions[action_key], dtype=int)
+
+            similarity = calculate_similarity(action_diff)
+            similarities[action_key] = similarity.squeeze(axis=1)
 
     return similarities
+
+def calculate_similarity(actions, action_diff):
+    invalid = np.array(actions == 20, dtype=int)
+    diff_without_invalid = np.subtract(action_diff, invalid)
+    summed = diff_without_invalid.sum(axis=1, keepdims=True)
+
+    # Get totals
+    invalid_summed = np.sum(invalid, axis=1, keepdims=True)
+    totals = np.full(summed.shape, actions.shape[1])
+    totals_no_invalid = np.subtract(totals, invalid_summed)
+
+    # Calculate similarity
+    similarity = np.divide(summed, totals_no_invalid,
+                        out=np.zeros(summed.shape), 
+                        where=totals_no_invalid!=0)
+
+    return similarity
 
 
 def clean_actions(actions, seq_len):
@@ -413,29 +395,38 @@ def print_games(actions, comp_actions, comp_names):
         print()
 
 
-def save_data(data, act_policy, comp_policies, comp_names, output_dir, rand_policy):
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
+def save_all_data(args, data):
+    if not os.path.exists(args.outdir):
+        os.makedirs(args.outdir)
 
-    act_policy_no_ext = os.path.splitext(act_policy)[0]
-    base_actor = os.path.basename(act_policy_no_ext)
-    # base_actor = os.path.basename(os.path.dirname(act_policy))
+    base_actor = os.path.basename(
+            os.path.dirname(args.act_policy1))
 
-    for i, comp_name in enumerate(comp_names):
-        if comp_name == "rand":
-            comp_full_name = comp_name
-        else:
-            comp_full_name = os.path.basename(os.path.dirname(comp_policies[i]))
-        filename = comp_full_name + "_vs_" + base_actor + ".csv"
+    if "sad" in args.base_name:
+        comp_policy_no_ext = os.path.splitext(args.act_policy1)[0]
+        base_actor = os.path.basename(comp_policy_no_ext)
 
-        save_dir = os.path.join(output_dir, comp_name)
-        if not os.path.exists(save_dir):
-            os.makedirs(save_dir)
+    comp_policy_no_ext = os.path.splitext(args.act_policy2)[0]
+    partner_actor = os.path.basename(comp_policy_no_ext)
 
-        save_path = os.path.join(save_dir, filename)
-        print("saving:", save_path)
-        data_key = comp_name + ":a"
-        np.savetxt(save_path, data[data_key], delimiter=",",fmt='%1.4f')
+    filename = base_actor + "_vs_" + partner_actor + ".csv"
+
+    if args.similarity_across_all:
+        data_key = "obl:a"
+        save_sata(args, data, data_key, filename)
+    else: 
+        for comp_name in args.comp_names:
+            data_key = comp_name + ":a"
+            save_sata(args, data, data_key, filename)
+
+def save_sata(args, data, data_key, filename):
+    save_dir = os.path.join(args.outdir, args.base_name)
+    if not os.path.exists(save_dir):
+        os.makedirs(save_dir)
+
+    save_path = os.path.join(save_dir, filename)
+    print("saving:", save_path)
+    np.savetxt(save_path, data[data_key], delimiter=",",fmt='%1.4f')
 
 
 def parse_args():
@@ -444,6 +435,7 @@ def parse_args():
     parser.add_argument("--act_policy2", type=str, required=True)
     parser.add_argument("--comp_policies", type=str, default="None")
     parser.add_argument("--act_sad_legacy", type=str, default="0,0")
+    parser.add_argument("--base_name", type=str, default=None)
     parser.add_argument("--comp_sad_legacy", type=str, default="None")
     parser.add_argument("--rand_policy", type=int, default=0)
     parser.add_argument("--num_game", type=int, default=1000)
@@ -455,6 +447,7 @@ def parse_args():
     parser.add_argument("--outdir", type=str, default=None)
     parser.add_argument("--verbose", type=int, default=0)
     parser.add_argument("--compare_as_base", type=str, default="None")
+    parser.add_argument("--similarity_across_all", type=int, default=0)
     args = parser.parse_args()
 
     args.act_sad_legacy = [int(x) for x in args.act_sad_legacy.split(",")]
@@ -484,27 +477,11 @@ def parse_args():
         args.batch_size = args.num_game * 2
 
     if args.outdir is not None:
-        args.outdir = os.path.join("similarity_data", args.out_dir)
+        args.outdir = os.path.join("similarity_data", args.outdir)
 
     return args
 
 if __name__ == "__main__":
     args = parse_args()
+    run_policy_evaluation(args)
 
-    calculate_policy_differences(
-        args.act_policy1,
-        args.act_policy2,
-        args.comp_policies,
-        args.num_game,
-        args.num_thread,
-        args.seed,
-        args.batch_size,
-        args.act_sad_legacy,
-        args.comp_sad_legacy,
-        args.device,
-        args.comp_names,
-        args.outdir,
-        args.rand_policy,
-        args.verbose,
-        args.compare_as_base,
-    )

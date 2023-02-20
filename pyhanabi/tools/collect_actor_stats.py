@@ -39,13 +39,13 @@ def collect_stats(score, perfect, scores, actors,
 
 
 def record_total_scores(stats, score, perfect, scores, stat_type):
-    score_std = np.std(scores)
+    score_stderr = np.std(scores) / np.sqrt(len(scores))
     non_zero_scores = [s for s in scores if s > 0]
     non_zero_mean = 0 if len(non_zero_scores) == 0 else np.mean(non_zero_scores)
     bomb_out_rate = (1 - len(non_zero_scores) / len(scores))
 
     stats[f"{stat_type}score"] = score
-    stats[f"{stat_type}score_std"] = score_std
+    stats[f"{stat_type}score_stderr"] = score_stderr
     stats[f"{stat_type}perfect"] = perfect
     stats[f"{stat_type}non_zero_mean"] = non_zero_mean
     stats[f"{stat_type}bomb_out_rate"] = bomb_out_rate
