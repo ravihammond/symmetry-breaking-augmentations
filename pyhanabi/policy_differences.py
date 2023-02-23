@@ -39,6 +39,7 @@ ACTION_TO_STRING = {
     20: "----",
 }
 
+
 def run_policy_evaluation(args):
     act_policies = [args.act_policy1, args.act_policy2]
     act_agents = load_agents(act_policies, args.act_sad_legacy, args.device)

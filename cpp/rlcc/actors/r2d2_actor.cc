@@ -265,8 +265,7 @@ void R2D2Actor::observeBeforeAct(HanabiEnv& env) {
     input["response_card_position"] = torch::tensor(responseCardPosition);
     input["playable_cards"] = torch::tensor(playableCards);
   }
-  input["actor_index"] = torch::tensor(playerIdx_);
-
+  input["actor_index"] = torch::tensor(playerIdx_); 
   // push before we add hidden
   if (replayBuffer_ != nullptr) {
     r2d2Buffer_->pushObs(input);
@@ -283,12 +282,12 @@ void R2D2Actor::observeBeforeAct(HanabiEnv& env) {
 
   addHid(input, hidden_);
 
-  //printf("Input ===========\n");
+  //printf("Input observeBeforeAct() ===========\n");
   //for (auto& kv: input) {
     //std::cout << kv.first << " " << kv.second.sizes() << std::endl;
   //}
   //printf("^^^^^^^^^^^\n");
-  //
+  
 
   // no-blocking async call to neural network
   futReply_ = runner_->call("act", input);
@@ -548,6 +547,11 @@ void R2D2Actor::observeAfterAct(const HanabiEnv& env) {
   if (terminated) {
     lastEpisode_ = r2d2Buffer_->popTransition();
     auto input = lastEpisode_.toDict();
+    //printf("Input observeAfterAct() ===========\n");
+    //for (auto& kv: input) {
+      //std::cout << kv.first << " " << kv.second.sizes() << std::endl;
+    //}
+    //printf("^^^^^^^^^^^\n");
 
     if (useExperience_) {
       futPriority_ = runner_->call("compute_priority", input);

@@ -74,7 +74,8 @@ RUN pip install \
 
 RUN conda install -c conda-forge \
     google-cloud-storage \
-    easydict 
-
-
+    xarray \
+    dask \
+    netCDF4 \
+    bottleneck 
 

@@ -12,6 +12,9 @@ build-cpp:
 build-cudaconda: 
 	docker build $(FLAGS) -t ravihammond/cuda-conda -f dockerfiles/Dockerfile.cudaconda .
 
+build-plain: 
+	docker build $(FLAGS) -t ${IMAGE}:plain -f dockerfiles/Dockerfile.projectnew --target plain .
+
 build-dev: 
 	docker build $(FLAGS) -t ${IMAGE}:dev -f dockerfiles/Dockerfile.projectnew --target dev .
 
