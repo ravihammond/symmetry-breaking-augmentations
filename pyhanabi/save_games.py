@@ -15,6 +15,30 @@ import utils
 
 np.set_printoptions(threshold=10000, linewidth=10000)
 
+ACTION_ID_TO_STRING = np.array([
+    "Discard 0",
+    "Discard 1",
+    "Discard 2",
+    "Discard 3",
+    "Discard 4",
+    "Play 0",
+    "Play 1",
+    "Play 2",
+    "Play 3",
+    "Play 4",
+    "Reveal color R",
+    "Reveal color Y",
+    "Reveal color G",
+    "Reveal color W",
+    "Reveal color B",
+    "Reveal rank 1",
+    "Reveal rank 2",
+    "Reveal rank 3",
+    "Reveal rank 4",
+    "Reveal rank 5",
+    "INVALID"
+])
+
 
 def save_games(args):
     # Load agents
@@ -332,30 +356,37 @@ def extract_obs(args, obs, player):
     missing_cards_idx = 127
     board_idx = 203
     discard_idx = 253
+    last_action_idx = 308
+    v0_belief_idx = 658
 
     # Own hand
     # hand_df = extract_hand(args, obs[own_hand_str], "own")
     # df = pd.concat([df, hand_df], axis=1)
 
     # Partner Hand
-    # partner_hand = np.array(priv_s[:, :, :partner_hand_idx])
-    # hand_df = extract_hand(args, partner_hand, "partner")
-    # df = pd.concat([df, hand_df], axis=1)
+    partner_hand = np.array(priv_s[:, :, :partner_hand_idx])
+    hand_df = extract_hand(args, partner_hand, "partner")
+    df = pd.concat([df, hand_df], axis=1)
 
     # Hands missing Card
-    # missing_cards = np.array(priv_s[:, :, partner_hand_idx:missing_cards_idx])
-    # missing_cards_df = extract_missing_cards(args, missing_cards)
-    # df = pd.concat([df, missing_cards_df], axis=1)
+    missing_cards = np.array(priv_s[:, :, partner_hand_idx:missing_cards_idx])
+    missing_cards_df = extract_missing_cards(args, missing_cards)
+    df = pd.concat([df, missing_cards_df], axis=1)
 
     # Board
-    # board = np.array(priv_s[:, :, missing_cards_idx:board_idx])
-    # board_df = extract_board(args, board)
-    # df = pd.concat([df, board_df], axis=1)
+    board = np.array(priv_s[:, :, missing_cards_idx:board_idx])
+    board_df = extract_board(args, board)
+    df = pd.concat([df, board_df], axis=1)
 
     # Discards
-    discards = np.array(priv_s[:, :, board_idx:discard_idx])
-    discards_df = extract_discards(args, discards)
-    df = pd.concat([df, discards_df], axis=1)
+    # discards = np.array(priv_s[:, :, board_idx:discard_idx])
+    # discards_df = extract_discards(args, discards)
+    # df = pd.concat([df, discards_df], axis=1)
+
+    # Last Action
+    last_action = np.array(priv_s[:, :, discard_idx:last_action_idx])
+    last_action_df = extract_last_action(args, last_action)
+    df = pd.concat([df, last_action_df], axis=1)
 
     # Knowledge
 
@@ -408,11 +439,11 @@ def extract_board(args, board):
     board_data = np.empty((num_rows, 0), dtype=np.uint8)
 
     # Deck
-    deck = board[:, :, :deck_idx]
-    deck_size = deck.sum(axis=2)
-    deck_size = np.expand_dims(deck_size, axis=2)
-    deck_size = np.reshape(deck_size, (num_rows, deck_size.shape[2]))
-    board_data = np.concatenate((board_data, deck_size), axis=1)
+    # deck = board[:, :, :deck_idx]
+    # deck_size = deck.sum(axis=2)
+    # deck_size = np.expand_dims(deck_size, axis=2)
+    # deck_size = np.reshape(deck_size, (num_rows, deck_size.shape[2]))
+    # board_data = np.concatenate((board_data, deck_size), axis=1)
 
     # Fireworks
     fireworks = board[:, :, deck_idx:fireworks_idx]
@@ -425,24 +456,25 @@ def extract_board(args, board):
     board_data = np.concatenate((board_data, fireworks), axis=1)
 
     # Info Tokens
-    info = board[:, :, fireworks_idx:info_idx]
-    info_tokens = info.sum(axis=2)
-    info_tokens = np.expand_dims(info_tokens, axis=2)
-    info_tokens = np.reshape(info_tokens, (num_rows, info_tokens.shape[2]))
-    board_data = np.concatenate((board_data, info_tokens), axis=1)
+    # info = board[:, :, fireworks_idx:info_idx]
+    # info_tokens = info.sum(axis=2)
+    # info_tokens = np.expand_dims(info_tokens, axis=2)
+    # info_tokens = np.reshape(info_tokens, (num_rows, info_tokens.shape[2]))
+    # board_data = np.concatenate((board_data, info_tokens), axis=1)
 
     # Life Tokens
-    lives = board[:, :, info_idx:life_idx]
-    lives = lives.sum(axis=2)
-    lives = np.expand_dims(lives, axis=2)
-    lives = np.reshape(lives, (num_rows, lives.shape[2]))
-    board_data = np.concatenate((board_data, lives), axis=1)
+    # lives = board[:, :, info_idx:life_idx]
+    # lives = lives.sum(axis=2)
+    # lives = np.expand_dims(lives, axis=2)
+    # lives = np.reshape(lives, (num_rows, lives.shape[2]))
+    # board_data = np.concatenate((board_data, lives), axis=1)
 
     # Column labels
-    labels = ["deck_size"]
+    # labels = ["deck_size"]
+    labels = []
     for colour in ["red", "yellow", "green", "white", "blue"]:
         labels.append(f"{colour}_fireworks")
-    labels.extend(["info_tokens", "lives"])
+    # labels.extend(["info_tokens", "lives"])
 
     return pd.DataFrame(
         data=board_data,
@@ -456,58 +488,76 @@ def extract_discards(args, discards):
     discards = np.swapaxes(discards, 0, 1)
     discards_data = np.empty((num_rows, 0), dtype=np.uint8)
 
-    # print(discards.shape)
-    # print(discards)
-
-    rank_1_idx = 3
-    rank_2_idx = 5
-    rank_3_idx = 7
-    rank_4_idx = 9
-    rank_5_idx = 10
-
-    num_1 = 3
-    num_2 = 2
-    num_3 = 2
-    num_4 = 2
-    num_5 = 1
+    idx_pos_per_rank = [3, 5, 7, 9, 10]
+    num_cards_per_rank = [3, 2, 2, 2, 1]
+    colours = ["red", "yellow", "green", "white", "blue"]
 
     bits_per_colour = 10
 
     labels = []
+
     for i, colour in enumerate(["red", "yellow", "green", "white", "blue"]):
         offset = i * bits_per_colour
 
-        # Rank 1
-        end_pos = offset + rank_1_idx
-        rank_1 = discards[:, :, end_pos - num_1:end_pos]
-        rank_1 = np.sum(rank_1, axis=2)
-        rank_1 = np.expand_dims(rank_1, axis=2)
-        rank_1 = np.reshape(rank_1, (num_rows, rank_1.shape[2]))
-        discards_data = np.concatenate((discards_data, rank_1), axis=1)
+        for j in range(5):
+            labels.append(f"{colour}_{j + 1}_discarded")
 
-        # Rank 2
-        end_pos = offset + rank_2_idx
-        rank_2 = discards[:, :, end_pos - num_2:end_pos]
-        rank_2 = np.sum(rank_2, axis=2)
-        rank_2 = np.expand_dims(rank_2, axis=2)
-        rank_2 = np.reshape(rank_2, (num_rows, rank_2.shape[2]))
-        discards_data = np.concatenate((discards_data, rank_2), axis=1)
-
-        # Rank 3
-        # Rank 4
-        # Rank 5
-
-        # for rank in [1, 2, 3, 4, 5]:
-        for rank in [1]:
-            labels.append(f"{colour}_{rank}_discarded")
-
-    print(labels)
+            end_pos = offset + idx_pos_per_rank[j]
+            start_pos = end_pos - num_cards_per_rank[j]
+            num_discards = discards[:, :, start_pos:end_pos]
+            num_discards = np.sum(num_discards, axis=2)
+            num_discards = np.expand_dims(num_discards, axis=2)
+            num_discards = np.reshape(num_discards, (num_rows, num_discards.shape[2]))
+            discards_data = np.concatenate((discards_data, num_discards), axis=1)
 
     return pd.DataFrame(
         data=discards_data,
         columns=labels
     )
 
+def extract_last_action(args, last_action):
+    num_rows = last_action.shape[0] * last_action.shape[1]
+    last_action = np.array(last_action, dtype=np.uint8)
+    last_action = np.swapaxes(last_action, 0, 1)
+
+    acting_player_idx = 2
+    move_type_idx = 6
+    target_player_idx = 8
+    colour_revealed_idx = 13
+    rank_revealed_idx = 18
+    reveal_outcome_idx = 23
+    card_position_idx = 28
+
+    move_type = last_action[:, :, acting_player_idx:move_type_idx]
+    card_position = last_action[:, :, reveal_outcome_idx:card_position_idx]
+    colour_revealed = last_action[:, :, target_player_idx:colour_revealed_idx]
+    rank_revealed = last_action[:, :, colour_revealed_idx:rank_revealed_idx]
+
+    action_index = [1,0,2,3]
+    move_index = range(5)
+    action_functions = [card_position, card_position, colour_revealed, rank_revealed]
+
+    conditions = []
+    for action_i in action_index:
+        for move_i in move_index:
+            conditions.append((move_type[:, :, action_i] == 1) & \
+                              (action_functions[action_i][:, :, move_i] == 1))
+    conditions.append(True)
+
+    choices = range(21)
+    last_action_data = np.select(conditions, choices, default=20)
+    last_action_data = np.expand_dims(last_action_data, axis=2)
+    last_action_data = np.reshape(last_action_data, (num_rows, last_action_data.shape[2]))
+
+    # print(last_action_data.shape)
+    # print(last_action_data)
+
+    strings = ACTION_ID_TO_STRING[last_action_data]
+
+    return pd.DataFrame(
+        data=strings,
+        columns=["last_action"]
+    )
 
 def parse_args():
     parser = argparse.ArgumentParser()

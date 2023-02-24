@@ -13,7 +13,7 @@
 
 using namespace std;
 
-#define PR false
+#define PR true
 
 void R2D2Actor::addHid(rela::TensorDict& to, rela::TensorDict& hid) {
   for (auto& kv : hid) {
