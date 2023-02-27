@@ -462,6 +462,7 @@ int EncodeCardKnowledge(const HanabiGame& game,
     int offset = start_offset;
     const std::vector<HanabiHand>& hands = obs.Hands();
     assert(hands.size() == num_players);
+    int print_i = 0;
     for (int player = 0; player < num_players; ++player) {
         const std::vector<HanabiHand::CardKnowledge>& knowledge =
             hands[player].Knowledge();
@@ -475,6 +476,7 @@ int EncodeCardKnowledge(const HanabiGame& game,
             }
             const auto& card_knowledge = knowledge[card_idx];
             // Add bits for plausible card.
+            char C2S[5] = {'R', 'Y', 'G', 'W', 'B'};
             for (int color = 0; color < num_colors; ++color) {
                 if (card_knowledge.ColorPlausible(color)) {
                     for (int rank = 0; rank < num_ranks; ++rank) {
@@ -538,6 +540,11 @@ int EncodeV0Belief_(const HanabiGame& game,
     if (ret_card_count != nullptr) {
         *ret_card_count = card_count;
     }
+    //printf("card count out\n");
+    //for (int count: card_count) {
+      //printf("%d ", count);
+    //}
+    //printf("\n");
 
     // card knowledge
     const int len = EncodeCardKnowledge(
@@ -610,6 +617,11 @@ int EncodeV0Belief_(const HanabiGame& game,
             break;
         }
     }
+    //printf("V0 Belief Encoding, after\n");
+    //for (int i = 0; i < len; i++) {
+      //printf("%d: %.4f\n", i, (*encoding)[start_offset + i]);
+    //}
+    //printf("\n");
     return len;
 }
 
@@ -857,7 +869,7 @@ std::vector<int> ComputeCardCount(
     //     assert(false);
     //   }
     // }
-
+    
     // convert to private count
     for (int i = 1; i < obs.Hands().size(); ++i) {
         const auto& hand = obs.Hands()[i];

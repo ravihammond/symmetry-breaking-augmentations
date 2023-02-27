@@ -13,7 +13,35 @@ import rela
 import r2d2
 import utils
 
-np.set_printoptions(threshold=10000, linewidth=10000)
+np.set_printoptions(threshold=sys.maxsize, linewidth=10000)
+
+CARD_ID_TO_STRING = np.array([
+    "R1",
+    "R2",
+    "R3",
+    "R4",
+    "R5",
+    "Y1",
+    "Y2",
+    "Y3",
+    "Y4",
+    "Y5",
+    "G1",
+    "G2",
+    "G3",
+    "G4",
+    "G5",
+    "W1",
+    "W2",
+    "W3",
+    "W4",
+    "W5",
+    "B1",
+    "B2",
+    "B3",
+    "B4",
+    "B5",
+])
 
 ACTION_ID_TO_STRING = np.array([
     "Discard 0",
@@ -36,6 +64,30 @@ ACTION_ID_TO_STRING = np.array([
     "Reveal rank 3",
     "Reveal rank 4",
     "Reveal rank 5",
+    "INVALID"
+])
+
+ACTION_ID_TO_STRING_SHORT = np.array([
+    "discard_0",
+    "discard_1",
+    "discard_2",
+    "discard_3",
+    "discard_4",
+    "play_0",
+    "play_1",
+    "play_2",
+    "play_3",
+    "play_4",
+    "hint_R",
+    "hint_Y",
+    "hint_G",
+    "hint_W",
+    "hint_B",
+    "hint_1",
+    "hint_2",
+    "hint_3",
+    "hint_4",
+    "hint_5",
     "INVALID"
 ])
 
@@ -219,9 +271,6 @@ def replay_to_dataframe(args, replay_buffer):
         batch1, batch2 = replay_buffer.sample_from_list_split(
                 args.batch_size, "cpu", sample_id_list)
         
-        # batch = replay_buffer.sample_from_list(
-                # args.batch_size, "cpu", sample_id_list)
-
         data = batch_to_dataset(args, batch1, batch2)
 
     return data
@@ -241,30 +290,25 @@ def batch_to_dataset(args, batch1, batch2):
     df = pd.concat([df, obs_df])
     print()
 
-    # data2 = player_dataframe(args, batch2, 1, date_time)
-    # data = pd.concat([dataframe, data2])
-    # print()
+    df.reset_index(drop=True)
 
-    # print("\naction")
-    
-    # for k,v in batch.action.items():
-        # print(k, np.array(v).shape)
-    # print("\nreward")
-    # print(batch.reward.shape)
-    # print("\nterminal")
-    # print(batch.terminal.shape)
-    # print("\nbootstrap")
-    # print(batch.bootstrap.shape)
-    # print()
+    pprint(len(list(df.columns.values)))
+    pprint(list(df.columns.values))
 
-    print(df.to_string())
+    columns = [
+        "player",
+        "partner",
+        "turn",
+        "deck_size",
+        "action",
+        "last_action",
+        "terminal",
+    ]
+
+    print(df[columns].to_string())
     return df
 
-
 def player_dataframe(args, batch, player, date_time):
-    # for k,v in batch.obs.items():
-        # print(k, np.array(v).shape)
-
     df = pd.DataFrame()
 
     # Add meta data
@@ -275,17 +319,25 @@ def player_dataframe(args, batch, player, date_time):
     hand_df = turn_data(args, batch)
     df = pd.concat([df, hand_df], axis=1)
 
+    # Add observation
     obs_df = extract_obs(args, batch.obs, player)
     df = pd.concat([df, obs_df], axis=1)
-    # df = pd.concat([df, obs_df])
 
-    # own_hand = np.array(batch.obs["own_hand"])
-    # own_hand_ar_in = np.array(batch.obs["own_hand_ar_in"])
+    # Add legal moves
+    legal_moves_df = extract_legal_moves(args, batch.obs["legal_move"])
+    df = pd.concat([df, legal_moves_df], axis=1)
 
-    # print(own_hand)
+    # Add Action
+    action_df = extract_action(args, batch.action["a"])
+    df = pd.concat([df, action_df], axis=1)
 
-    # print((own_hand == own_hand_ar_in).all())
-    # print(torch.eq(obs["own_hand_ar_in"]))
+    # Add Q Values
+    action_df = extract_q_values(args, batch.action["all_q"])
+    df = pd.concat([df, action_df], axis=1)
+
+    # Add Terminal
+    terminal_df = extract_terminal(args, batch.terminal)
+    df = pd.concat([df, terminal_df], axis=1)
 
     return df
 
@@ -306,24 +358,23 @@ def meta_data(args, batch, player, date_time):
     meta_data = np.array([
         args.player_name[player],
         args.player_name[(player + 1) % 2],
-        # args.data_type,
-        # date_time
+        args.data_type,
+        date_time
     ], dtype=str)
 
     meta_data = np.tile(meta_data, (num_rows, 1))
     data = np.concatenate((data, meta_data), axis=1)
 
     labels = [
-        # "game",
+        "game",
         "player",
         "partner",
-        # "data_type",
-        # "datetime",
+        "data_type",
+        "datetime",
     ]
 
     return pd.DataFrame(
-        data=meta_data,
-        # data=data,
+        data=data,
         columns=labels
     )
 
@@ -360,8 +411,8 @@ def extract_obs(args, obs, player):
     v0_belief_idx = 658
 
     # Own hand
-    # hand_df = extract_hand(args, obs[own_hand_str], "own")
-    # df = pd.concat([df, hand_df], axis=1)
+    hand_df = extract_hand(args, obs[own_hand_str], "own")
+    df = pd.concat([df, hand_df], axis=1)
 
     # Partner Hand
     partner_hand = np.array(priv_s[:, :, :partner_hand_idx])
@@ -379,9 +430,9 @@ def extract_obs(args, obs, player):
     df = pd.concat([df, board_df], axis=1)
 
     # Discards
-    # discards = np.array(priv_s[:, :, board_idx:discard_idx])
-    # discards_df = extract_discards(args, discards)
-    # df = pd.concat([df, discards_df], axis=1)
+    discards = np.array(priv_s[:, :, board_idx:discard_idx])
+    discards_df = extract_discards(args, discards)
+    df = pd.concat([df, discards_df], axis=1)
 
     # Last Action
     last_action = np.array(priv_s[:, :, discard_idx:last_action_idx])
@@ -389,6 +440,9 @@ def extract_obs(args, obs, player):
     df = pd.concat([df, last_action_df], axis=1)
 
     # Knowledge
+    card_knowledge = np.array(priv_s[:, :, last_action_idx:v0_belief_idx])
+    card_knowledge_df = extract_card_knowledge(args, card_knowledge)
+    df = pd.concat([df, card_knowledge_df], axis=1)
 
     return df
 
@@ -405,6 +459,8 @@ def extract_hand(args, hand, label_str):
     labels = []
     for i in range(5):
         labels.append(f"{label_str}_card_{i}")
+
+    cards = CARD_ID_TO_STRING[cards]
 
     return pd.DataFrame(
         data=cards,
@@ -439,11 +495,11 @@ def extract_board(args, board):
     board_data = np.empty((num_rows, 0), dtype=np.uint8)
 
     # Deck
-    # deck = board[:, :, :deck_idx]
-    # deck_size = deck.sum(axis=2)
-    # deck_size = np.expand_dims(deck_size, axis=2)
-    # deck_size = np.reshape(deck_size, (num_rows, deck_size.shape[2]))
-    # board_data = np.concatenate((board_data, deck_size), axis=1)
+    deck = board[:, :, :deck_idx]
+    deck_size = deck.sum(axis=2)
+    deck_size = np.expand_dims(deck_size, axis=2)
+    deck_size = np.reshape(deck_size, (num_rows, deck_size.shape[2]))
+    board_data = np.concatenate((board_data, deck_size), axis=1)
 
     # Fireworks
     fireworks = board[:, :, deck_idx:fireworks_idx]
@@ -456,25 +512,24 @@ def extract_board(args, board):
     board_data = np.concatenate((board_data, fireworks), axis=1)
 
     # Info Tokens
-    # info = board[:, :, fireworks_idx:info_idx]
-    # info_tokens = info.sum(axis=2)
-    # info_tokens = np.expand_dims(info_tokens, axis=2)
-    # info_tokens = np.reshape(info_tokens, (num_rows, info_tokens.shape[2]))
-    # board_data = np.concatenate((board_data, info_tokens), axis=1)
+    info = board[:, :, fireworks_idx:info_idx]
+    info_tokens = info.sum(axis=2)
+    info_tokens = np.expand_dims(info_tokens, axis=2)
+    info_tokens = np.reshape(info_tokens, (num_rows, info_tokens.shape[2]))
+    board_data = np.concatenate((board_data, info_tokens), axis=1)
 
     # Life Tokens
-    # lives = board[:, :, info_idx:life_idx]
-    # lives = lives.sum(axis=2)
-    # lives = np.expand_dims(lives, axis=2)
-    # lives = np.reshape(lives, (num_rows, lives.shape[2]))
-    # board_data = np.concatenate((board_data, lives), axis=1)
+    lives = board[:, :, info_idx:life_idx]
+    lives = lives.sum(axis=2)
+    lives = np.expand_dims(lives, axis=2)
+    lives = np.reshape(lives, (num_rows, lives.shape[2]))
+    board_data = np.concatenate((board_data, lives), axis=1)
 
     # Column labels
-    # labels = ["deck_size"]
-    labels = []
+    labels = ["deck_size"]
     for colour in ["red", "yellow", "green", "white", "blue"]:
         labels.append(f"{colour}_fireworks")
-    # labels.extend(["info_tokens", "lives"])
+    labels.extend(["info_tokens", "lives"])
 
     return pd.DataFrame(
         data=board_data,
@@ -544,20 +599,143 @@ def extract_last_action(args, last_action):
                               (action_functions[action_i][:, :, move_i] == 1))
     conditions.append(True)
 
-    choices = range(21)
-    last_action_data = np.select(conditions, choices, default=20)
+    move_id = range(21)
+    last_action_data = np.select(conditions, move_id, default=20)
     last_action_data = np.expand_dims(last_action_data, axis=2)
     last_action_data = np.reshape(last_action_data, (num_rows, last_action_data.shape[2]))
 
-    # print(last_action_data.shape)
-    # print(last_action_data)
-
-    strings = ACTION_ID_TO_STRING[last_action_data]
+    # last_action_data = ACTION_ID_TO_STRING[last_action_data]
 
     return pd.DataFrame(
-        data=strings,
+        data=last_action_data,
         columns=["last_action"]
     )
+
+
+def extract_card_knowledge(args, card_knowledge):
+    num_rows = card_knowledge.shape[0] * card_knowledge.shape[1]
+    card_knowledge = np.array(card_knowledge)
+    card_knowledge = np.swapaxes(card_knowledge, 0, 1)
+    card_knowledge = np.reshape(card_knowledge, (num_rows, card_knowledge.shape[2]))
+
+    possible_cards_len = 25
+    colour_hinted_len = 5
+    rank_hinted_len = 5
+    card_len = possible_cards_len + colour_hinted_len + rank_hinted_len
+    player_len = card_len * 5
+
+    labels = []
+
+    players = ["", "partner_"]
+    colours = "RYGWB"
+
+    for player in range(2):
+        for card in range(5):
+            # start_pos = colour * total_len
+            # end_pos = start_pos + possible_cards_len
+            # possible_cards = card_knowledge[:, :, start_pos:end_pos]
+
+            # start_pos = end_pos
+            # end_pos = start_pos + colour_hinted_len
+            # colour_hinted = card_knowledge[:, :, start_pos:end_pos]
+
+            # start_pos = end_pos
+            # end_pos = start_pos + rank_hinted_len
+            # rank_hinted = card_knowledge[:, :, start_pos:end_pos]
+
+            # print("\npossible cards")
+            # print(possible_cards.shape)
+            # print(possible_cards)
+
+            # print("\ncolour hinted")
+            # print(colour_hinted.shape)
+            # print(colour_hinted)
+
+            # print("\nrank hinted")
+            # print(rank_hinted.shape)
+            # print(rank_hinted)
+
+            for colour in range(5):
+                for rank in range(5):
+                    labels.append(f"{players[player]}card_{card}_{colours[colour]}{rank+1}_belief")
+
+            for colour in range(5):
+                labels.append(f"{players[player]}card_{card}_{colours[colour]}_hinted")
+
+            for rank in range(5):
+                labels.append(f"{players[player]}card_{card}_{rank + 1}_hinted")
+
+
+    return pd.DataFrame(
+        data=card_knowledge,
+        columns=labels
+    )
+
+
+def extract_legal_moves(args, legal_move):
+    num_rows = legal_move.shape[0] * legal_move.shape[1]
+    legal_move = np.array(legal_move, dtype=np.uint8)
+    legal_move = np.swapaxes(legal_move, 0, 1)
+    legal_move = np.reshape(legal_move, (num_rows, legal_move.shape[2]))
+
+    labels=[]
+
+    for move_id in range(21):
+        labels.append(f"legal_move_{ACTION_ID_TO_STRING_SHORT[move_id]}")
+
+    df = pd.DataFrame(
+        data=legal_move,
+        columns=labels
+    )
+
+    return df
+
+def extract_action(args, action):
+    num_rows = action.shape[0] * action.shape[1]
+    action = np.array(action, dtype=np.uint8)
+    action = np.swapaxes(action, 0, 1)
+    action = np.expand_dims(action, axis=2)
+    action = np.reshape(action, (num_rows, action.shape[2]))
+
+    # action = ACTION_ID_TO_STRING[action]
+
+    return pd.DataFrame(
+        data=action,
+        columns=["action"]
+    )
+
+
+def extract_q_values(args, q_values):
+    num_rows = q_values.shape[0] * q_values.shape[1]
+    q_values = np.array(q_values)
+    q_values = np.swapaxes(q_values, 0, 1)
+    q_values = np.reshape(q_values, (num_rows, q_values.shape[2]))
+
+    labels = []
+    for move_id in range(21):
+        labels.append(f"q_value_move_{ACTION_ID_TO_STRING_SHORT[move_id]}")
+
+    return pd.DataFrame(
+        data=q_values,
+        columns=labels
+    )
+
+
+def extract_terminal(args, terminal):
+    num_rows = terminal.shape[0] * terminal.shape[1]
+    terminal = np.array(terminal, dtype=np.uint8)
+    terminal = np.swapaxes(terminal, 0, 1)
+    terminal = np.expand_dims(terminal, axis=2)
+    terminal = np.reshape(terminal, (num_rows, terminal.shape[2]))
+
+    # print(terminal.shape)
+    # print(terminal)
+
+    return pd.DataFrame(
+        data=terminal,
+        columns=["terminal"]
+    )
+
 
 def parse_args():
     parser = argparse.ArgumentParser()
