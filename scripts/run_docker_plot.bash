@@ -27,6 +27,6 @@ docker run --rm -it \
     --memory=$mem \
     --gpus all \
     --ipc host \
-    ravihammond/obl-project \
+    ravihammond/hanabi-project:dev \
     ${@:-bash}
 

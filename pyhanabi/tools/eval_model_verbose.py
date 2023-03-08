@@ -22,13 +22,6 @@ def evaluate_model(args):
     weight_files = load_weights(args)
     score, perfect, scores, actors = run_evaluation(args, weight_files)
 
-    if args.csv_name != "None":
-        wrapped_scores = [[x] for x in scores]
-        file = open(args.csv_name, 'w+', newline ='')
-        with file:
-            write = csv.writer(file)
-            write.writerows(wrapped_scores)
-
     conventions = load_json_list(args.convention)
     convention_strings = extract_convention_strings(conventions)
 
@@ -46,6 +39,18 @@ def evaluate_model(args):
         print_scores(stats, f"{convention_string}_")
         print_actor_stats(stats, 0, convention_string)
         print_actor_stats(stats, 1, convention_string)
+
+    if args.csv_name != "None":
+        file_path = os.path.dirname(args.csv_name)
+        if not os.path.exists(file_path):
+            os.makedirs(file_path)
+        wrapped_scores = [[x] for x in scores]
+        file = open(args.csv_name, 'w+', newline ='')
+        print(f"Saving: {args.csv_name}")
+        with file:
+            write = csv.writer(file)
+            write.writerows(wrapped_scores)
+
 
 def load_weights(args):
     weight_files = []
@@ -214,12 +219,7 @@ if __name__ == "__main__":
     parser.add_argument("--seed", default=1, type=int)
     parser.add_argument("--bomb", default=0, type=int)
     parser.add_argument("--num_game", default=5000, type=int)
-    parser.add_argument(
-        "--num_run",
-        default=1,
-        type=int,
-        help="num of {num_game} you want to run, i.e. num_run=2 means 2*num_game",
-    )
+    parser.add_argument("--num_run", default=1, type=int)
     parser.add_argument("--device", default="cuda:0", type=str)
     parser.add_argument("--convention", default="None", type=str)
     parser.add_argument("--convention_index", default=None, type=int)

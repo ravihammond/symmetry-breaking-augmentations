@@ -93,17 +93,21 @@ ACTION_ID_TO_STRING_SHORT = np.array([
 
 
 def save_games(args):
+    now = datetime.now()
+
     # Load agents
     agents = load_agents(args)
 
     # Get replay buffer of games
+    print("generating data")
     replay_buffer = generate_replay_data(args, agents)
 
     # Convert to dataframe
-    data = replay_to_dataframe(args, replay_buffer)
+    print("extracting dataframe")
+    data = replay_to_dataframe(args, replay_buffer, now)
 
-    # if args. is not None:
-        # save_all_data(args, data)
+    if args.save:
+        save_all_data(args, data, now)
 
 
 def load_agents(args):
@@ -259,7 +263,9 @@ def generate_replay_data(
     return replay_buffer
 
 
-def replay_to_dataframe(args, replay_buffer):
+def replay_to_dataframe(args, replay_buffer, now):
+    date_time = now.strftime("%m/%d/%Y-%H:%M:%S")
+
     assert(replay_buffer.size() % args.batch_size == 0)
     num_batches = (int)(replay_buffer.size() / args.batch_size)
 
@@ -271,41 +277,26 @@ def replay_to_dataframe(args, replay_buffer):
         batch1, batch2 = replay_buffer.sample_from_list_split(
                 args.batch_size, "cpu", sample_id_list)
         
-        data = batch_to_dataset(args, batch1, batch2)
+        data = batch_to_dataset(args, batch1, batch2, date_time)
 
     return data
 
 
-def batch_to_dataset(args, batch1, batch2):
+def batch_to_dataset(args, batch1, batch2, date_time):
     df = pd.DataFrame()
-
-    now = datetime.now()
-    date_time = now.strftime("%m/%d/%Y-%H:%M:%S")
 
     obs_df = player_dataframe(args, batch1, 0, date_time)
     df = pd.concat([df, obs_df])
-    print()
 
     obs_df = player_dataframe(args, batch2, 1, date_time)
     df = pd.concat([df, obs_df])
-    print()
 
-    df.reset_index(drop=True)
+    df = df.reset_index(drop=True)
 
-    pprint(len(list(df.columns.values)))
-    pprint(list(df.columns.values))
+    if args.verbose:
+        print("num cows:", df.shape[0])
+        print("num columns:", len(list(df.columns.values)))
 
-    columns = [
-        "player",
-        "partner",
-        "turn",
-        "deck_size",
-        "action",
-        "last_action",
-        "terminal",
-    ]
-
-    print(df[columns].to_string())
     return df
 
 def player_dataframe(args, batch, player, date_time):
@@ -338,6 +329,12 @@ def player_dataframe(args, batch, player, date_time):
     # Add Terminal
     terminal_df = extract_terminal(args, batch.terminal)
     df = pd.concat([df, terminal_df], axis=1)
+
+    # Add bombs triggered
+    df = add_bombs_triggered(args, df)
+
+    # Remove rows after game has ended
+    df = remove_states_after_terminal(args, df, batch.terminal)
 
     return df
 
@@ -411,12 +408,12 @@ def extract_obs(args, obs, player):
     v0_belief_idx = 658
 
     # Own hand
-    hand_df = extract_hand(args, obs[own_hand_str], "own")
+    hand_df = extract_hand(args, obs[own_hand_str], "")
     df = pd.concat([df, hand_df], axis=1)
 
     # Partner Hand
     partner_hand = np.array(priv_s[:, :, :partner_hand_idx])
-    hand_df = extract_hand(args, partner_hand, "partner")
+    hand_df = extract_hand(args, partner_hand, "partner_")
     df = pd.concat([df, hand_df], axis=1)
 
     # Hands missing Card
@@ -458,9 +455,9 @@ def extract_hand(args, hand, label_str):
 
     labels = []
     for i in range(5):
-        labels.append(f"{label_str}_card_{i}")
+        labels.append(f"{label_str}card_{i}")
 
-    cards = CARD_ID_TO_STRING[cards]
+    # cards = CARD_ID_TO_STRING[cards]
 
     return pd.DataFrame(
         data=cards,
@@ -582,11 +579,14 @@ def extract_last_action(args, last_action):
     rank_revealed_idx = 18
     reveal_outcome_idx = 23
     card_position_idx = 28
+    card_played_idx = 53
+    card_played_scored_idx = 54
 
     move_type = last_action[:, :, acting_player_idx:move_type_idx]
     card_position = last_action[:, :, reveal_outcome_idx:card_position_idx]
     colour_revealed = last_action[:, :, target_player_idx:colour_revealed_idx]
     rank_revealed = last_action[:, :, colour_revealed_idx:rank_revealed_idx]
+    card_played_scored = last_action[:, :, card_played_idx:card_played_scored_idx]
 
     action_index = [1,0,2,3]
     move_index = range(5)
@@ -602,13 +602,14 @@ def extract_last_action(args, last_action):
     move_id = range(21)
     last_action_data = np.select(conditions, move_id, default=20)
     last_action_data = np.expand_dims(last_action_data, axis=2)
-    last_action_data = np.reshape(last_action_data, (num_rows, last_action_data.shape[2]))
 
-    # last_action_data = ACTION_ID_TO_STRING[last_action_data]
+
+    last_action_data = np.concatenate((last_action_data, card_played_scored), axis=2)
+    last_action_data = np.reshape(last_action_data, (num_rows, last_action_data.shape[2]))
 
     return pd.DataFrame(
         data=last_action_data,
-        columns=["last_action"]
+        columns=["last_action", "last_action_scored"]
     )
 
 
@@ -631,30 +632,6 @@ def extract_card_knowledge(args, card_knowledge):
 
     for player in range(2):
         for card in range(5):
-            # start_pos = colour * total_len
-            # end_pos = start_pos + possible_cards_len
-            # possible_cards = card_knowledge[:, :, start_pos:end_pos]
-
-            # start_pos = end_pos
-            # end_pos = start_pos + colour_hinted_len
-            # colour_hinted = card_knowledge[:, :, start_pos:end_pos]
-
-            # start_pos = end_pos
-            # end_pos = start_pos + rank_hinted_len
-            # rank_hinted = card_knowledge[:, :, start_pos:end_pos]
-
-            # print("\npossible cards")
-            # print(possible_cards.shape)
-            # print(possible_cards)
-
-            # print("\ncolour hinted")
-            # print(colour_hinted.shape)
-            # print(colour_hinted)
-
-            # print("\nrank hinted")
-            # print(rank_hinted.shape)
-            # print(rank_hinted)
-
             for colour in range(5):
                 for rank in range(5):
                     labels.append(f"{players[player]}card_{card}_{colours[colour]}{rank+1}_belief")
@@ -697,8 +674,6 @@ def extract_action(args, action):
     action = np.expand_dims(action, axis=2)
     action = np.reshape(action, (num_rows, action.shape[2]))
 
-    # action = ACTION_ID_TO_STRING[action]
-
     return pd.DataFrame(
         data=action,
         columns=["action"]
@@ -728,13 +703,84 @@ def extract_terminal(args, terminal):
     terminal = np.expand_dims(terminal, axis=2)
     terminal = np.reshape(terminal, (num_rows, terminal.shape[2]))
 
-    # print(terminal.shape)
-    # print(terminal)
-
     return pd.DataFrame(
         data=terminal,
         columns=["terminal"]
     )
+
+
+def add_bombs_triggered(args, df):
+    action = df["action"]
+    cards = np.array([ df[f"card_{i}"] for i in range(5) ])
+    card_to_colour = np.repeat(np.arange(0,5),5)
+    colours = ["red", "yellow", "green", "white", "blue"]
+    colour_to_fireworks = np.array([ df[f"{colours[i]}_fireworks"] for i in range(5) ])
+    card_to_rank = np.array(list(np.arange(1,6)) * 5)
+
+    condition = []
+    for card_position in range(5):
+        for colour in range(5):
+            condition.append(
+                (action == 5 + card_position)
+                & (card_to_colour[cards[card_position]] == colour) 
+                & (colour_to_fireworks[colour] + 1 != card_to_rank[cards[card_position]]),
+            )
+
+    result = [1] * len(condition)
+
+    last_action_data = np.select(condition, result, default=0)
+
+    bombs_triggered_df = pd.DataFrame(
+        data=last_action_data,
+        columns=["action_trigger_bomb"],
+    )
+    df = pd.concat([df, bombs_triggered_df], axis=1)
+
+    df["last_action_trigger_bomb"] = np.where(
+        (df["last_action"] >= 5)
+        & (df["last_action"] <= 9)
+        & (df["last_action_scored"] == 0), 1, 0
+    )
+
+    return df
+
+def remove_states_after_terminal(args, df, terminal):
+    terminal =  np.array(terminal, dtype=np.uint8)
+    terminal = np.swapaxes(terminal, 0, 1)
+    terminal = np.expand_dims(terminal, axis=2)
+    inv_terminal = terminal ^ (terminal & 1 == terminal)
+    sum = np.sum(inv_terminal, axis=1)
+    rows = np.array(range(sum.shape[0]))
+    rows = np.expand_dims(rows, axis=1)
+    sumrows = np.hstack((rows, sum))
+    sumrows = sumrows.astype(int)
+    sumrows = sumrows[sumrows[:,1] < terminal.shape[1]]
+    terminal[sumrows[:,0], sumrows[:,1], 0] = 0
+    num_rows = terminal.shape[0] * terminal.shape[1]
+    remove_rows = np.reshape(terminal, (num_rows, terminal.shape[2]))
+    remove_rows = remove_rows.astype(bool)
+
+    remove_rows_df = pd.DataFrame(
+        data=remove_rows,
+        columns=["remove_rows"],
+    )
+    df = pd.concat([df, remove_rows_df], axis=1)
+    df = df[~df.remove_rows]
+    df = df.drop("remove_rows", axis=1)
+    return df
+
+
+def save_all_data(args, data, now):
+    if not os.path.exists(args.out):
+        os.makedirs(args.out)
+
+    date_time = now.strftime("%m.%d.%Y_%H:%M:%S")
+
+    filename = f"{args.player_name[0]}_vs_{args.player_name[1]}_{date_time}.pkl"
+    filepath = os.path.join(args.out, filename)
+
+    print("Saving:", filepath)
+    data.to_pickle(filepath, compression="gzip")
 
 
 def parse_args():

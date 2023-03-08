@@ -13,7 +13,7 @@
 #include "rela/thread_loop.h"
 #include "rlcc/actors/r2d2_actor.h"
 
-#define PR true
+#define PR false
 
 class HanabiThreadLoop : public rela::ThreadLoop {
   public:
@@ -90,6 +90,14 @@ class HanabiThreadLoop : public rela::ThreadLoop {
         auto deck = envs_[0]->getHleState().Deck();
         if(PR)printf("Deck: %d\n", deck.Size());
         std::string colours = "RYGWB";
+        if(PR)printf("Discards: ");
+        auto& discards = envs_[0]->getHleState().DiscardPile();
+        for (auto card: discards) {
+          int card_colour = card.Color();
+          int rank = card.Rank();
+          if(PR)printf("%C%d ", colours[card_colour], rank);
+        }
+        if(PR)printf("\n");
         auto fireworks = envs_[0]->getFireworks();
         if(PR)printf("Fireworks: ");
         for (unsigned long i = 0; i < colours.size(); i++)
