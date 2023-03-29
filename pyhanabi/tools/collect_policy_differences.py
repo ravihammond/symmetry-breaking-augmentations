@@ -18,6 +18,7 @@ def collect_policy_differences(args):
         run_args = generate_crossplay_run_args(args)
     else:
         run_args = generate_split_run_args(args)
+
     # pprint(run_args)
 
     # Run all data collection combinations

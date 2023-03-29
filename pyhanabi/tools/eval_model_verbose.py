@@ -45,8 +45,8 @@ def evaluate_model(args):
         if not os.path.exists(file_path):
             os.makedirs(file_path)
         wrapped_scores = [[x] for x in scores]
-        file = open(args.csv_name, 'w+', newline ='')
         print(f"Saving: {args.csv_name}")
+        file = open(args.csv_name, 'w+', newline ='')
         with file:
             write = csv.writer(file)
             write.writerows(wrapped_scores)

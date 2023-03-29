@@ -62,6 +62,9 @@ def load_agents(policies, sad_legacy, device):
 
 
 def load_agent(policy, sad_legacy, device):
+    if not os.path.exists(policy):
+        print(f"Path {policy} doesn't exist.")
+        sys.exit
     default_cfg = {
         "act_base_eps": 0.1,
         "act_eps_alpha": 7,
@@ -232,6 +235,11 @@ def generate_replay_data(
     for runner in comp_runners:
         runner.stop()
 
+    scores = [g.last_episode_score() for g in games]
+    mean = np.mean(scores)
+    sem = np.std(scores) / np.sqrt(len(scores))
+    print(f"Score: {mean:.3f} ± {sem:.2f}")
+
     return replay_buffer
 
 
@@ -247,9 +255,6 @@ def extract_data(args, replay_buffer):
         batch, _ = replay_buffer.sample_from_list_split(
                 args.batch_size, "cpu", sample_id_list)
         
-        # batch = replay_buffer.sample_from_list(
-                # args.batch_size, "cpu", sample_id_list)
-
         similarities = get_similarities(args, batch)
 
     return similarities
@@ -260,29 +265,29 @@ def get_similarities(args, batch):
 
     seq_len = np.array(batch.seq_len)
 
+    # Actions of base model
     actions = np.array(batch.action["a"])
-
     if not args.act_sad_legacy[0]:
         actions = np.expand_dims(actions, axis=2)
-
     actions = clean_actions(actions, seq_len)
 
+    # Actions of Comparison policies
     comp_actions = {}
     for i, name in enumerate(args.comp_names):
         action_key = name + ":a"
-
         comp_action = np.array(batch.action[action_key])
         if not args.comp_sad_legacy[i]:
             comp_action = np.expand_dims(comp_action, axis=2)
         comp_action = clean_actions(comp_action, seq_len)
-
         comp_actions[action_key] = comp_action
 
+    # Actions of random policy
     if args.rand_policy:
         create_random_actions(batch, actions, comp_actions, args.comp_names)
 
+    # Print all actions
     if args.verbose:
-        print_games(actions, comp_actions, args.comp_names)
+        print_games(args, actions, comp_actions, args.comp_names)
 
     similarities = {}
 
@@ -302,32 +307,37 @@ def get_similarities(args, batch):
             action_diff = action_diff | diff
 
         similarity = calculate_similarity(actions, action_diff)
-        similarities["obl:a"] = similarity.squeeze(axis=1)
+        similarities["obl:a"] = similarity
     else:
+        print("calculating similarity")
         for name in args.comp_names:
             action_key = name + ":a"
+            print(actions.shape)
             # Sum number of same actions
             action_diff = np.array(actions == comp_actions[action_key], dtype=int)
 
-            similarity = calculate_similarity(action_diff)
-            similarities[action_key] = similarity.squeeze(axis=1)
+            similarity = calculate_similarity(actions, action_diff)
+            similarities[action_key] = similarity
 
     return similarities
 
 def calculate_similarity(actions, action_diff):
     invalid = np.array(actions == 20, dtype=int)
     diff_without_invalid = np.subtract(action_diff, invalid)
-    summed = diff_without_invalid.sum(axis=1, keepdims=True)
+    positive_similarity = diff_without_invalid.sum(axis=1, keepdims=True)
 
     # Get totals
     invalid_summed = np.sum(invalid, axis=1, keepdims=True)
-    totals = np.full(summed.shape, actions.shape[1])
+    totals = np.full(positive_similarity.shape, actions.shape[1])
     totals_no_invalid = np.subtract(totals, invalid_summed)
 
-    # Calculate similarity
-    similarity = np.divide(summed, totals_no_invalid,
-                        out=np.zeros(summed.shape), 
-                        where=totals_no_invalid!=0)
+    # Get negative
+    negative_similarity = np.subtract(totals_no_invalid, positive_similarity)
+
+    # Combine positive and negative
+    similarity = np.stack((positive_similarity, negative_similarity), axis=3)
+    similarity = np.squeeze(similarity, axis=(1,2))
+    similarity = similarity.astype(int)
 
     return similarity
 
@@ -374,10 +384,10 @@ def create_random_actions(batch, actions, comp_actions, comp_names):
     comp_actions["rand:a"] = rand_actions.astype(int)
 
 
-def print_games(actions, comp_actions, comp_names):
+def print_games(args, actions, comp_actions, comp_names):
     print()
     for game in range(actions.shape[1]):
-        print("base", end="")
+        print(args.base_name, end="")
         for comp_name in comp_names:
             print(f"\t{comp_name}", end="")
         print("\t\t", end="")
@@ -414,20 +424,20 @@ def save_all_data(args, data):
 
     if args.similarity_across_all:
         data_key = "obl:a"
-        save_sata(args, data, data_key, filename)
+        save_data(args, data, data_key, filename)
     else: 
         for comp_name in args.comp_names:
             data_key = comp_name + ":a"
-            save_sata(args, data, data_key, filename)
+            save_data(args, data, data_key, filename)
 
-def save_sata(args, data, data_key, filename):
+def save_data(args, data, data_key, filename):
     save_dir = os.path.join(args.outdir, args.base_name)
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
 
     save_path = os.path.join(save_dir, filename)
     print("saving:", save_path)
-    np.savetxt(save_path, data[data_key], delimiter=",",fmt='%1.4f')
+    np.savetxt(save_path, data[data_key], delimiter=",",fmt='%i')
 
 
 def parse_args():

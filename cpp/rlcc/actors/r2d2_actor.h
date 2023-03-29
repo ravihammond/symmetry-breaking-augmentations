@@ -81,6 +81,8 @@ class R2D2Actor {
             , sentSignalStats_(false)
             , beliefStatsSignalReceived_(false) 
             , colorShuffleSync_(colorShuffleSync) {
+              //printf("multiStep: %d, seqLen: %d, gamma: %f\n", 
+                  //multiStep, seqLen, gamma);
               if (beliefStats_ && convention_.size() > 0) {
                 auto responseMove = strToMove(convention_[conventionIdx_][0][1]);
                 beliefStatsResponsePosition_ = responseMove.CardIndex();

@@ -9,6 +9,7 @@ import json
 from os import listdir
 from os.path import isfile, join
 from pprint import pprint
+# from statsmodels.stats.proportion import proportion_confint
 
 SAMPLES_PER_PAIR = 5000
 
@@ -20,7 +21,6 @@ def plot_differences(args):
 
 def generate_plot_data(args):
     all_data = []
-
     for comp_model in args.compare_models:
         data = edict()
         data.name = comp_model
@@ -35,6 +35,7 @@ def generate_plot_data(args):
         (data.mean, 
          data.conf_high, 
          data.conf_low) = extract_data(args, data_files)
+        # data.mean = extract_data(args, data_files)
 
         all_data.append(data)
 
@@ -93,21 +94,40 @@ def get_all_data_files(args, comp_model):
 
 def extract_data(args, data_files):
     # similarity_data = np.zeros
-    combined_data = np.zeros((args.datasize,0))
+    similarity = np.zeros((args.datasize,2), dtype=int)
 
     for data_file in data_files:
-        data = genfromtxt(data_file, delimiter=',')
-        data = np.expand_dims(data, axis=1)
-        combined_data = np.hstack((combined_data, data))
+        if not os.path.exists(data_file):
+            print("not found:", data_file)
+            continue
+        data = genfromtxt(data_file, delimiter=',', dtype=int)
+        similarity = np.add(similarity, data)
 
-    mean = np.mean(combined_data, axis=1)
-    std = np.std(combined_data, axis=1)
-    stderr = mean / np.sqrt(combined_data.shape[1])
+    # print(similarity)
+
+    totals = np.sum(similarity, axis=1)
+    pprint("totals")
+    pprint(totals.tolist())
+    pprint("similarity")
+    pprint(similarity)
+
+    mean = similarity[:,0] / totals
+
+    #calculate 95% confidence interval with 56 successes in 100 trials
+    # low, high = proportion_confint(count=56, nobs=100, method="wilson")
+
+    # std = np.sqrt((similarity[:,0] * similarity[:,1]) / totals)
+    # stderr = std / np.sqrt(totals)
+    stderr = np.sqrt((similarity[:,0] * similarity[:,1]) / totals)
+
+    # mean = np.mean(combined_data, axis=1)
+    # std = np.std(combined_data, axis=1)
+    # stderr = mean / np.sqrt(combined_data.shape[1])
 
     splits = load_json_list(args.train_test_splits)
     indexes = splits[0][args.data_type]
 
-    num_samples = combined_data.shape[1] * SAMPLES_PER_PAIR
+    num_samples = similarity.shape[0] * SAMPLES_PER_PAIR
     bin_conf = np.sqrt((mean * (1 - mean)) / num_samples)
 
     conf = bin_conf
@@ -116,6 +136,13 @@ def extract_data(args, data_files):
 
     conf_high = mean + conf
     conf_low = mean - conf
+
+    # print("conf:", conf.shape)
+    # print(conf)
+    # print("conf_high:", conf_high.shape)
+    # print(conf_high)
+    # print("conf_low:", conf_low.shape)
+    # print(conf_low)
 
     return mean, conf_high, conf_low
 

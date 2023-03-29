@@ -50,6 +50,7 @@ void R2D2Actor::callCompareAct(HanabiEnv& env) {
 void R2D2Actor::replyCompareAct(rela::TensorDict& actorReply) {
   for (size_t i = 0; i < compRunners_.size(); i++) {
     auto reply = compFutReply_[i].get();
+    moveHid(reply, compHidden_[i]);
     vector<string> keys;
     for (auto& kv: reply) {
       string newKey = compNames_[i] + ":" + kv.first;

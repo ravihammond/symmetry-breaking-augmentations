@@ -92,6 +92,7 @@ ACTION_ID_TO_STRING_SHORT = np.array([
 ])
 
 
+
 def save_games(args):
     now = datetime.now()
 
@@ -393,10 +394,12 @@ def extract_obs(args, obs, player):
     df = pd.DataFrame()
 
     if args.sad_legacy[player]:
+        print("sad legacy: true")
         own_hand_str = "own_hand_ar"
         # Make sad priv_s the same as OBL priv_s
         priv_s = obs["priv_s"][:, :, 125:783]
     else:
+        print("sad legacy: false")
         own_hand_str = "own_hand"
         priv_s = obs["priv_s"]
 
@@ -408,10 +411,12 @@ def extract_obs(args, obs, player):
     v0_belief_idx = 658
 
     # Own hand
+    print("own hand")
     hand_df = extract_hand(args, obs[own_hand_str], "")
     df = pd.concat([df, hand_df], axis=1)
 
     # Partner Hand
+    print("partner hand")
     partner_hand = np.array(priv_s[:, :, :partner_hand_idx])
     hand_df = extract_hand(args, partner_hand, "partner_")
     df = pd.concat([df, hand_df], axis=1)
@@ -447,6 +452,7 @@ def extract_obs(args, obs, player):
 def extract_hand(args, hand, label_str):
     hand = np.array(hand, dtype=int)
     shape = hand.shape
+    print("hand shape:", shape)
     hand = np.reshape(hand, (shape[0], shape[1], 5, 25))
     hand = np.swapaxes(hand, 0, 1) 
     cards = np.argmax(hand, axis=3)
