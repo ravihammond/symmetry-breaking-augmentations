@@ -101,6 +101,7 @@ def extract_data(args, data_files):
             print("not found:", data_file)
             continue
         data = genfromtxt(data_file, delimiter=',', dtype=int)
+        print(data_file)
         similarity = np.add(similarity, data)
 
     # print(similarity)
