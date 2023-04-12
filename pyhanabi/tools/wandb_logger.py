@@ -1,3 +1,4 @@
+import wandb
 import numpy as np
 import pprint
 pprint = pprint.pprint

@@ -7,6 +7,7 @@ import torch
 import numpy as np
 import pandas as pd
 from datetime import datetime
+import csv
 
 from create import *
 import rela
@@ -101,7 +102,7 @@ def save_games(args):
 
     # Get replay buffer of games
     print("generating data")
-    replay_buffer = generate_replay_data(args, agents)
+    replay_buffer, scores = generate_replay_data(args, agents)
 
     # Convert to dataframe
     print("extracting dataframe")
@@ -109,6 +110,7 @@ def save_games(args):
 
     if args.save:
         save_all_data(args, data, now)
+        save_all_scores(args, scores, now)
 
 
 def load_agents(args):
@@ -261,7 +263,9 @@ def generate_replay_data(
     for runner in runners:
         runner.stop()
 
-    return replay_buffer
+    scores = [g.last_episode_score() for g in games]
+
+    return replay_buffer, scores
 
 
 def replay_to_dataframe(args, replay_buffer, now):
@@ -295,7 +299,7 @@ def batch_to_dataset(args, batch1, batch2, date_time):
     df = df.reset_index(drop=True)
 
     if args.verbose:
-        print("num cows:", df.shape[0])
+        print("num rows:", df.shape[0])
         print("num columns:", len(list(df.columns.values)))
 
     return df
@@ -394,12 +398,10 @@ def extract_obs(args, obs, player):
     df = pd.DataFrame()
 
     if args.sad_legacy[player]:
-        print("sad legacy: true")
         own_hand_str = "own_hand_ar"
         # Make sad priv_s the same as OBL priv_s
         priv_s = obs["priv_s"][:, :, 125:783]
     else:
-        print("sad legacy: false")
         own_hand_str = "own_hand"
         priv_s = obs["priv_s"]
 
@@ -411,12 +413,10 @@ def extract_obs(args, obs, player):
     v0_belief_idx = 658
 
     # Own hand
-    print("own hand")
     hand_df = extract_hand(args, obs[own_hand_str], "")
     df = pd.concat([df, hand_df], axis=1)
 
     # Partner Hand
-    print("partner hand")
     partner_hand = np.array(priv_s[:, :, :partner_hand_idx])
     hand_df = extract_hand(args, partner_hand, "partner_")
     df = pd.concat([df, hand_df], axis=1)
@@ -452,7 +452,6 @@ def extract_obs(args, obs, player):
 def extract_hand(args, hand, label_str):
     hand = np.array(hand, dtype=int)
     shape = hand.shape
-    print("hand shape:", shape)
     hand = np.reshape(hand, (shape[0], shape[1], 5, 25))
     hand = np.swapaxes(hand, 0, 1) 
     cards = np.argmax(hand, axis=3)
@@ -783,10 +782,33 @@ def save_all_data(args, data, now):
     date_time = now.strftime("%m.%d.%Y_%H:%M:%S")
 
     filename = f"{args.player_name[0]}_vs_{args.player_name[1]}_{date_time}.pkl"
-    filepath = os.path.join(args.out, filename)
+    dirpath = os.path.join(args.out, "games")
+    filepath = os.path.join(dirpath, filename)
+    if not os.path.exists(dirpath):
+        os.makedirs(dirpath)
 
     print("Saving:", filepath)
     data.to_pickle(filepath, compression="gzip")
+
+
+def save_all_scores(args, scores, now):
+    if not os.path.exists(args.out):
+        os.makedirs(args.out)
+
+    date_time = now.strftime("%m.%d.%Y_%H:%M:%S")
+
+    filename = f"{args.player_name[0]}_vs_{args.player_name[1]}_{date_time}.csv"
+    dirpath = os.path.join(args.out, "scores")
+    filepath = os.path.join(dirpath, filename)
+    if not os.path.exists(dirpath):
+        os.makedirs(dirpath)
+
+    wrapped_scores = [[x] for x in scores]
+    print(f"Saving: {filepath}")
+    file = open(filepath, 'w+', newline ='')
+    with file:
+        write = csv.writer(file)
+        write.writerows(wrapped_scores)
 
 
 def parse_args():

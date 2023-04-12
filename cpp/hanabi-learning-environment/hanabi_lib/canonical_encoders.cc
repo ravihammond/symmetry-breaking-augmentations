@@ -462,7 +462,6 @@ int EncodeCardKnowledge(const HanabiGame& game,
     int offset = start_offset;
     const std::vector<HanabiHand>& hands = obs.Hands();
     assert(hands.size() == num_players);
-    int print_i = 0;
     for (int player = 0; player < num_players; ++player) {
         const std::vector<HanabiHand::CardKnowledge>& knowledge =
             hands[player].Knowledge();
@@ -476,7 +475,6 @@ int EncodeCardKnowledge(const HanabiGame& game,
             }
             const auto& card_knowledge = knowledge[card_idx];
             // Add bits for plausible card.
-            char C2S[5] = {'R', 'Y', 'G', 'W', 'B'};
             for (int color = 0; color < num_colors; ++color) {
                 if (card_knowledge.ColorPlausible(color)) {
                     for (int rank = 0; rank < num_ranks; ++rank) {

@@ -15,14 +15,19 @@ from save_games import save_games
 def save_games_multiple(args):
     run_args = []
     if args.crossplay:
-        run_args = generate_jobs_crossplay(args)
+        if args.model1 == args.model2:
+            run_args = generate_jobs_self_crossplay(args)
+        else:
+            run_args = generate_jobs_crossplay(args)
     else:
         run_args = generate_jobs(args)
+
     run_save_games(args, run_args)
 
 
-def generate_jobs_crossplay(args):
+def generate_jobs_self_crossplay(args):
     assert(len(args.model1) == 1)
+    assert(len(args.model2) == 1)
 
     run_args = []
 
@@ -68,6 +73,42 @@ def generate_jobs_crossplay(args):
 
     return run_args
 
+def generate_jobs_crossplay(args):
+    assert(len(args.model1) == 1)
+    assert(len(args.model2) == 1)
+
+    run_args = []
+
+    model_weights1 = load_json_list(f"agent_groups/all_{args.model1[0]}.json")
+    model_weights2 = load_json_list(f"agent_groups/all_{args.model2[0]}.json")
+
+    run = edict()
+    run.data_type = "crossplay"
+    run.sad_legacy = [0,0]
+    run.player_name = ["",""]
+
+    (run.model1, 
+     run.sad_legacy[0], 
+     run.player_name[0]) = model_to_weight(
+             args, args.model1[0], args.crossplay_index)
+
+    for index_2 in range(len(model_weights2)):
+        runcpy = copy.copy(run)
+        (runcpy.model2, 
+         runcpy.sad_legacy[1], 
+         runcpy.player_name[1]) = model_to_weight(
+                 args, args.model2[0], index_2)
+
+        save_dir = os.path.join(
+            args.out,
+            f"{args.model1[0]}_vs_{args.model2[0]}",
+        )
+        runcpy.out = save_dir
+
+        run_args.append(runcpy)
+
+    return run_args
+
 
 def generate_jobs(args):
     run_args = []
@@ -107,7 +148,6 @@ def generate_jobs(args):
                  run.player_name[0]) = model_to_weight(
                          args, model1, args.crossplay_index)
 
-                run.out = os.path.join(args.out, model1)
                 save_dir = os.path.join(args.out, 
                         split_name[args.split_type], 
                         partner_type, 
@@ -139,25 +179,21 @@ def model_to_weight(args, model, policy_i):
         path = f"exps/{player_name}/model_epoch1000.pthw"
         sad_legacy = 0
 
-    elif "obl" in model:
-        policies = load_json_list("agent_groups/all_obl.json")
-        path = policies[policy_i]
-        player_name = f"obl_{policy_i + 1}"
-        sad_legacy = 0
-
-    elif model == "op":
-        policies = load_json_list("agent_groups/all_op.json")
-        path = policies[policy_i]
-        player_name = f"op_{policy_i + 1}"
-        sad_legacy = 1
-
-    elif model == "sad":
-        policies = load_json_list("agent_groups/all_sad.json")
-        path = policies[policy_i]
-        player_name = f"sad_{policy_i + 1}"
-        sad_legacy = 1
+    else:
+        player_name, sad_legacy = agent_from_group(model, policy_i)
 
     return path, sad_legacy, player_name
+
+
+def agent_from_group(model, policy_i):
+    policies = load_json_list(f"agent_groups/all_{model}.json")
+    path = policies[policy_i]
+    player_name = f"{model}_{policy_i + 1}"
+    sad_legacy = 0
+    if model in ["sad", "op"]:
+        sad_legacy = 1
+
+    return player_name, sad_legacy
 
 
 def run_save_games(args, run_args):
@@ -211,6 +247,7 @@ def parse_args():
         args.batch_size = args.num_game * 2
 
     args.model1 = args.model1.split(",")
+    args.model2 = args.model2.split(",")
 
     return args
 

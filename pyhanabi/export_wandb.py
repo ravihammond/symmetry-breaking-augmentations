@@ -1,4 +1,5 @@
 import os
+import sys
 import subprocess
 import argparse
 import pandas as pd
@@ -14,8 +15,8 @@ SPLITS_DIR = "/app/pyhanabi/train_test_splits"
 LOG_NAMES = [
     "test_score",
     "train_score",
-    "test_score_stderr",
-    "train_score_stderr"
+    # "test_score_stderr",
+    # "train_score_stderr"
 ]
 
 def export_wandb(args):
@@ -24,17 +25,22 @@ def export_wandb(args):
 
     names = get_names(args)
 
-    pprint(names)
-
     runs = api.runs(PROJECT)
+
     for run in runs:
         if run.name not in names:
             continue
-        pprint(run.name)
+        names.remove(run.name)
+        print(run.name)
         df = run.history(samples=100000)[LOG_NAMES]
         df = df.head(args.num_samples)
         save_path = os.path.join(SAVE_DIR, run.name + ".csv")
+        print("saving:", save_path)
         df.to_csv(save_path, index=False)
+
+    if len(names) > 0:
+        print("files not found:")
+        pprint(names)
 
 
 def get_names(args):

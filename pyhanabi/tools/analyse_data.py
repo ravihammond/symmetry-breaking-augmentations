@@ -90,73 +90,74 @@ def bombout_rate(args):
 
 
 def knowledge_of_played_card(args):
+    print("reading file")
     df = pd.read_pickle(args.path, compression="gzip")
+    print("done reading file")
     # df = df[df.game == "br_sad_six_1_2_5_6_11_12_vs_sad_3_game_1"]
     # df = df[df.player == "br_sad_six_1_2_5_6_11_12"]
     # df = df[df.turn == "67"]
-    df = df[(df.action >= 5) & (df.action <= 9)]
-    conditions = []
-    choices = []
-    colours = "RYGWB"
-    colours_str = ["red", "yellow", "green", "white", "blue"]
+    # df = df[(df.action >= 5) & (df.action <= 9)]
+    # conditions = []
+    # choices = []
+    # colours = "RYGWB"
+    # colours_str = ["red", "yellow", "green", "white", "blue"]
 
-    def firework_conditions(card, condition_prev, choice_prev, colour):
-        for rank in range(6):
-            condition = copy.copy(condition_prev)
-            choice = copy.copy(choice_prev)
-            condition &= df[f"{colours_str[colour]}_fireworks"] == rank
-            if rank < 5: 
-                choice += df[f"card_{card}_{colours[colour]}{rank + 1}_belief"] 
+    # def firework_conditions(card, condition_prev, choice_prev, colour):
+        # for rank in range(6):
+            # condition = copy.copy(condition_prev)
+            # choice = copy.copy(choice_prev)
+            # condition &= df[f"{colours_str[colour]}_fireworks"] == rank
+            # if rank < 5: 
+                # choice += df[f"card_{card}_{colours[colour]}{rank + 1}_belief"] 
 
-            if colour < 4:
-                firework_conditions(card, condition, choice, colour + 1)
-            else:
-                conditions.append(condition)
-                choices.append(choice)
+            # if colour < 4:
+                # firework_conditions(card, condition, choice, colour + 1)
+            # else:
+                # conditions.append(condition)
+                # choices.append(choice)
 
-    for card in range(5):
-        condition = df["action"] == 5 + card
-        choice = 0
-        firework_conditions(card, condition, choice, 0)
+    # for card in range(5):
+        # condition = df["action"] == 5 + card
+        # choice = 0
+        # firework_conditions(card, condition, choice, 0)
 
-    df["knowledge_of_played"] = np.select(conditions, choices, default=-1)
-    df = df[(df.action_trigger_bomb == 1)
-            & (df.knowledge_of_played == 0)]
+    # df["knowledge_of_played"] = np.select(conditions, choices, default=-1)
+    # df = df[(df.action_trigger_bomb == 1)
+            # & (df.knowledge_of_played == 0)]
 
     columns = [
-        # "game",
+        "game",
         "player",
         "partner",
         "turn",
         "action",
-        "card_4",
-        "red_fireworks",
-        "yellow_fireworks",
-        "green_fireworks",
-        "white_fireworks",
-        "blue_fireworks",
-        "card_4_R5_belief",
-        "card_4_Y3_belief",
-        "card_4_G3_belief",
-        "card_4_W4_belief",
-        "card_4_B5_belief",
+        # "card_4",
+        # "red_fireworks",
+        # "yellow_fireworks",
+        # "green_fireworks",
+        # "white_fireworks",
+        # "blue_fireworks",
+        # "card_4_R5_belief",
+        # "card_4_Y3_belief",
+        # "card_4_G3_belief",
+        # "card_4_W4_belief",
+        # "card_4_B5_belief",
         # "card_4_R_hinted",
         # "card_4_Y_hinted",
         # "card_4_G_hinted",
         # "card_4_W_hinted",
         # "card_4_B_hinted",
         # "card_4_1_hinted",
-        "card_4_2_hinted",
+        # "card_4_2_hinted",
         # "card_4_3_hinted",
         # "card_4_4_hinted",
         # "card_4_5_hinted",
-        "knowledge_of_played",
-        "action_trigger_bomb",
+        # "knowledge_of_played",
+        # "action_trigger_bomb",
     ]
 
-    # pprint(list(df.columns.values))
+    df = df.head(100)
     print(df[columns].to_string(index=False))
-
 
 def parse_args():
     parser = argparse.ArgumentParser()
