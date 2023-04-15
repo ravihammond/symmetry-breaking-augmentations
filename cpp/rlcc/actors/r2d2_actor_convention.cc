@@ -28,9 +28,9 @@ void R2D2Actor::callCompareAct(HanabiEnv& env) {
     input = observe(
         state,
         playerIdx_,
-        shuffleColor_,
-        colorPermutes_[0],
-        invColorPermutes_[0],
+        compShuffleColor_[i],
+        compColorPermutes_[i],
+        compInvColorPermutes_[i],
         compHideAction_[i],
         trinary_,
         compSad_[i],
@@ -47,14 +47,34 @@ void R2D2Actor::callCompareAct(HanabiEnv& env) {
   }
 }
 
-void R2D2Actor::replyCompareAct(rela::TensorDict& actorReply) {
+void R2D2Actor::replyCompareAct(const HanabiEnv& env, 
+    int actorAction, int curPlayer) {
+  char colourMap[5] = {'R', 'Y', 'G', 'W', 'B'};
+  auto game = env.getHleGame();
   for (size_t i = 0; i < compRunners_.size(); i++) {
     auto reply = compFutReply_[i].get();
     moveHid(reply, compHidden_[i]);
-    vector<string> keys;
-    for (auto& kv: reply) {
-      string newKey = compNames_[i] + ":" + kv.first;
-      actorReply[newKey] = kv.second;
+
+    int action = reply.at("a").item<int64_t>();
+    auto move = game.GetMove(action);
+
+    if (compShuffleColor_[i] && 
+        move.MoveType() == hle::HanabiMove::Type::kRevealColor) {
+      char colourBefore = colourMap[move.Color()];
+      int realColor = compInvColorPermutes_[i].at(move.Color());
+      move.SetColor(realColor);
+      if(CV)printf("action colour %c->%c\n", colourBefore, colourMap[move.Color()]);
+      action = game.GetMoveUid(move);
+    }
+    
+    if (curPlayer != playerIdx_) {
+      continue;
+    }
+
+    if (actorAction == action) {
+      incrementStat("turn_" + to_string(env.numStep()) + "_same");
+    } else {
+      incrementStat("turn_" + to_string(env.numStep()) + "_different");
     }
   }
 }

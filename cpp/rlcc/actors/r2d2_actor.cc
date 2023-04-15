@@ -161,9 +161,10 @@ void R2D2Actor::reset(const HanabiEnv& env) {
     }
 
     // other-play
-    if (shuffleColor_) {
+    if (shuffleColor_ && !colourPermuteConstant_) {
       auto& colorPermute = colorPermutes_[i];
       auto& invColorPermute = invColorPermutes_[i];
+
       colorPermute.clear();
       invColorPermute.clear();
 
@@ -184,17 +185,25 @@ void R2D2Actor::reset(const HanabiEnv& env) {
           continue;
         }
         std::shuffle(colorPermute.begin(), colorPermute.end(), rng_);
+
         std::sort(invColorPermute.begin(), invColorPermute.end(), [&](int i, int j) {
             return colorPermute[i] < colorPermute[j];
-            });
+        });
         for (int i = 0; i < (int)colorPermute.size(); ++i) {
           assert(invColorPermute[colorPermute[i]] == i);
         }
       }
 
-      if (PR) {
-        printf("colour permute: { ");
-        for (int colour: colorPermute) {
+    }
+    if (PR) {
+      printf("colour permute: { ");
+      for (int colour: colorPermutes_[0]) {
+        printf("%d ", colour);
+      }
+      printf("}\n");
+      if (compRunners_.size() > 0) {
+        printf("comp colour permute: { ");
+        for (int colour: compColorPermutes_[0]) {
           printf("%d ", colour);
         }
         printf("}\n");
@@ -329,8 +338,6 @@ void R2D2Actor::act(HanabiEnv& env, const int curPlayer) {
   auto reply = futReply_.get();
   moveHid(reply, hidden_);
 
-  replyCompareAct(reply);
-
   if (replayBuffer_ != nullptr) {
     r2d2Buffer_->pushAction(reply);
   }
@@ -351,6 +358,8 @@ void R2D2Actor::act(HanabiEnv& env, const int curPlayer) {
     action = reply.at("a").item<int64_t>();
     invColorPermute = &(invColorPermutes_[0]);
   }
+
+  replyCompareAct(env, action, curPlayer);
 
   if (offBelief_ || beliefStats_) {
     const auto& hand = fictState_->Hands()[playerIdx_];

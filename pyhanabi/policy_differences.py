@@ -47,11 +47,14 @@ def run_policy_evaluation(args):
         print("comp policies")
     comp_agents = load_agents(args.comp_policies, args.comp_sad_legacy, args.device)
 
+    print("generating replay data")
     replay_buffer = generate_replay_data(args, act_agents, comp_agents)
-    data = extract_data(args, replay_buffer)
+    print("extracting data from buffer")
+    # data = extract_data(args, replay_buffer)
 
-    if args.outdir is not None:
-        save_all_data(args, data)
+    # if args.outdir is not None:
+        # print("saving game")
+        # save_all_data(args, data)
 
 
 def load_agents(policies, sad_legacy, device):
@@ -193,6 +196,7 @@ def generate_replay_data(
                     act_agents[i][3], # sadLegacy
                     False, # beliefSadLegacy
                     False, # colorShuffleSync
+                    False, # slimReplayBuffer
                 )
 
                 if i == 0 and len(comp_runners) > 0:

@@ -80,7 +80,8 @@ class R2D2Actor {
             , sentSignal_(false)
             , sentSignalStats_(false)
             , beliefStatsSignalReceived_(false) 
-            , colorShuffleSync_(colorShuffleSync) {
+            , colorShuffleSync_(colorShuffleSync) 
+            , colourPermuteConstant_(false) {
               //printf("multiStep: %d, seqLen: %d, gamma: %f\n", 
                   //multiStep, seqLen, gamma);
               if (beliefStats_ && convention_.size() > 0) {
@@ -104,8 +105,6 @@ class R2D2Actor {
         bool vdn,
         bool sad,
         bool hideAction,
-
-        // My changes
         std::vector<std::vector<std::vector<std::string>>> convention,
         bool actParameterized,
         int conventionIdx,
@@ -146,7 +145,8 @@ class R2D2Actor {
         , sentSignal_(false)
         , sentSignalStats_(false)
         , beliefStatsSignalReceived_(false)
-        , colorShuffleSync_(false) {
+        , colorShuffleSync_(false) 
+        , colourPermuteConstant_(false) {
           if (beliefStats_ && convention_.size() > 0) {
             auto responseMove = strToMove(convention_[conventionIdx_][0][1]);
             beliefStatsResponsePosition_ = responseMove.CardIndex();
@@ -233,6 +233,20 @@ class R2D2Actor {
       compNames_ = compNames;
     }
 
+    void setColourPermute(
+        std::vector<std::vector<int>> colorPermute,
+        std::vector<std::vector<int>> invColorPermute,
+        std::vector<bool> compShuffleColor,
+        std::vector<std::vector<int>> compColorPermute,
+        std::vector<std::vector<int>> compInvColorPermute) {
+      colourPermuteConstant_ = true;
+      colorPermutes_ = colorPermute;
+      invColorPermutes_ = invColorPermute;
+      compShuffleColor_ = compShuffleColor;
+      compColorPermutes_ = compColorPermute;
+      compInvColorPermutes_ = compInvColorPermute;
+    }
+
   private:
     rela::TensorDict getH0(int numPlayer, std::shared_ptr<rela::BatchRunner>& runner) {
       std::vector<torch::jit::IValue> input{numPlayer};
@@ -276,7 +290,7 @@ class R2D2Actor {
     void possibleResponseCards(const HanabiEnv& env,
         std::vector<int>& playableCards);
     void callCompareAct(HanabiEnv& env);
-    void replyCompareAct(rela::TensorDict& actorReply);
+    void replyCompareAct(const HanabiEnv& env, int actorAction, int curPlayer);
 
     std::shared_ptr<rela::BatchRunner> runner_;
     std::shared_ptr<rela::BatchRunner> classifier_;
@@ -324,7 +338,6 @@ class R2D2Actor {
     std::unique_ptr<hle::HanabiState> fictState_ = nullptr;
     std::vector<std::weak_ptr<R2D2Actor>> partners_;
 
-
     std::vector<std::vector<float>> perCardPrivV0_;
     int noneKnown_ = 0;
     int colorKnown_ = 0;
@@ -358,6 +371,10 @@ class R2D2Actor {
     int beliefStatsResponsePosition_;
     std::shared_ptr<hle::HanabiHand> previousHand_ = nullptr;
     bool colorShuffleSync_;
+    bool colourPermuteConstant_;
+    std::vector<bool> compShuffleColor_;
+    std::vector<std::vector<int>> compColorPermutes_;
+    std::vector<std::vector<int>> compInvColorPermutes_;
 
     std::vector<std::shared_ptr<rela::BatchRunner>> compRunners_;
     std::vector<rela::TensorDict> compHidden_;

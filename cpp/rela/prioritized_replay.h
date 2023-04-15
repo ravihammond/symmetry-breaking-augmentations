@@ -64,37 +64,63 @@ class ConcurrentQueue {
     }
 
     void append(const DataType& data, float weight) {
+      printf("a\n");
       int blockSize = 1;
+      printf("b\n");
       std::unique_lock<std::mutex> lk(m_);
+      printf("c\n");
+      printf("terminated_: %d\n", terminated_);
+      printf("size_: %d\n", size_);
+      printf("blockSize: %d\n", blockSize);
+      printf("capacity %d\n", capacity);
       cvSize_.wait(lk, [=] { return terminated_ || (size_ + blockSize <= capacity); });
+      printf("d\n");
       if (terminated_) {
+        printf("e\n");
         return;
       }
+      printf("f\n");
 
       int start = tail_;
+      printf("g\n");
       int end = (tail_ + blockSize) % capacity;
+      printf("h\n");
 
       tail_ = end;
+      printf("i\n");
       size_ += blockSize;
+      printf("j\n");
       checkSize(head_, tail_, size_);
+      printf("k\n");
 
       lk.unlock();
+      printf("l\n");
 
       float sum = 0;
+      printf("m\n");
       elements_[start] = data;
+      printf("o\n");
       weights_[start] = weight;
+      printf("p\n");
       sum += weight;
+      printf("q\n");
 
       lk.lock();
+      printf("r\n");
 
       cvTail_.wait(lk, [=] { return safeTail_ == start; });
+      printf("s\n");
       safeTail_ = end;
       safeSize_ += blockSize;
       sum_ += sum;
+      printf("t\n");
       checkSize(head_, safeTail_, safeSize_);
+      printf("u\n");
 
       lk.unlock();
+      printf("v\n");
       cvTail_.notify_all();
+      printf("w\n");
     }
 
     // ------------------------------------------------------------- //
@@ -222,8 +248,11 @@ class PrioritizedReplay {
     }
 
     void add(const DataType& sample, float priority) {
+      printf("A\n");
       numAdd_ += 1;
+      printf("B\n");
       storage_.append(sample, std::pow(priority, alpha_));
+      printf("C\n");
     }
 
     void add(const DataType& sample) {
