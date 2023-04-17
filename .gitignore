@@ -29,7 +29,8 @@ pyhanabi/notebooks/*
 pyhanabi/extract_human_data.py
 pyhanabi/wandb/
 pyhanabi/wandb_data/
-pyhanabi/similarity_data
+pyhanabi/similarity_data/
+pyhanabi/similarity
 pyhanabi/exps
 
 wandb_api_key.txt

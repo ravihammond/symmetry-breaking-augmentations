@@ -168,7 +168,7 @@ class HanabiThreadLoop : public rela::ThreadLoop {
         for (size_t j = 0; j < actors.size(); ++j) {
           if(PR)printf("\n[player %ld fictious acting]%s\n", j,
               curPlayer == (int)j ? " <-- current player" : "");
-          actors[j]->fictAct(*envs_[i]);
+          //actors[j]->fictAct(*envs_[i]);
         }
       }
       t = clock() - t;
@@ -187,7 +187,7 @@ class HanabiThreadLoop : public rela::ThreadLoop {
         for (size_t j = 0; j < actors.size(); ++j) {
           if(PR)printf("\n[player %ld observe after acting]%s\n", j,
               curPlayer == (int)j ? " <-- current player" : "");
-          actors[j]->observeAfterAct(*envs_[i]);
+          //actors[j]->observeAfterAct(*envs_[i]);
         }
       }
       t = clock() - t;

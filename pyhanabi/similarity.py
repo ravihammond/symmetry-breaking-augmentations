@@ -10,6 +10,8 @@ import copy
 from easydict import EasyDict as edict
 import itertools
 from collections import defaultdict
+import pathlib
+import subprocess
 
 from create import *
 import rela
@@ -17,8 +19,30 @@ import r2d2
 import utils
 import csv
 
+from google_cloud_handler import GoogleCloudUploader
+
 
 def similarity(args):
+    agents, runners = load_runners(args)
+
+    # sp1_actors = []
+    # sp2_actors = []
+    seed = args.seed
+    # _, sp1_actors = play_games(args, [agent1, agent1], [agent2, agent2], seed)
+    # seed += args.num_game
+    # _, sp2_actors = play_games(args, [agent2, agent2], [agent1, agent1], seed)
+    # seed += args.num_game
+    xp_scores, xp_actors = play_games(args, agents, runners, [0, 1], [1, 0], seed)
+
+    similarity, mean_score, sem_score = extract_data(args, xp_scores,
+            # [sp1_actors, sp2_actors, xp_actors])
+            [xp_actors])
+
+    if args.save:
+        save_and_upload(args, similarity, mean_score, sem_score)
+
+
+def load_runners(args):
     colour_permutes, inverse_colour_permutes = get_colour_permutes()
 
     agent1 = load_agent(
@@ -30,6 +54,7 @@ def similarity(args):
             inverse_colour_permutes[args.permute_index1],
             args.name1,
     )
+
     agent2 = load_agent(
             args.policy2, 
             args.sad_legacy2, 
@@ -40,22 +65,18 @@ def similarity(args):
             args.name2,
     )
 
-    sp1_actors = []
-    sp2_actors = []
-    seed = args.seed
-    _, sp1_actors = play_games(args, [agent1, agent1], [agent2, agent2], seed)
-    seed += args.num_game
-    _, sp2_actors = play_games(args, [agent2, agent2], [agent1, agent1], seed)
-    seed += args.num_game
-    xp_scores, xp_actors = play_games(args, [agent1, agent2], [agent2, agent1], seed)
+    agents = [agent1, agent2]
+    runners = []
 
-    mean, std, similarity = extract_data(args, xp_scores,
-            [sp1_actors, sp2_actors, xp_actors])
+    for i, agent in enumerate(agents):
+        runners.append(rela.BatchRunner(
+            agent["agent"].clone(args.device), 
+            args.device, 
+            1000, 
+            ["act"]
+        ))
 
-    if args.save:
-        save(args, similarity, mean, std)
-
-    print()
+    return agents, runners
 
 
 def get_colour_permutes():
@@ -114,22 +135,6 @@ def load_agent(policy, sad_legacy, device, shuffle_colour,
         colour_permute = []
         inverse_colour_permute = []
 
-    # colour_permutes, inverse_colour_permutes = get_colour_permutes()
-    # if shuffle_colour:
-        # for i, permute in enumerate(colour_permutes):
-            # same = True
-            # for j in range(5):
-                # if permute[j] != inverse_colour_permute[j]:
-                    # same = False
-                    # break
-            # if not same:
-                # continue
-            # print("match found")
-            # print("found inverse permute:", permute)
-            # print("known inverse permute:", inverse_colour_permute)
-            # print("known permute:", colour_permute)
-            # print("i:", i)
-
     return {
         "agent": agent, 
         "cfg": cfg, 
@@ -151,38 +156,27 @@ def create_agent_str(agent):
     return f"{name}{permute}"
 
 
-def play_games(args, agents, comp_agents, seed):
+def play_games(args, agents, runners, act_index, comp_index, seed):
+    actor_agents = [agents[act_index[0]], agents[act_index[1]]]
+    actor_runners = [runners[act_index[0]], runners[act_index[1]]]
+    comp_agents = [agents[comp_index[0]], agents[comp_index[1]]]
+    comp_runners = [runners[comp_index[0]], runners[comp_index[1]]]
+
     if args.verbose:
-        agent1_str = create_agent_str(agents[0])
+        agent1_str = create_agent_str(actor_agents[0])
         comp_agent1_str = create_agent_str(comp_agents[0])
-        agent2_str = create_agent_str(agents[1])
+        agent2_str = create_agent_str(actor_agents[1])
         comp_agent2_str = create_agent_str(comp_agents[1])
-        print(f"running: {agent1_str} ({comp_agent1_str})vs" + \
+        print(f"running: {agent1_str} ({comp_agent1_str})  vs  " + \
               f"{agent2_str} ({comp_agent2_str})")
+
+
     if args.num_game < args.num_thread:
         args.num_thread = args.num_game
 
     num_player = 2
     bomb = 0
     max_len = 80
-
-    runners = []
-    for i, agent in enumerate(agents):
-        runners.append(rela.BatchRunner(
-            agent["agent"].clone(args.device), 
-            args.device, 
-            1000, 
-            ["act"]
-        ))
-
-    comp_runners = []
-    for i, agent in enumerate(comp_agents):
-        comp_runners.append(rela.BatchRunner(
-            agent["agent"].clone(args.device), 
-            args.device, 
-            1000, 
-            ["act"]
-        ))
 
     context = rela.Context()
     threads = []
@@ -204,28 +198,28 @@ def play_games(args, agents, comp_agents, seed):
                     num_player, # numPlayer
                     i, # playerIdx
                     False, # vdn
-                    agents[i]["cfg"]["sad"], # sad
-                    agents[i]["cfg"]["hide_action"], # hideAction
+                    actor_agents[i]["cfg"]["sad"], # sad
+                    actor_agents[i]["cfg"]["hide_action"], # hideAction
                     [], # convention
                     0, # act parameterized
                     0, # conventionIndex
                     0, # conventionOverride
                     0, # beliefStats
-                    agents[i]["sad_legacy"], # sadLegacy
-                    agents[i]["shuffle_colour"], #shuffleColor
+                    actor_agents[i]["sad_legacy"], # sadLegacy
+                    actor_agents[i]["shuffle_colour"], #shuffleColor
                 )
 
                 actor.set_compare_runners(
                     [comp_runners[i]], 
                     [comp_agents[i]["cfg"]["sad"]],
-                    [agents[i]["sad_legacy"]],
+                    [comp_agents[i]["sad_legacy"]],
                     [comp_agents[i]["cfg"]["hide_action"]],
-                    [f"comp{i}"]
+                    [comp_agents[i]["name"]],
                 )
 
                 actor.set_colour_permute(
-                    [agents[i]["colour_permute"]],
-                    [agents[i]["inverse_colour_permute"]],
+                    [actor_agents[i]["colour_permute"]],
+                    [actor_agents[i]["inverse_colour_permute"]],
                     [comp_agents[i]["shuffle_colour"]],
                     [comp_agents[i]["colour_permute"]],
                     [comp_agents[i]["inverse_colour_permute"]]
@@ -249,16 +243,13 @@ def play_games(args, agents, comp_agents, seed):
     for runner in runners:
         runner.start()
 
-    for runner in comp_runners:
-        runner.start()
-
+    subprocess.run("nvidia-smi")
     context.start()
     context.join()
+    subprocess.run("nvidia-smi")
+    print("##################################################################")
 
     for runner in runners:
-        runner.stop()
-
-    for runner in comp_runners:
         runner.stop()
 
     scores = [g.last_episode_score() for g in games]
@@ -291,10 +282,48 @@ def extract_data(args, scores, all_actors):
         print(f"similarity: {similarity:.4f}")
         print(f"score: {mean_score:.4f} ± {sem_score:.4f}")
 
-    return mean_score, sem_score, similarity
+    return similarity_all, mean_score, sem_score
 
 
-# def save_data(args, ):
+def save_and_upload(args, similarity, mean_score, sem_score):
+    if not args.save:
+        return
+    similarity_dir = os.path.join(args.outdir, "similarity")
+    scores_dir = os.path.join(args.outdir, "scores")
+    if not os.path.exists(similarity_dir):
+        os.makedirs(similarity_dir)
+    if not os.path.exists(scores_dir):
+        os.makedirs(scores_dir)
+
+    filename = f"{args.name1}_perm_{args.permute_index1}_vs_{args.name2}.csv"
+    similarity_save_path = os.path.join(similarity_dir, filename)
+    scores_save_path = os.path.join(scores_dir, filename)
+
+    scores = np.array([mean_score, sem_score])
+
+    print("saving similarity:", similarity_save_path)
+    np.savetxt(similarity_save_path, similarity, delimiter=",",fmt='%i')
+
+    print("saving scores:", scores_save_path)
+    np.savetxt(scores_save_path, scores, delimiter=",",fmt='%f')
+
+    if not args.upload_gcloud:
+        return
+
+    similarity_path_obj = pathlib.Path(similarity_save_path)
+    gc_similarity_path = os.path.join(args.gcloud_dir, *similarity_path_obj.parts[1:])
+    scores_path_obj = pathlib.Path(scores_save_path)
+    gc_scores_path = os.path.join(args.gcloud_dir, *scores_path_obj.parts[1:])
+
+    gc_handler = GoogleCloudUploader("aiml-reid-research", "Ravi")
+
+    print("uploading:", gc_similarity_path)
+    gc_handler.assert_file_doesnt_exist(gc_similarity_path)
+    gc_handler.upload(similarity_save_path, gc_similarity_path)
+
+    print("uploading:", gc_scores_path)
+    gc_handler.assert_file_doesnt_exist(gc_scores_path)
+    gc_handler.upload(scores_save_path, gc_scores_path)
 
 
 def parse_args():
@@ -317,10 +346,8 @@ def parse_args():
     parser.add_argument("--verbose", type=int, default=0)
     parser.add_argument("--save", type=int, default=0)
     parser.add_argument("--upload_gcloud", type=int, default=0)
+    parser.add_argument("--gcloud_dir", type=str, default="hanabi-similarity")
     args = parser.parse_args()
-
-    if args.outdir is not None:
-        args.outdir = os.path.join("similarity", args.outdir)
 
     return args
 

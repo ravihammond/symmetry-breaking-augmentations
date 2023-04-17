@@ -4,6 +4,7 @@ pyhanabi/exps/
 pyhanabi/wandb/
 pyhanabi/wandb_data/
 pyhanabi/similarity_data/
+pyhanabi/similarity/
 pyhanabi/temp/
 pyhanabi/data/
 pyhanabi/br_and_sba_no_search/
