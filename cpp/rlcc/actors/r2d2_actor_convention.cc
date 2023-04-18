@@ -28,20 +28,21 @@ void R2D2Actor::callCompareAct(HanabiEnv& env) {
     input = observe(
         state,
         playerIdx_,
-        compShuffleColor_[i],
-        compColorPermutes_[i],
-        compInvColorPermutes_[i],
-        compHideAction_[i],
+        compShuffleColor_.at(i),
+        compColorPermutes_.at(i),
+        compInvColorPermutes_.at(i),
+        compHideAction_.at(i),
         trinary_,
-        compSad_[i],
+        compSad_.at(i),
         showOwnCards_,
-        compSadLegacy_[i]);
+        compSadLegacy_.at(i));
     // add features such as eps and temperature
     input["eps"] = torch::tensor(playerEps_);
     if (playerTemp_.size() > 0) {
       input["temperature"] = torch::tensor(playerTemp_);
     }
     input["convention_idx"] = torch::tensor(conventionIdx_);
+    input["actor_index"] = torch::tensor(playerIdx_); 
     addHid(input, compHidden_[i]);
     compFutReply_[i] = compRunners_[i]->call("act", input);
   }
@@ -85,8 +86,6 @@ hle::HanabiMove R2D2Actor::overrideMove(const HanabiEnv& env, hle::HanabiMove mo
       convention_[conventionIdx_].size() == 0) {
     return move;
   }
-  if(CV)printf("Move before override: %s\n", move.ToString().c_str());
-
   auto lastMove = env.getMove(env.getLastAction());
   auto signalMove = strToMove(convention_[conventionIdx_][0][0]);
   auto responseMove = strToMove(convention_[conventionIdx_][0][1]);
@@ -103,7 +102,6 @@ hle::HanabiMove R2D2Actor::overrideMove(const HanabiEnv& env, hle::HanabiMove mo
 
   if (conventionOverride_ == 2 || conventionOverride_ == 3 ) {
     if (lastMove == signalMove) {
-      if(CV)printf("OVERRIDE USE RESPONSE=========================================\n");
       return responseMove;
     } else if (move == responseMove) {
       vector<hle::HanabiMove> exclude = {responseMove};
@@ -113,11 +111,9 @@ hle::HanabiMove R2D2Actor::overrideMove(const HanabiEnv& env, hle::HanabiMove mo
             && movePlayableOnFireworks(env, responseMove, nextPlayer) 
             && state.MoveIsLegal(signalMove)) {
           sentSignal_ = true;
-          if(CV)printf("OVERRIDE USE SIGNAL=========================================\n");
           return signalMove;
         }
       }
-      if(CV)printf("OVERRIDE STOP RESPONSE=========================================\n");
       return different_action(env, exclude, actionQ, exploreAction, legalMoves);
     }
   }
@@ -126,12 +122,10 @@ hle::HanabiMove R2D2Actor::overrideMove(const HanabiEnv& env, hle::HanabiMove mo
     if (!sentSignal_ && movePlayableOnFireworks(env, responseMove, nextPlayer) 
         && state.MoveIsLegal(signalMove)) {
       sentSignal_ = true;
-      if(CV)printf("OVERRIDE USE SIGNAL=========================================\n");
       return signalMove;
     } else if (move == signalMove) {
       vector<hle::HanabiMove> exclude = {signalMove};
       if (conventionOverride_ == 3) exclude.push_back(responseMove);
-      if(CV)printf("OVERRIDE STOP SIGNAL=========================================\n");
       return different_action(env, exclude, actionQ, exploreAction, legalMoves);
     }
   }

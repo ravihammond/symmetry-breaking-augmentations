@@ -11,7 +11,9 @@ from easydict import EasyDict as edict
 import itertools
 from collections import defaultdict
 import pathlib
-import subprocess
+from concurrent.futures import ThreadPoolExecutor
+from threading import Lock
+from functools import partial
 
 from create import *
 import rela
@@ -22,59 +24,111 @@ import csv
 from google_cloud_handler import GoogleCloudUploader
 
 
+class DeviceID:
+    def __init__(self, number, max):
+        self._number = number
+        self._max = max
+
+    def get(self):
+        return self._number
+
+    def set(self, number):
+        self._number = number
+
+    def increment(self):
+        self._number = (self._number + 1) % self._max
+
+
 def similarity(args):
+    jobs = create_similarity_jobs(args)
+    pprint(jobs)
+
     agents, runners = load_runners(args)
 
-    # sp1_actors = []
-    # sp2_actors = []
-    seed = args.seed
-    # _, sp1_actors = play_games(args, [agent1, agent1], [agent2, agent2], seed)
-    # seed += args.num_game
-    # _, sp2_actors = play_games(args, [agent2, agent2], [agent1, agent1], seed)
-    # seed += args.num_game
-    xp_scores, xp_actors = play_games(args, agents, runners, [0, 1], [1, 0], seed)
+    runner_i = 1
+    for runners_gpu in runners:
+        for runner in runners_gpu:
+            print("starting runner:", runner_i)
+            runner_i += 1
+            runner.start()
 
-    similarity, mean_score, sem_score = extract_data(args, xp_scores,
-            # [sp1_actors, sp2_actors, xp_actors])
-            [xp_actors])
+    device_id_wrapper = DeviceID(0, 3)
+    device_mutex = Lock()
+    run_job_fixed=partial(
+        run_job, 
+        agents=agents, 
+        runners=runners,
+        device_id_wrapper=device_id_wrapper,
+        device_mutex=device_mutex,
+    )
 
-    if args.save:
-        save_and_upload(args, similarity, mean_score, sem_score)
+    with ThreadPoolExecutor(max_workers=args.workers) as pool:
+        pool.map(run_job_fixed, jobs)
+
+    for runners_gpu in runners:
+        for runner in runners_gpu:
+            runner.stop()
+
+
+def create_similarity_jobs(args):
+    jobs = []
+    shuffle_indexes = parse_numbers(args.shuffle_index)
+
+    job = edict()
+
+    for shuffle_index in shuffle_indexes:
+        job2 = copy.copy(job)
+        job2.permute_index = shuffle_index
+        jobs.append(job2)
+
+    return jobs
+
+
+def parse_numbers(numbers):
+    if '-' in numbers:
+        range = [int(x) for x in numbers.split('-')]
+        assert(len(range) == 2)
+        numbers_list = list(np.arange(*range))
+    else:
+        numbers_list = [int(x) for x in numbers.split(',')]
+
+    return numbers_list
 
 
 def load_runners(args):
     colour_permutes, inverse_colour_permutes = get_colour_permutes()
+    devices = args.device.split(",")
 
     agent1 = load_agent(
             args.policy1, 
             args.sad_legacy1, 
-            args.device, 
-            args.shuffle_colour1, 
-            colour_permutes[args.permute_index1],
-            inverse_colour_permutes[args.permute_index1],
+            devices[0], 
+            True, 
             args.name1,
     )
 
     agent2 = load_agent(
             args.policy2, 
             args.sad_legacy2, 
-            args.device, 
-            args.shuffle_colour2, 
-            colour_permutes[args.permute_index2],
-            inverse_colour_permutes[args.permute_index2],
+            devices[0], 
+            False,
             args.name2,
     )
 
     agents = [agent1, agent2]
+
     runners = []
 
-    for i, agent in enumerate(agents):
-        runners.append(rela.BatchRunner(
-            agent["agent"].clone(args.device), 
-            args.device, 
-            1000, 
-            ["act"]
-        ))
+    for device in devices:
+        runners_gpu = []
+        for i, agent in enumerate(agents):
+            runners_gpu.append(rela.BatchRunner(
+                agent["agent"].clone(device), 
+                device, 
+                1000, 
+                ["act"]
+            ))
+        runners.append(runners_gpu)
 
     return agents, runners
 
@@ -93,8 +147,7 @@ def get_colour_permutes():
     return colour_permutes, inverse_colour_permutes
 
 
-def load_agent(policy, sad_legacy, device, shuffle_colour, 
-        colour_permute, inverse_colour_permute, name):
+def load_agent(policy, sad_legacy, device, shuffle_colour, name):
     if not os.path.exists(policy):
         print(f"Path {policy} doesn't exist.")
         sys.exit
@@ -141,35 +194,72 @@ def load_agent(policy, sad_legacy, device, shuffle_colour,
         "boltzmann_t": boltzmann_t, 
         "sad_legacy": sad_legacy,
         "shuffle_colour": shuffle_colour,
-        "colour_permute": colour_permute,
-        "inverse_colour_permute": inverse_colour_permute,
         "name": name,
     }
 
 
-def create_agent_str(agent):
+def run_job(job, agents, runners, device_id_wrapper, device_mutex):
+    with device_mutex:
+        device_id = device_id_wrapper.get()
+        device_id_wrapper.increment()
+    try:
+        all_colour_permutes, all_inverse_colour_permutes = get_colour_permutes()
+        colour_permutes = [all_colour_permutes[job.permute_index], []]
+        inverse_colour_permutes = [all_inverse_colour_permutes[job.permute_index], []]
+
+        sp1_actors = []
+        sp2_actors = []
+        seed = args.seed
+        _, sp1_actors = play_games(args, agents, runners, colour_permutes, 
+                inverse_colour_permutes, [0, 0], [1, 1], seed, device_id)
+        seed += args.num_game
+        _, sp2_actors = play_games(args, agents, runners, colour_permutes, 
+                inverse_colour_permutes, [1, 1], [0, 0], seed, device_id)
+        seed += args.num_game
+        xp_scores, xp_actors = play_games(args, agents, runners, colour_permutes, 
+                inverse_colour_permutes, [0, 1], [1, 0], seed, device_id)
+
+        similarity, mean_score, sem_score = extract_data(args, xp_scores,
+                [sp1_actors, sp2_actors, xp_actors])
+
+        if args.save:
+            save_and_upload(args, similarity, mean_score, sem_score)
+    except Exception as e:
+        print(e)
+
+
+def create_agent_str(agent, colour_permute):
     name = agent["name"]
     permute = ""
     if agent["shuffle_colour"]:
-        permutes = ",".join(str(x) for x in agent["colour_permute"])
+        permutes = ",".join(str(x) for x in colour_permute)
         permute = f"[{permutes}]"
     return f"{name}{permute}"
 
 
-def play_games(args, agents, runners, act_index, comp_index, seed):
-    actor_agents = [agents[act_index[0]], agents[act_index[1]]]
-    actor_runners = [runners[act_index[0]], runners[act_index[1]]]
-    comp_agents = [agents[comp_index[0]], agents[comp_index[1]]]
-    comp_runners = [runners[comp_index[0]], runners[comp_index[1]]]
+def play_games(args, agents, runners, colour_permutes, inverse_colour_permutes, 
+        act_index, comp_index, seed, device_id):
+    actor_agents = [agents[i] for i in act_index]
+    actor_runners = [runners[device_id][i] for i in act_index]
+    actor_colour_permutes = [colour_permutes[i] for i in act_index]
+    actor_inverse_colour_permutes = [inverse_colour_permutes[i] for i in act_index]
+
+    comp_agents = [agents[i] for i in comp_index]
+    comp_runners = [runners[device_id][i] for i in comp_index]
+    comp_colour_permutes = [colour_permutes[i] for i in comp_index]
+    comp_inverse_colour_permutes = [inverse_colour_permutes[i] for i in comp_index]
 
     if args.verbose:
-        agent1_str = create_agent_str(actor_agents[0])
-        comp_agent1_str = create_agent_str(comp_agents[0])
-        agent2_str = create_agent_str(actor_agents[1])
-        comp_agent2_str = create_agent_str(comp_agents[1])
+        agent1_str = create_agent_str(
+                actor_agents[0], colour_permutes[act_index[0]])
+        comp_agent1_str = create_agent_str(
+                comp_agents[0], colour_permutes[comp_index[0]])
+        agent2_str = create_agent_str(
+                actor_agents[1], colour_permutes[act_index[1]])
+        comp_agent2_str = create_agent_str(
+                comp_agents[1], colour_permutes[comp_index[1]])
         print(f"running: {agent1_str} ({comp_agent1_str})  vs  " + \
               f"{agent2_str} ({comp_agent2_str})")
-
 
     if args.num_game < args.num_thread:
         args.num_thread = args.num_game
@@ -194,7 +284,7 @@ def play_games(args, agents, runners, act_index, comp_index, seed):
             actors = []
             for i in range(num_player):
                 actor = hanalearn.R2D2Actor(
-                    runners[i], # runner
+                    actor_runners[i], # runner
                     num_player, # numPlayer
                     i, # playerIdx
                     False, # vdn
@@ -218,11 +308,11 @@ def play_games(args, agents, runners, act_index, comp_index, seed):
                 )
 
                 actor.set_colour_permute(
-                    [actor_agents[i]["colour_permute"]],
-                    [actor_agents[i]["inverse_colour_permute"]],
+                    [actor_colour_permutes[i]],
+                    [actor_inverse_colour_permutes[i]],
                     [comp_agents[i]["shuffle_colour"]],
-                    [comp_agents[i]["colour_permute"]],
-                    [comp_agents[i]["inverse_colour_permute"]]
+                    [comp_colour_permutes[i]],
+                    [comp_colour_permutes[i]]
                 )
 
                 actors.append(actor)
@@ -240,17 +330,8 @@ def play_games(args, agents, runners, act_index, comp_index, seed):
         threads.append(thread)
         context.push_thread_loop(thread)
 
-    for runner in runners:
-        runner.start()
-
-    subprocess.run("nvidia-smi")
     context.start()
     context.join()
-    subprocess.run("nvidia-smi")
-    print("##################################################################")
-
-    for runner in runners:
-        runner.stop()
 
     scores = [g.last_episode_score() for g in games]
 
@@ -332,10 +413,7 @@ def parse_args():
     parser.add_argument("--policy2", type=str, required=True)
     parser.add_argument("--sad_legacy1", type=int, default=0)
     parser.add_argument("--sad_legacy2", type=int, default=0)
-    parser.add_argument("--shuffle_colour1", type=int, default=0)
-    parser.add_argument("--shuffle_colour2", type=int, default=0)
-    parser.add_argument("--permute_index1", type=int, default=0)
-    parser.add_argument("--permute_index2", type=int, default=0)
+    parser.add_argument("--shuffle_index", type=str, default="0")
     parser.add_argument("--name1", type=str, default="<none>")
     parser.add_argument("--name2", type=str, default="<none>")
     parser.add_argument("--num_game", type=int, default=1000)
@@ -347,6 +425,7 @@ def parse_args():
     parser.add_argument("--save", type=int, default=0)
     parser.add_argument("--upload_gcloud", type=int, default=0)
     parser.add_argument("--gcloud_dir", type=str, default="hanabi-similarity")
+    parser.add_argument("--workers", type=int, default=1)
     args = parser.parse_args()
 
     return args

@@ -196,13 +196,15 @@ void R2D2Actor::reset(const HanabiEnv& env) {
 
     }
     if (PR) {
-      printf("colour permute: { ");
+      runner_->printModel();
+      printf("shuffle: %d, colour permute: { ", (int)shuffleColor_);
       for (int colour: colorPermutes_[0]) {
         printf("%d ", colour);
       }
       printf("}\n");
       if (compRunners_.size() > 0) {
-        printf("comp colour permute: { ");
+        compRunners_[0]->printModel();
+        printf("comp shuffle: %d, colour permute: { ", (int)compShuffleColor_[0]);
         for (int colour: compColorPermutes_[0]) {
           printf("%d ", colour);
         }
