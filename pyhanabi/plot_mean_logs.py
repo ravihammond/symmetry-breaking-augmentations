@@ -11,7 +11,11 @@ pprint = pprint.pprint
 
 
 LOAD_DIR = "/app/pyhanabi/wandb_data"
-SPLIT_NAME = {"six": "6-7 Splits", "one": "1-12 Splits"}
+SPLIT_NAME = {
+    "six": "6-7 Splits", 
+    "one": "1-12 Splits", 
+    "eleven": "11-2 Splits"
+}
 
 
 def plot_mean_logs(args):
@@ -123,8 +127,8 @@ def load_json_list(path):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--model", type=str, default="br")
-    parser.add_argument("--splits", type=str, default="six")
-    parser.add_argument("--split_type", type=str, default="0")
+    parser.add_argument("--splits", type=str, default="0")
+    parser.add_argument("--split_type", type=str, default="six")
     parser.add_argument("--num_samples", type=int, default=1000)
     parser.add_argument('--test', type=int, default=1)
     parser.add_argument('--train', type=int, default=1)

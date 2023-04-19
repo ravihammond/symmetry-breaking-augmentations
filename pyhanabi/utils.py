@@ -5,6 +5,7 @@
 # LICENSE file in the root directory of this source tree.
 #
 import os
+import sys
 import time
 from collections import OrderedDict
 import json
@@ -12,6 +13,7 @@ import torch
 import numpy as np
 import pprint
 pprint = pprint.pprint
+import re
 
 import r2d2
 import sad_r2d2
@@ -164,6 +166,52 @@ def load_sad_weight(model, weight_file, device):
 
     model.load_state_dict(source_state_dict)
     return
+
+def load_op_model(weight_file, device):
+    filename = os.path.basename(weight_file)
+    idx = int(re.search(r'\d+', filename).group()) - 1
+
+    if idx >= 0 and idx < 3:
+        num_fc = 1
+        skip_connect = False
+    elif idx >= 3 and idx < 6:
+        num_fc = 1
+        skip_connect = True
+    elif idx >= 6 and idx < 9:
+        num_fc = 2
+        skip_connect = False
+    else:
+        num_fc = 2
+        skip_connect = True
+
+    print("loading op model:", weight_file)
+    if not os.path.exists(weight_file):
+        print(f"Cannot find weight at: {weight_file}")
+        assert False
+
+    state_dict = torch.load(weight_file)
+    input_dim = state_dict["net.0.weight"].size()[1]
+    hid_dim = 512
+    output_dim = state_dict["fc_a.weight"].size()[0]
+    agent = sad_r2d2.SADAgent(
+        weight_file,
+        False,
+        3,
+        0.999,
+        0.9,
+        device,
+        input_dim,
+        hid_dim,
+        output_dim,
+        2,
+        5,
+        False,
+        num_fc_layer=num_fc,
+        skip_connect=skip_connect,
+    ).to(device)
+    load_sad_weight(agent.online_net, weight_file, device)
+
+    return agent
 
 
 def load_agent(weight_file, overwrite):

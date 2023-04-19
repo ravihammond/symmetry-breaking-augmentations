@@ -10,7 +10,11 @@ import json
 import pathlib
 import csv
 
-SPLIT_NAME = { "six": "6-7_Splits", "one": "1-12-Splits" }
+SPLIT_NAME = {
+    "six": "6-7_Splits", 
+    "one": "1-12_Splits",
+    "eleven": "11-2_Splits",
+}
 
 
 class bcolors:
@@ -27,19 +31,21 @@ class bcolors:
 
 def calculate_all_average_scores(args):
     for model in args.model:
-        print(f"\n=== Model: {model.upper()} ===")
+        if args.verbose:
+            print(f"\n=== Model: {model.upper()} ===")
         for split_type in args.split_type:
-            if (len(args.split_type) > 1):
+            if (len(args.split_type) > 1) and args.verbose:
                 print(f"\n===== {SPLIT_NAME[split_type]} =====")
             for data_type in args.data_type:
-                if (len(args.data_type) > 1):
+                if (len(args.data_type) > 1) and args.vervose:
                     print(f"\n--- {data_type.upper()} ---")
 
                 calculate_average_scores(args, model, split_type, data_type)
 
 
 def calculate_average_scores(args, model, split_type, data_type):
-    print()
+    if args.verbose:
+        print()
     dir_path = os.path.join(
         args.dir,
         SPLIT_NAME[split_type],
@@ -48,17 +54,18 @@ def calculate_average_scores(args, model, split_type, data_type):
     )
 
     if not os.path.exists(dir_path):
-        print(bcolors.FAIL + f"Path {dir_path} does not exist." + bcolors.ENDC)
+        if args.verbose:
+            print(bcolors.FAIL + f"Path {dir_path} does not exist." + bcolors.ENDC)
         return 
 
     all_file_names = os.listdir(dir_path)
 
     splits = load_json_list(f"train_test_splits/sad_splits_{split_type}.json")
 
-    all_scores = []
+    all_means = []
 
     for split_index in args.split_index:
-        if (len(args.split_index) > 1):
+        if (len(args.split_index) > 1) and args.verbose:
             print(f"\n- SPLIT: {split_index} -")
 
         split_scores = []
@@ -72,17 +79,19 @@ def calculate_average_scores(args, model, split_type, data_type):
         for partner_index in range(len(test_indexes)):
             partner_num = test_indexes[partner_index]
             partner_name = f"sad_{partner_num + 1}"
-            pair_str = f"{model_name}_vs_{partner_name}"
-            # print(pair_str)
-            print(partner_name)
+            pair_str = f"{model_name}_vs_{partner_name}_"
+            if args.verbose:
+                print(partner_name)
 
             file_name = [ x for x in all_file_names if pair_str in x ]
 
             if len(file_name) == 0:
-                print(bcolors.FAIL + f"File {pair_str} does not exist." + bcolors.ENDC)
+                if argse.verbose:
+                    print(bcolors.FAIL + f"File {pair_str} does not exist." + bcolors.ENDC)
                 continue 
             elif len(file_name) > 1:
-                print(bcolors.WARNING + f"Multiple {pair_str} files exist." + bcolors.ENDC)
+                if args.verbose:
+                    print(bcolors.WARNING + f"Multiple {pair_str} files exist." + bcolors.ENDC)
                 continue 
 
             file_path = os.path.join(dir_path, file_name[0])
@@ -94,12 +103,14 @@ def calculate_average_scores(args, model, split_type, data_type):
                 scores = [int(x[0]) for x in list(reader)]
 
             if len(scores) == 0:
-                print(bcolors.FAIL + f"no scores." + bcolors.ENDC)
+                if argse.verbose: 
+                    print(bcolors.FAIL + f"no scores." + bcolors.ENDC)
                 continue 
 
             mean = np.mean(scores)
             sem = np.std(scores) / np.sqrt(len(scores))
-            print(f"{mean:.3f} ± {sem:.3f}")
+            if args.verbose:
+                print(f"{mean:.3f} ± {sem:.3f}")
 
             split_scores = [*split_scores, *scores]
 
@@ -109,19 +120,18 @@ def calculate_average_scores(args, model, split_type, data_type):
             continue 
 
         mean = np.mean(split_scores)
+        all_means.append(mean)
         sem = np.std(split_scores) / np.sqrt(len(split_scores))
         print(f"{mean:.3f} ± {sem:.3f}")
 
-        all_scores = [*all_scores, *split_scores]
-
-    print(f"\n{model}")
-    if len(all_scores) == 0:
+    print(f"\n{model} total")
+    if len(all_means) == 0:
         print(bcolors.FAIL + f"no scores." + bcolors.ENDC)
         return 
 
-    mean = np.mean(all_scores)
-    sem = np.std(all_scores) / np.sqrt(len(all_scores))
-    print(f"{mean:.3f} ± {sem:.3f}")
+    mean = np.mean(all_means)
+    sem = np.std(all_means) / np.sqrt(len(all_means))
+    print(f"{mean:.6f} ± {sem:.6f}")
             
 
 def load_json_list(convention_path):

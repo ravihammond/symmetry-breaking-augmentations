@@ -12,8 +12,12 @@ lib_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(lib_path)
 from tools.eval_model_verbose import evaluate_model
 
-NUM_SPLITS = {"six": 10, "one": 13}
-SPLIT_NAME = {"six": "6-7_Splits", "one": "1-12_Splits"}
+NUM_SPLITS = {"six": 10, "one": 13, "eleven": 10}
+SPLIT_NAME = {
+    "six": "6-7_Splits", 
+    "one": "1-12_Splits",
+    "eleven": "11-2_Splits"
+}
 
 def save_scores(args):
     if args.crossplay:
@@ -76,8 +80,12 @@ def generate_jobs_crossplay(args):
 def generate_jobs(args):
     run_args = []
 
-    split_name = {"six": "6-7_Splits", "one": "1-12_Splits"}
-    num_splits = {"six": 10, "one": 13}
+    split_name = {
+        "six": "6-7_Splits", 
+        "one": "1-12_Splits",
+        "eleven": "11-2_Splits"
+    }
+    num_splits = {"six": 10, "one": 13, "eleven": 10}
     sad_splits = load_json_list(f"train_test_splits/sad_splits_{args.split_type}.json")
 
     for split_index in range(num_splits[args.split_type]):

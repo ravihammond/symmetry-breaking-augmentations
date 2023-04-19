@@ -15,8 +15,8 @@ SPLITS_DIR = "/app/pyhanabi/train_test_splits"
 LOG_NAMES = [
     "test_score",
     "train_score",
-    # "test_score_stderr",
-    # "train_score_stderr"
+    "test_score_stderr",
+    "train_score_stderr"
 ]
 
 def export_wandb(args):
@@ -31,7 +31,6 @@ def export_wandb(args):
         if run.name not in names:
             continue
         names.remove(run.name)
-        print(run.name)
         df = run.history(samples=100000)[LOG_NAMES]
         df = df.head(args.num_samples)
         save_path = os.path.join(SAVE_DIR, run.name + ".csv")

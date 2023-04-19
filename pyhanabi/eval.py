@@ -310,8 +310,11 @@ def load_agents(
     for i, weight_file in enumerate(weight_files):
         assert os.path.exists(weight_file), f"path file not found: {weight_file}"
 
-        if sad_legacy[i]:
-            agent = utils.load_sad_model(weight_file, device)
+        if sad_legacy[i] or "op" in weight_file:
+            if "op" in weight_file:
+                agent = utils.load_op_model(weight_file, device)
+            else:
+                agent = utils.load_sad_model(weight_file, device)
             agents.append(agent)
             sad.append(True)
             hide_action.append(False)
