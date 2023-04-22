@@ -21,7 +21,10 @@ SPLIT_NAME = {
 
 def save_scores(args):
     if args.crossplay:
-        run_args = generate_jobs_crossplay(args)
+        if args.model1 == args.model2:
+            run_args = generate_jobs_crossplay_self(args)
+        else: 
+            run_args = generate_jobs_crossplay(args)
     else:
         run_args = generate_jobs(args)
 
@@ -30,12 +33,54 @@ def save_scores(args):
 
 def generate_jobs_crossplay(args):
     assert(len(args.model1) == 1)
+    assert(len(args.model2) == 1)
+
+    run_args = []
+
+    model_weights1 = load_json_list(f"agent_groups/all_{args.model1[0]}.json")
+    model_weights2 = load_json_list(f"agent_groups/all_{args.model2[0]}.json")
+
+    for index_1 in range(len(model_weights1)):
+        run = edict()
+        run.sad_legacy = [0,0]
+        model1 = args.model1[0]
+        (run.model1, 
+         run.sad_legacy[0], 
+         player_name_1) = model_to_weight(
+                 args, args.model1[0], index_1, 0)
+
+        for index_2 in range(len(model_weights2)):
+            run = copy.copy(run)
+
+            (run.model2, 
+             run.sad_legacy[1], 
+             player_name_2) = model_to_weight(
+                     args, args.model2[0], index_2, 0)
+
+            file_name = f"{player_name_1}_vs_{player_name_2}"
+            save_dir = os.path.join(
+                args.out, 
+                f"{args.model1[0]}_vs_{args.model2[0]}",
+                "all", 
+                "scores"
+            )
+            file_path = os.path.join(save_dir, file_name)
+
+            run.csv_name = file_path
+            run_args.append(run)
+
+    return run_args
+
+
+def generate_jobs_crossplay_self(args):
+    assert(len(args.model1) == 1)
+    assert(len(args.model2) == 1)
 
     run_args = []
 
     partner_types = ["crossplay_self", "crossplay_other"]
     indexes = list(range(len(load_json_list(
-        f"agent_groups/all_{args.model2}.json")))) 
+        f"agent_groups/all_{args.model2[0]}.json")))) 
 
     for crossplay_index in indexes:
         for partner_type in partner_types:
@@ -60,7 +105,7 @@ def generate_jobs_crossplay(args):
                 (run.model2, 
                  run.sad_legacy[1], 
                  player_name_2) = model_to_weight(
-                         args, args.model2, partner_i, 0)
+                         args, args.model2[0], partner_i, 0)
 
                 file_name = f"{player_name_1}_vs_{player_name_2}"
                 save_dir = os.path.join(
@@ -219,11 +264,12 @@ def parse_args():
     parser.add_argument("--model2", type=str, required=True)
     parser.add_argument("--num_game", type=int, default=1000)
     parser.add_argument("--split_type", type=str, default="six")
-    parser.add_argument("--out", type=str, default="game_data")
+    parser.add_argument("--out", type=str, default="game_data_new")
     parser.add_argument("--crossplay", type=int, default=0)
     args = parser.parse_args()
 
     args.model1 = args.model1.split(",")
+    args.model2 = args.model2.split(",")
 
     return args
 

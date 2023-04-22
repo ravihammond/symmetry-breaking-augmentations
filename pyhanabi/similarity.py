@@ -24,50 +24,26 @@ import csv
 from google_cloud_handler import GoogleCloudUploader
 
 
-class DeviceID:
-    def __init__(self, number, max):
-        self._number = number
-        self._max = max
-
-    def get(self):
-        return self._number
-
-    def set(self, number):
-        self._number = number
-
-    def increment(self):
-        self._number = (self._number + 1) % self._max
-
-
 def similarity(args):
+    print(f"{args.name1} vs {args.name2}")
     jobs = create_similarity_jobs(args)
-    pprint(jobs)
 
     agents, runners = load_runners(args)
 
-    runner_i = 1
-    for runners_gpu in runners:
-        for runner in runners_gpu:
-            print("starting runner:", runner_i)
-            runner_i += 1
-            runner.start()
+    for runner in runners:
+        runner.start()
 
-    device_id_wrapper = DeviceID(0, 3)
-    device_mutex = Lock()
     run_job_fixed=partial(
         run_job, 
         agents=agents, 
         runners=runners,
-        device_id_wrapper=device_id_wrapper,
-        device_mutex=device_mutex,
     )
 
-    with ThreadPoolExecutor(max_workers=args.workers) as pool:
-        pool.map(run_job_fixed, jobs)
+    for job in jobs:
+        run_job(job, agents, runners)
 
-    for runners_gpu in runners:
-        for runner in runners_gpu:
-            runner.stop()
+    for runner in runners:
+        runner.stop()
 
 
 def create_similarity_jobs(args):
@@ -97,12 +73,11 @@ def parse_numbers(numbers):
 
 def load_runners(args):
     colour_permutes, inverse_colour_permutes = get_colour_permutes()
-    devices = args.device.split(",")
 
     agent1 = load_agent(
             args.policy1, 
             args.sad_legacy1, 
-            devices[0], 
+            args.device, 
             True, 
             args.name1,
     )
@@ -110,7 +85,7 @@ def load_runners(args):
     agent2 = load_agent(
             args.policy2, 
             args.sad_legacy2, 
-            devices[0], 
+            args.device, 
             False,
             args.name2,
     )
@@ -119,16 +94,13 @@ def load_runners(args):
 
     runners = []
 
-    for device in devices:
-        runners_gpu = []
-        for i, agent in enumerate(agents):
-            runners_gpu.append(rela.BatchRunner(
-                agent["agent"].clone(device), 
-                device, 
-                1000, 
-                ["act"]
-            ))
-        runners.append(runners_gpu)
+    for i, agent in enumerate(agents):
+        runners.append(rela.BatchRunner(
+            agent["agent"].clone(args.device), 
+            args.device, 
+            1000, 
+            ["act"]
+        ))
 
     return agents, runners
 
@@ -167,7 +139,10 @@ def load_agent(policy, sad_legacy, device, shuffle_colour, name):
     }
 
     if sad_legacy:
-        agent = utils.load_sad_model(policy, device)
+        if "op" in policy:
+            agent = utils.load_op_model(policy, device)
+        else:
+            agent = utils.load_sad_model(policy, device)
         cfg = default_cfg
     else:
         agent, cfg = utils.load_agent(policy, {
@@ -198,34 +173,29 @@ def load_agent(policy, sad_legacy, device, shuffle_colour, name):
     }
 
 
-def run_job(job, agents, runners, device_id_wrapper, device_mutex):
-    with device_mutex:
-        device_id = device_id_wrapper.get()
-        device_id_wrapper.increment()
-    try:
-        all_colour_permutes, all_inverse_colour_permutes = get_colour_permutes()
-        colour_permutes = [all_colour_permutes[job.permute_index], []]
-        inverse_colour_permutes = [all_inverse_colour_permutes[job.permute_index], []]
+def run_job(job, agents, runners):
+    all_colour_permutes, all_inverse_colour_permutes = get_colour_permutes()
+    colour_permutes = [all_colour_permutes[job.permute_index], []]
+    inverse_colour_permutes = [all_inverse_colour_permutes[job.permute_index], []]
 
-        sp1_actors = []
-        sp2_actors = []
-        seed = args.seed
-        _, sp1_actors = play_games(args, agents, runners, colour_permutes, 
-                inverse_colour_permutes, [0, 0], [1, 1], seed, device_id)
-        seed += args.num_game
-        _, sp2_actors = play_games(args, agents, runners, colour_permutes, 
-                inverse_colour_permutes, [1, 1], [0, 0], seed, device_id)
-        seed += args.num_game
-        xp_scores, xp_actors = play_games(args, agents, runners, colour_permutes, 
-                inverse_colour_permutes, [0, 1], [1, 0], seed, device_id)
+    sp1_actors = []
+    sp2_actors = []
+    seed = args.seed
+    _, sp1_actors = play_games(args, agents, runners, colour_permutes, 
+            inverse_colour_permutes, [0, 0], [1, 1], seed)
+    seed += args.num_game
+    _, sp2_actors = play_games(args, agents, runners, colour_permutes, 
+            inverse_colour_permutes, [1, 1], [0, 0], seed)
+    seed += args.num_game
+    xp_scores, xp_actors = play_games(args, agents, runners, colour_permutes, 
+            inverse_colour_permutes, [0, 1], [1, 0], seed)
 
-        similarity, mean_score, sem_score = extract_data(args, xp_scores,
-                [sp1_actors, sp2_actors, xp_actors])
+    similarity, mean_score, sem_score = extract_data(args, xp_scores,
+            [sp1_actors, sp2_actors, xp_actors])
 
-        if args.save:
-            save_and_upload(args, similarity, mean_score, sem_score)
-    except Exception as e:
-        print(e)
+    if args.save:
+        save_and_upload(args, similarity, mean_score, 
+                sem_score, job.permute_index)
 
 
 def create_agent_str(agent, colour_permute):
@@ -237,15 +207,15 @@ def create_agent_str(agent, colour_permute):
     return f"{name}{permute}"
 
 
-def play_games(args, agents, runners, colour_permutes, inverse_colour_permutes, 
-        act_index, comp_index, seed, device_id):
+def play_games(args, agents, runners, colour_permutes, 
+        inverse_colour_permutes, act_index, comp_index, seed):
     actor_agents = [agents[i] for i in act_index]
-    actor_runners = [runners[device_id][i] for i in act_index]
+    actor_runners = [runners[i] for i in act_index]
     actor_colour_permutes = [colour_permutes[i] for i in act_index]
     actor_inverse_colour_permutes = [inverse_colour_permutes[i] for i in act_index]
 
     comp_agents = [agents[i] for i in comp_index]
-    comp_runners = [runners[device_id][i] for i in comp_index]
+    comp_runners = [runners[i] for i in comp_index]
     comp_colour_permutes = [colour_permutes[i] for i in comp_index]
     comp_inverse_colour_permutes = [inverse_colour_permutes[i] for i in comp_index]
 
@@ -366,17 +336,29 @@ def extract_data(args, scores, all_actors):
     return similarity_all, mean_score, sem_score
 
 
-def save_and_upload(args, similarity, mean_score, sem_score):
+def save_and_upload(args, similarity, mean_score, sem_score, permute_index):
     if not args.save:
         return
-    similarity_dir = os.path.join(args.outdir, "similarity")
-    scores_dir = os.path.join(args.outdir, "scores")
+
+    model1 = args.name1.split("_")[0]
+    model2 = args.name2.split("_")[0]
+    pair_name = f"{args.name1}_vs_{args.name2}"
+    outdir = os.path.join(
+        args.outdir, 
+        f"{model1}_vs_{model2}",
+        pair_name
+    )
+
+
+    similarity_dir = os.path.join(outdir, "similarity")
+    scores_dir = os.path.join(outdir, "scores")
     if not os.path.exists(similarity_dir):
         os.makedirs(similarity_dir)
     if not os.path.exists(scores_dir):
         os.makedirs(scores_dir)
 
-    filename = f"{args.name1}_perm_{args.permute_index1}_vs_{args.name2}.csv"
+
+    filename = f"{pair_name}_permute_{permute_index}.csv"
     similarity_save_path = os.path.join(similarity_dir, filename)
     scores_save_path = os.path.join(scores_dir, filename)
 
@@ -391,6 +373,7 @@ def save_and_upload(args, similarity, mean_score, sem_score):
     if not args.upload_gcloud:
         return
 
+    print(args.gcloud_dir)
     similarity_path_obj = pathlib.Path(similarity_save_path)
     gc_similarity_path = os.path.join(args.gcloud_dir, *similarity_path_obj.parts[1:])
     scores_path_obj = pathlib.Path(scores_save_path)
@@ -411,6 +394,8 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--policy1", type=str, required=True)
     parser.add_argument("--policy2", type=str, required=True)
+    parser.add_argument("--model1", type=str, required=True)
+    parser.add_argument("--model2", type=str, required=True)
     parser.add_argument("--sad_legacy1", type=int, default=0)
     parser.add_argument("--sad_legacy2", type=int, default=0)
     parser.add_argument("--shuffle_index", type=str, default="0")
@@ -425,7 +410,6 @@ def parse_args():
     parser.add_argument("--save", type=int, default=0)
     parser.add_argument("--upload_gcloud", type=int, default=0)
     parser.add_argument("--gcloud_dir", type=str, default="hanabi-similarity")
-    parser.add_argument("--workers", type=int, default=1)
     args = parser.parse_args()
 
     return args

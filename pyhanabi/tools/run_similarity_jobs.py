@@ -11,6 +11,7 @@ from multiprocessing import Pool
 from concurrent.futures import ThreadPoolExecutor
 from threading import Lock
 import subprocess
+from functools import partial
 
 
 def run_similarity_jobs(args):
@@ -19,31 +20,21 @@ def run_similarity_jobs(args):
 
 
 def create_similarity_jobs(args):
+    indexes = [[int(y) for y in x.split("-")] 
+            for x in args.indexes.split(",")]
+
     jobs = []
-    shuffle_indexes = parse_numbers(args.shuffle_index)
 
-    models = load_json_list(f"agent_groups/all_{args.model}.json")
-    job = edict()
-    job.outdir = os.path.join(args.outdir, args.model)
+    for i, (index_1, index_2) in enumerate(indexes):
+        job = edict()
 
-    job.policy1, job.sad_legacy1, job.name1 = model_to_weight(
-            args, args.model, args.model_index)
-    job.shuffle_colour1 = 1
+        job.device = f"cuda:{i}"
+        (job.policy1, job.sad_legacy1, job.name1) = model_to_weight(
+                args, args.model1, index_1)
+        (job.policy2, job.sad_legacy2, job.name2) = model_to_weight(
+                args, args.model2, index_2)
 
-    for j in range(args.model_index, len(models)):
-        if args.model_index == j:
-            continue
-        job2 = copy.copy(job)
-
-        job2.policy2, job2.sad_legacy2, job2.name2 = model_to_weight(
-                args, args.model, j)
-        job2.shuffle_colour2 = 0
-        job2.permute_index2 = 0
-        for shuffle_index in shuffle_indexes:
-            job3 = copy.copy(job2)
-            job3.permute_index1 = shuffle_index
-
-            jobs.append(job3)
+        jobs.append(job)
 
     return jobs
 
@@ -108,55 +99,34 @@ def load_json_list(convention_path):
     return json.load(convention_file)
 
 
-class DeviceID:
-    def __init__(self, number, max):
-        self._number = number
-        self._max = max
-
-    def get(self):
-        return self._number
-
-    def set(self, number):
-        self._number = number
-
-    def increment(self):
-        self._number = (self._number + 1) % self._max
-
-
 def run_jobs(args, jobs):
-    device_id_wrapper = DeviceID(0, 3)
-    device_mutex = Lock()
-    executor = ThreadPoolExecutor(args.workers)
-    executor.map(run_jobs_worker, 
-            jobs, [device_id_wrapper] * len(jobs), 
-            [device_mutex] * len(jobs))
+    worker = partial(run_jobs_worker, args=args)
+    num_workers = len(args.indexes.split(","))
+    with ThreadPoolExecutor(num_workers) as pool:
+        pool.map(worker, jobs)
 
 
-def run_jobs_worker(job, device_id_wrapper, device_mutex):
+def run_jobs_worker(job, args):
     try:
-        with device_mutex:
-            device_id = device_id_wrapper.get()
-            device_id_wrapper.increment()
-            device = f"cuda:{device_id + 1}"
         command = ["python", "similarity.py",
-            "--outdir", job.outdir,
+            "--outdir", args.outdir,
             "--policy1", job.policy1,
-            "--sad_legacy1", str(job.sad_legacy1),
-            "--shuffle_colour1", str(job.shuffle_colour1),
-            "--permute_index1", str(job.permute_index1),
-            "--name1", job.name1,
             "--policy2", job.policy2,
+            "--sad_legacy1", str(job.sad_legacy1),
             "--sad_legacy2", str(job.sad_legacy2),
-            "--shuffle_colour2", str(job.shuffle_colour2),
-            "--permute_index2", str(job.permute_index2),
+            "--name1", job.name1,
             "--name2", job.name2,
-            "--device", device,
+            "--model1", args.model1,
+            "--model2", args.model2,
+            "--shuffle_index", args.shuffle_index,
+            "--device", job.device,
             "--num_game", str(args.num_game),
-            "--num_thread", "10",
-            "--seed", "0",
+            "--num_thread", str(args.num_thread),
+            "--seed", str(args.seed),
             "--verbose", str(args.verbose),
             "--save", str(args.save),
             "--upload_gcloud", str(args.upload_gcloud),
+            "--gcloud_dir", str(args.gcloud_dir),
         ]
         subprocess.run(command)
     except Exception as e:
@@ -165,16 +135,17 @@ def run_jobs_worker(job, device_id_wrapper, device_mutex):
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--model", type=str, default="br")
-    parser.add_argument("--model_index", type=int, default=0)
-    parser.add_argument("--shuffle_index", type=str, default="0")
-    parser.add_argument("--seed", type=str, default="0")
+    parser.add_argument("--model1", type=str, default="sad")
+    parser.add_argument("--model2", type=str, default="sad")
+    parser.add_argument("--indexes", type=str, default="0-1")
+    parser.add_argument("--shuffle_index", type=str, default="0-120")
+    parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--num_game", type=int, default=1000)
-    parser.add_argument("--workers", type=int, default=1)
+    parser.add_argument("--num_thread", type=int, default=10)
     parser.add_argument("--verbose", type=int, default=0)
     parser.add_argument("--save", type=int, default=1)
     parser.add_argument("--upload_gcloud", type=int, default=1)
-    parser.add_argument("--gcloud_dir", type=str, default="hanabi-search-games-sba")
+    parser.add_argument("--gcloud_dir", type=str, default="hanabi-similarity")
     parser.add_argument("--outdir", type=str, default="similarity")
     args = parser.parse_args()
     return args

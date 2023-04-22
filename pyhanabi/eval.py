@@ -392,6 +392,20 @@ def load_partner_agents(
             partners.append(partner_cfg)
             continue
 
+        if partner_sad_legacy or "op" in partner_model_path:
+            if "op" in weight_file:
+                partner_cfg["agent"] = utils.load_op_model(
+                        partner_model_path, "cuda:0")
+            else:
+                partner_cfg["agent"] = utils.load_sad_model(
+                        partner_model_path, "cuda:0")
+            partner_cfg["sad"] = True
+            partner_cfg["hide_action"] = False
+            partner_cfg["parameterized"] = False
+            partner_cfg["sad_legacy"] = True
+            partners.append(partner_cfg)
+            continue
+
         try: 
             state_dict = torch.load(partner_model_path)
         except:

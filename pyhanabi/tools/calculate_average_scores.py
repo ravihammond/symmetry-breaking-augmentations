@@ -122,7 +122,7 @@ def calculate_average_scores(args, model, split_type, data_type):
         mean = np.mean(split_scores)
         all_means.append(mean)
         sem = np.std(split_scores) / np.sqrt(len(split_scores))
-        print(f"{mean:.3f} ± {sem:.3f}")
+        print(f"{mean} ± {sem:.3f}")
 
     print(f"\n{model} total")
     if len(all_means) == 0:
@@ -131,6 +131,7 @@ def calculate_average_scores(args, model, split_type, data_type):
 
     mean = np.mean(all_means)
     sem = np.std(all_means) / np.sqrt(len(all_means))
+    print("len:", len(all_means))
     print(f"{mean:.6f} ± {sem:.6f}")
             
 
