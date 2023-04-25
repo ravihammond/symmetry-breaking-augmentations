@@ -145,7 +145,7 @@ def parse_args():
     parser.add_argument("--verbose", type=int, default=0)
     parser.add_argument("--save", type=int, default=1)
     parser.add_argument("--upload_gcloud", type=int, default=1)
-    parser.add_argument("--gcloud_dir", type=str, default="hanabi-similarity")
+    parser.add_argument("--gcloud_dir", type=str, default="hanabi-similarity-new")
     parser.add_argument("--outdir", type=str, default="similarity")
     args = parser.parse_args()
     return args

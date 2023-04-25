@@ -64,8 +64,19 @@ void R2D2Actor::replyCompareAct(const HanabiEnv& env,
       char colourBefore = colourMap[move.Color()];
       int realColor = compInvColorPermutes_[i].at(move.Color());
       move.SetColor(realColor);
-      if(CV)printf("action colour %c->%c\n", colourBefore, colourMap[move.Color()]);
+      if(CV)printf("shadow action colour %c->%c\n", colourBefore, colourMap[move.Color()]);
       action = game.GetMoveUid(move);
+    }
+
+    auto actorMove = game.GetMove(actorAction);
+    if (shuffleColor_ && actorMove.MoveType() == hle::HanabiMove::Type::kRevealColor) {
+      char colourBefore = colourMap[actorMove.Color()];
+      auto invColorPermute = &(invColorPermutes_[0]);
+      int realActorColor = (*invColorPermute)[actorMove.Color()];
+      actorMove.SetColor(realActorColor);
+      if(CV)printf("out actor action colour %c->%c\n", 
+          colourBefore, colourMap[actorMove.Color()]);
+      actorAction = game.GetMoveUid(actorMove);
     }
     
     if (curPlayer != playerIdx_) {

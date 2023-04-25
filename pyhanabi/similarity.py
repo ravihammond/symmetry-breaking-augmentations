@@ -181,7 +181,7 @@ def run_job(job, agents, runners):
     sp1_actors = []
     sp2_actors = []
     seed = args.seed
-    _, sp1_actors = play_games(args, agents, runners, colour_permutes, 
+    sp1_scores, sp1_actors = play_games(args, agents, runners, colour_permutes, 
             inverse_colour_permutes, [0, 0], [1, 1], seed)
     seed += args.num_game
     _, sp2_actors = play_games(args, agents, runners, colour_permutes, 
