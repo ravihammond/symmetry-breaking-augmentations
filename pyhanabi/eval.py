@@ -42,6 +42,7 @@ def evaluate(
     partners=None,
     sad_legacy=[0, 0],
     shuffle_colour=[0, 0],
+    convex_hull=False,
 ):
     """
     evaluate agents as long as they have a "act" function
@@ -95,9 +96,14 @@ def evaluate(
                 hide_action_setting = hide_action[i]
                 act_parameterized_setting = act_parameterized[i]
                 sad_legacy_setting = sad_legacy[i]
+                convex_hull_setting = False
 
                 if i > 0 and partners is not None:
-                    runner = partner_runners[partner_idx]
+                    if convex_hull:
+                        runner = None
+                        convex_hull_setting = True
+                    else:
+                        runner = partner_runners[partner_idx]
                     sad_setting = partners[partner_idx]["sad"]
                     hide_action_setting = partners[partner_idx]["hide_action"]
                     act_parameterized_setting = partners[partner_idx]["parameterized"]
@@ -108,6 +114,7 @@ def evaluate(
 
                 actor = hanalearn.R2D2Actor(
                     runner, # runner
+                    seed, # seed
                     num_player, # numPlayer
                     i, # playerIdx
                     False, # vdn
@@ -120,7 +127,17 @@ def evaluate(
                     belief_stats, # beliefStats
                     sad_legacy_setting, # sadLegacy
                     shuffle_colour[i], #shuffleColor
+                    convex_hull_setting, #convexHull
                 )
+
+                if i > 0 and partners is not None and convex_hull:
+                    actor.set_shadow_runners(
+                        partner_runners,
+                        [sad_setting] * len(partner_runners),
+                        [sad_legacy_setting] * len(partner_runners),
+                        [hide_action_setting] * len(partner_runners),
+                        ["<None>"] * len(partner_runners),
+                    )
 
                 if belief_stats:
                     if belief_runner is None:
@@ -145,6 +162,8 @@ def evaluate(
                 convention_index = (convention_index + 1) % len(convention)
             elif convention_indexes is None and num_parameters > 0:
                 convention_index = (convention_index + 1) % num_parameters
+
+            seed += 1
 
         thread = hanalearn.HanabiThreadLoop(thread_games, thread_actors, True, t_idx)
         threads.append(thread)
@@ -225,6 +244,7 @@ def evaluate_saved_model(
     pre_loaded_data=None,
     sad_legacy=[0, 0],
     partner_model_type="train",
+    convex_hull=False,
 ):
     if pre_loaded_data is None:
         pre_loaded_data = load_agents(
@@ -267,6 +287,7 @@ def evaluate_saved_model(
             partners=partners,
             act_parameterized=parameterized,
             sad_legacy=sad_legacy,
+            convex_hull=convex_hull
         )
         scores.extend(score)
         perfect += p

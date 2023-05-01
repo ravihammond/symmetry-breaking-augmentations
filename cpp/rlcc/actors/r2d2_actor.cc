@@ -28,7 +28,7 @@ void R2D2Actor::moveHid(rela::TensorDict& from, rela::TensorDict& hid) {
     assert(it != from.end());
     auto newHid = it->second;
     assert(newHid.sizes() == kv.second.sizes());
-    hid[kv.first] = newHid;
+    hid.at(kv.first) = newHid;
     from.erase(it);
   }
 }
@@ -46,13 +46,13 @@ std::vector<hle::HanabiCardValue> sampleCards(
   std::vector<hle::HanabiCardValue> cards;
 
   for (size_t j = 0; j < handSize; ++j) {
-    auto& cb = cardBelief[j];
+    auto& cb = cardBelief.at(j);
     if (j > 0) {
       // re-mask card belief
       float sum = 0;
       for (size_t k = 0; k < cardRemain.size(); ++k) {
-        cb[k] *= int(cardRemain[k] > 0);
-        sum += cb[k];
+        cb.at(k) *= int(cardRemain.at(k) > 0);
+        sum += cb.at(k);
       }
 
       if (sum <= 1e-6) {
@@ -62,12 +62,12 @@ std::vector<hle::HanabiCardValue> sampleCards(
     }
     std::discrete_distribution<int> dist(cb.begin(), cb.end());
     int idx = dist(rng);
-    --cardRemain[idx];
-    assert(cardRemain[idx] >= 0);
+    --cardRemain.at(idx);
+    assert(cardRemain.at(idx) >= 0);
     if (invColorPermute.size()) {
       auto fakeColor = indexToCard(idx, game.NumRanks());
       auto realColor =
-        hle::HanabiCardValue(invColorPermute[fakeColor.Color()], fakeColor.Rank());
+        hle::HanabiCardValue(invColorPermute.at(fakeColor.Color()), fakeColor.Rank());
       cards.push_back(realColor);
     } else {
       cards.push_back(indexToCard(idx, game.NumRanks()));
@@ -96,13 +96,13 @@ std::tuple<std::vector<hle::HanabiCardValue>, bool> filterSample(
       int idx = sampleAcc[i][j];
       auto card = indexToCard(idx, game.NumRanks());
       // this sample violate card count
-      if (cardRemain[idx] == 0) {
+      if (cardRemain.at(idx) == 0) {
         break;
       }
-      --cardRemain[idx];
+      --cardRemain.at(idx);
 
       if (invColorPermute.size()) {
-        auto realCard = hle::HanabiCardValue(invColorPermute[card.Color()], card.Rank());
+        auto realCard = hle::HanabiCardValue(invColorPermute.at(card.Color()), card.Rank());
         cards.push_back(realCard);
       } else {
         cards.push_back(card);
@@ -121,7 +121,7 @@ std::tuple<bool, bool> analyzeCardBelief(const std::vector<float>& b) {
   std::set<int> ranks;
   for (int c = 0; c < 5; ++c) {
     for (int r = 0; r < 5; ++r) {
-      if (b[c * 5 + r] > 0) {
+      if (b.at(c * 5 + r) > 0) {
         colors.insert(c);
         ranks.insert(r);
       }
@@ -132,10 +132,12 @@ std::tuple<bool, bool> analyzeCardBelief(const std::vector<float>& b) {
 
 void R2D2Actor::reset(const HanabiEnv& env) {
   conventionReset(env);
-  hidden_ = getH0(batchsize_, runner_);
+  if (runner_ != nullptr) {
+    hidden_ = getH0(batchsize_, runner_);
+  }
 
-  for (size_t i = 0; i < compHidden_.size(); i++) {
-    compHidden_[i] = getH0(batchsize_, compRunners_[i]);
+  for (size_t i = 0; i < shadowHidden_.size(); i++) {
+    shadowHidden_.at(i) = getH0(batchsize_, shadowRunners_.at(i));
   }
 
   if (beliefRunner_ != nullptr) {
@@ -154,27 +156,27 @@ void R2D2Actor::reset(const HanabiEnv& env) {
 
   for (int i = 0; i < batchsize_; ++i) {
     assert(playerEps_.size() > 0 && epsList_.size() > 0);
-    playerEps_[i] = epsList_[rng_() % epsList_.size()];
+    playerEps_.at(i) = epsList_.at(rng_() % epsList_.size());
     if (tempList_.size() > 0) {
       assert(playerTemp_.size() > 0);
-      playerTemp_[i] = tempList_[rng_() % tempList_.size()];
+      playerTemp_.at(i) = tempList_.at(rng_() % tempList_.size());
     }
 
     // other-play
     if (shuffleColor_ && !colourPermuteConstant_) {
-      auto& colorPermute = colorPermutes_[i];
-      auto& invColorPermute = invColorPermutes_[i];
+      auto& colorPermute = colorPermutes_.at(i);
+      auto& invColorPermute = invColorPermutes_.at(i);
 
       colorPermute.clear();
       invColorPermute.clear();
 
       if (colorShuffleSync_) {
         int partnerIdx = (playerIdx_ + 1) % 2;
-        assert(!partners_[partnerIdx].expired());
-        auto partner = partners_[partnerIdx].lock();
+        assert(!partners_.at(partnerIdx).expired());
+        auto partner = partners_.at(partnerIdx).lock();
         for (int c = 0; c < 5; c++) {
-            colorPermute.push_back(partner->colorPermutes_[i][c]);
-            invColorPermute.push_back(partner->invColorPermutes_[i][c]);
+            colorPermute.push_back(partner->colorPermutes_.at(i).at(c));
+            invColorPermute.push_back(partner->invColorPermutes_.at(i).at(c));
         }
       } else {
         for (int c = 0; c < game.NumColors(); ++c) {
@@ -187,25 +189,29 @@ void R2D2Actor::reset(const HanabiEnv& env) {
         std::shuffle(colorPermute.begin(), colorPermute.end(), rng_);
 
         std::sort(invColorPermute.begin(), invColorPermute.end(), [&](int i, int j) {
-            return colorPermute[i] < colorPermute[j];
+            return colorPermute.at(i) < colorPermute.at(j);
         });
         for (int i = 0; i < (int)colorPermute.size(); ++i) {
-          assert(invColorPermute[colorPermute[i]] == i);
+          assert(invColorPermute.at(colorPermute.at(i)) == i);
         }
       }
 
     }
     if (PR) {
-      runner_->printModel();
+      if (runner_ != nullptr) {
+        runner_->printModel();
+      }
       printf("shuffle: %d, colour permute: { ", (int)shuffleColor_);
-      for (int colour: colorPermutes_[0]) {
+      for (int colour: colorPermutes_.at(0)) {
         printf("%d ", colour);
       }
       printf("}\n");
-      if (compRunners_.size() > 0) {
-        compRunners_[0]->printModel();
-        printf("comp shuffle: %d, colour permute: { ", (int)compShuffleColor_[0]);
-        for (int colour: compColorPermutes_[0]) {
+      if (shadowRunners_.size() > 0 && shadowShuffleColor_.size() > 0) {
+        for (auto shadowRunner: shadowRunners_) {
+          shadowRunner->printModel();
+        }
+        printf("shadow shuffle: %d, colour permute: { ", (int)shadowShuffleColor_.at(0));
+        for (int colour: shadowColorPermutes_.at(0)) {
           printf("%d ", colour);
         }
         printf("}\n");
@@ -215,10 +221,56 @@ void R2D2Actor::reset(const HanabiEnv& env) {
 
   if (conventionOverride_ > 0 && convention_.size()) { 
     conventionIdx_ = rng_() % convention_.size();
-    auto conv = convention_[conventionIdx_][0];
+    auto conv = convention_.at(conventionIdx_).at(0);
     if(PR)printf("convention index: %d, %s->%s\n", conventionIdx_, 
-        conv[0].c_str(), conv[1].c_str());
+        conv.at(0).c_str(), conv.at(1).c_str());
   }
+
+  if (convexHull_ && shadowRunners_.size() > 0) {
+    convexHullWeights_.clear();
+    vector<float> weights;
+    std::uniform_real_distribution<> dis(0, 1);
+
+    float sum = 0;
+    do {
+      weights.clear();
+      sum = 0;
+      for (int i = 0; i < (int)shadowRunners_.size(); i++) {
+        float weight = dis(rng_);
+        weights.push_back(weight);
+        sum += weight;
+      }
+    } while(sum == 0);
+
+    convexHullWeights_ = normalize(weights);
+
+    if (PR) {
+      printf("convex hull weights: { ");
+      for (auto weight: convexHullWeights_) {
+        printf("%f ", weight);
+      }
+      printf("}\n");
+    }
+  }
+}
+
+vector<float> R2D2Actor::normalize(vector<float> vec) {
+    vector<float> output = vector<float>(vec.size());
+    double sum = 0.0;
+
+    for (size_t i = 0; i < vec.size(); ++i) {
+        sum += vec[i];
+    }
+
+    if (sum == 0) {
+        throw std::logic_error("The input vector is a zero vector");
+    }
+
+    for (size_t i = 0; i < vec.size(); ++i) {
+        output[i] = vec[i] / sum;
+    }
+
+    return output;
 }
 
 void R2D2Actor::observeBeforeAct(HanabiEnv& env) {
@@ -235,8 +287,8 @@ void R2D2Actor::observeBeforeAct(HanabiEnv& env) {
             state,
             i,
             shuffleColor_,
-            colorPermutes_[i],
-            invColorPermutes_[i],
+            colorPermutes_.at(i),
+            invColorPermutes_.at(i),
             hideAction_,
             trinary_,
             sad_,
@@ -249,8 +301,8 @@ void R2D2Actor::observeBeforeAct(HanabiEnv& env) {
         state,
         playerIdx_,
         shuffleColor_,
-        colorPermutes_[0],
-        invColorPermutes_[0],
+        colorPermutes_.at(0),
+        invColorPermutes_.at(0),
         hideAction_,
         trinary_,
         sad_,
@@ -291,12 +343,15 @@ void R2D2Actor::observeBeforeAct(HanabiEnv& env) {
       extractPerCardBelief(privV0, env.getHleGame(), obs.Hands()[0].Cards().size());
   }
 
-  addHid(input, hidden_);
+  if (runner_ != nullptr) {
+    addHid(input, hidden_);
+    // no-blocking async call to neural network
+    futReply_ = runner_->call("act", input);
+  }
 
-  // no-blocking async call to neural network
-  futReply_ = runner_->call("act", input);
-
-  callCompareAct(env);
+  if (shadowRunners_.size() > 0) {
+    shadowObserve(env);
+  }
 
   if (!offBelief_ && !beliefStats_) {
     return;
@@ -309,8 +364,8 @@ void R2D2Actor::observeBeforeAct(HanabiEnv& env) {
       state,
       playerIdx_,
       shuffleColor_,
-      colorPermutes_[0],
-      invColorPermutes_[0],
+      colorPermutes_.at(0),
+      invColorPermutes_.at(0),
       hideAction_,
       showOwnCards_,
       beliefSadLegacy_);
@@ -320,7 +375,7 @@ void R2D2Actor::observeBeforeAct(HanabiEnv& env) {
     sampledCards_ = sampleCards(
         v0,
         privCardCount_,
-        invColorPermutes_[0],
+        invColorPermutes_.at(0),
         env.getHleGame(),
         state.Hands()[playerIdx_],
         rng_);
@@ -335,10 +390,17 @@ void R2D2Actor::observeBeforeAct(HanabiEnv& env) {
 
 void R2D2Actor::act(HanabiEnv& env, const int curPlayer) {
   torch::NoGradGuard ng;
-
   auto& state = env.getHleState();
-  auto reply = futReply_.get();
-  moveHid(reply, hidden_);
+
+  rela::TensorDict reply;
+  if (runner_ != nullptr) {
+    reply = futReply_.get();
+    moveHid(reply, hidden_);
+  }
+
+  if (shadowRunners_.size() > 0) {
+    reply = shadowAct(env, reply, curPlayer);
+  }
 
   if (replayBuffer_ != nullptr) {
     r2d2Buffer_->pushAction(reply);
@@ -355,13 +417,11 @@ void R2D2Actor::act(HanabiEnv& env, const int curPlayer) {
   const std::vector<int>* invColorPermute;
   if (vdn_) {
     action = reply.at("a")[curPlayer].item<int64_t>();
-    invColorPermute = &(invColorPermutes_[curPlayer]);
+    invColorPermute = &(invColorPermutes_.at(curPlayer));
   } else {
     action = reply.at("a").item<int64_t>();
-    invColorPermute = &(invColorPermutes_[0]);
+    invColorPermute = &(invColorPermutes_.at(0));
   }
-
-  replyCompareAct(env, action, curPlayer);
 
   if (offBelief_ || beliefStats_) {
     const auto& hand = fictState_->Hands()[playerIdx_];
@@ -388,16 +448,16 @@ void R2D2Actor::act(HanabiEnv& env, const int curPlayer) {
 
   if (!vdn_ && curPlayer != playerIdx_) {
     if (offBelief_) {
-      assert(!partners_[curPlayer].expired());
-      auto partner = partners_[curPlayer].lock();
+      assert(!partners_.at(curPlayer).expired());
+      auto partner = partners_.at(curPlayer).lock();
       // it is not my turn, I need to re-evaluate my partner on
       // the fictitious transition
       auto partnerInput = observe(
           *fictState_,
           partner->playerIdx_,
           partner->shuffleColor_,
-          partner->colorPermutes_[0],
-          partner->invColorPermutes_[0],
+          partner->colorPermutes_.at(0),
+          partner->invColorPermutes_.at(0),
           partner->hideAction_,
           partner->trinary_,
           partner->sad_,
@@ -433,13 +493,13 @@ void R2D2Actor::act(HanabiEnv& env, const int curPlayer) {
   move = overrideMove(env, move, actionQ, exploreAction, legalMoves);
 
   if (shuffleColor_ && move.MoveType() == hle::HanabiMove::Type::kRevealColor) {
-    int realColor = (*invColorPermute)[move.Color()];
+    int realColor = (*invColorPermute).at(move.Color());
     move.SetColor(realColor);
   }
 
   if (replayBuffer_ == nullptr) {
     if (move.MoveType() == hle::HanabiMove::kPlay) {
-      auto cardBelief = perCardPrivV0_[move.CardIndex()];
+      auto cardBelief = perCardPrivV0_.at(move.CardIndex());
       auto [colorKnown, rankKnown] = analyzeCardBelief(cardBelief);
 
       if (colorKnown && rankKnown) {
@@ -482,9 +542,9 @@ void R2D2Actor::fictAct(const HanabiEnv& env) {
     move = env.getMove(action);
 
     if (conventionFictitiousOverride_) {
-      for (auto convention: convention_[conventionIdx_]) {
-        auto senderMove = strToMove(convention[0]);
-        auto responseMove = strToMove(convention[1]);
+      for (auto convention: convention_.at(conventionIdx_)) {
+        auto senderMove = strToMove(convention.at(0));
+        auto responseMove = strToMove(convention.at(1));
 
         auto moveHistory = fictState_->MoveHistory();
         auto lastMove = moveHistory[moveHistory.size() - 1].move;
@@ -508,8 +568,8 @@ void R2D2Actor::fictAct(const HanabiEnv& env) {
       *fictState_,
       playerIdx_,
       shuffleColor_,
-      colorPermutes_[0],
-      invColorPermutes_[0],
+      colorPermutes_.at(0),
+      invColorPermutes_.at(0),
       hideAction_,
       trinary_,
       sad_,
@@ -524,7 +584,9 @@ void R2D2Actor::fictAct(const HanabiEnv& env) {
     fictInput["temperature"] = torch::tensor(playerTemp_);
   }
   fictInput["convention_idx"] = torch::tensor(conventionIdx_);
-  futTarget_ = runner_->call("compute_target", fictInput);
+  if (runner_ != nullptr) {
+    futTarget_ = runner_->call("compute_target", fictInput);
+  }
 }
 
 void R2D2Actor::observeAfterAct(const HanabiEnv& env) {
@@ -558,7 +620,7 @@ void R2D2Actor::observeAfterAct(const HanabiEnv& env) {
     //}
     //printf("^^^^^^^^^^^\n");
 
-    if (useExperience_) {
+    if (runner_ != nullptr && useExperience_) {
       futPriority_ = runner_->call("compute_priority", input);
     }
   }

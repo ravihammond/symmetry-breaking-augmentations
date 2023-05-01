@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <algorithm>
 #include <random>
+#include <limits>
 
 #include "r2d2_actor.h"
 #include "rlcc/utils.h"
@@ -21,21 +22,21 @@ void R2D2Actor::conventionReset(const HanabiEnv& env) {
   beliefStatsResponsePosition_ = responseMove.CardIndex();
 }
 
-void R2D2Actor::callCompareAct(HanabiEnv& env) {
+void R2D2Actor::shadowObserve(HanabiEnv& env) {
   const auto& state = env.getHleState();
-  for (size_t i = 0; i < compRunners_.size(); i++) {
+  for (size_t i = 0; i < shadowRunners_.size(); i++) {
     rela::TensorDict input;
     input = observe(
         state,
         playerIdx_,
-        compShuffleColor_.at(i),
-        compColorPermutes_.at(i),
-        compInvColorPermutes_.at(i),
-        compHideAction_.at(i),
+        shadowShuffleColor_.at(i),
+        shadowColorPermutes_.at(i),
+        shadowInvColorPermutes_.at(i),
+        shadowHideAction_.at(i),
         trinary_,
-        compSad_.at(i),
+        shadowSad_.at(i),
         showOwnCards_,
-        compSadLegacy_.at(i));
+        shadowSadLegacy_.at(i));
     // add features such as eps and temperature
     input["eps"] = torch::tensor(playerEps_);
     if (playerTemp_.size() > 0) {
@@ -43,52 +44,168 @@ void R2D2Actor::callCompareAct(HanabiEnv& env) {
     }
     input["convention_idx"] = torch::tensor(conventionIdx_);
     input["actor_index"] = torch::tensor(playerIdx_); 
-    addHid(input, compHidden_[i]);
-    compFutReply_[i] = compRunners_[i]->call("act", input);
+    addHid(input, shadowHidden_.at(i));
+    shadowFutReply_.at(i) = shadowRunners_.at(i)->call("act", input);
   }
 }
 
-void R2D2Actor::replyCompareAct(const HanabiEnv& env, 
-    int actorAction, int curPlayer) {
+rela::TensorDict R2D2Actor::shadowAct(const HanabiEnv& env, 
+   rela::TensorDict actorReply, int curPlayer) {
   char colourMap[5] = {'R', 'Y', 'G', 'W', 'B'};
   auto game = env.getHleGame();
-  for (size_t i = 0; i < compRunners_.size(); i++) {
-    auto reply = compFutReply_[i].get();
-    moveHid(reply, compHidden_[i]);
+
+  vector<vector<float>> allQValues;
+  vector<float> legalMoves;
+
+  for (int i = 0; i < (int)shadowRunners_.size(); i++) {
+    auto reply = shadowFutReply_.at(i).get();
+    moveHid(reply, shadowHidden_.at(i));
 
     int action = reply.at("a").item<int64_t>();
     auto move = game.GetMove(action);
 
-    if (compShuffleColor_[i] && 
+    if (shadowShuffleColor_.at(i) && 
         move.MoveType() == hle::HanabiMove::Type::kRevealColor) {
       char colourBefore = colourMap[move.Color()];
-      int realColor = compInvColorPermutes_[i].at(move.Color());
+      int realColor = shadowInvColorPermutes_.at(i).at(move.Color());
       move.SetColor(realColor);
       if(CV)printf("shadow action colour %c->%c\n", colourBefore, colourMap[move.Color()]);
       action = game.GetMoveUid(move);
     }
+    if(CV)printf("model: %d, action: %d, %s %f\n", 
+        i, action, move.ToString().c_str(), convexHullWeights_.at(i));
 
-    auto actorMove = game.GetMove(actorAction);
-    if (shuffleColor_ && actorMove.MoveType() == hle::HanabiMove::Type::kRevealColor) {
-      char colourBefore = colourMap[actorMove.Color()];
-      auto invColorPermute = &(invColorPermutes_[0]);
-      int realActorColor = (*invColorPermute)[actorMove.Color()];
-      actorMove.SetColor(realActorColor);
-      if(CV)printf("out actor action colour %c->%c\n", 
-          colourBefore, colourMap[actorMove.Color()]);
-      actorAction = game.GetMoveUid(actorMove);
+    if (actorReply.size() > 0 && curPlayer == playerIdx_ && logStats_) {
+      compareShadowAction(env, actorReply, action);
     }
-    
-    if (curPlayer != playerIdx_) {
+
+    if (convexHull_) {
+      auto qValuesReply = reply.at("all_q");
+      vector<float> qValues;
+      for (int i = 0; i < 21; i++) {
+        qValues.push_back(qValuesReply[i].item<float_t>());
+      }
+      allQValues.push_back(qValues);
+
+      if (legalMoves.size() == 0) {
+        auto legalMovesReply = reply.at("legal_moves");
+        for (int i = 0; i < 21; i++) {
+          legalMoves.push_back(legalMovesReply[i].item<float_t>());
+        }
+      }
+    }
+  }
+
+  if (convexHull_) {
+    actorReply = combineQValues(allQValues, legalMoves);
+    actorReply["legal_moves"] = torch::tensor(legalMoves);
+    actorReply["explore_a"] = actorReply["a"];
+  }
+
+  return actorReply;
+}
+
+void R2D2Actor::compareShadowAction(const HanabiEnv& env, 
+    rela::TensorDict actorReply, int action) {
+  char colourMap[5] = {'R', 'Y', 'G', 'W', 'B'};
+  auto game = env.getHleGame();
+
+  int actorAction = actorReply.at("a").item<int64_t>();
+  auto actorMove = game.GetMove(actorAction);
+  if (shuffleColor_ && actorMove.MoveType() == hle::HanabiMove::Type::kRevealColor) {
+    char colourBefore = colourMap[actorMove.Color()];
+    auto invColorPermute = &(invColorPermutes_.at(0));
+    int realActorColor = (*invColorPermute).at(actorMove.Color());
+    actorMove.SetColor(realActorColor);
+    if(CV)printf("out actor action colour %c->%c\n", 
+        colourBefore, colourMap[actorMove.Color()]);
+    actorAction = game.GetMoveUid(actorMove);
+  }
+  
+  if (actorAction == action) {
+    incrementStat("turn_" + to_string(env.numStep()) + "_same");
+  } else {
+    incrementStat("turn_" + to_string(env.numStep()) + "_different");
+  }
+}
+
+rela::TensorDict R2D2Actor::combineQValues(vector<vector<float>> allQValues,
+    vector<float> legalMoves) {
+  rela::TensorDict reply;
+  if (allQValues.size() == 0) {
+    return reply;
+  }
+
+  if (CV) {
+    printf("model q values:\n");
+    for (int i = 0; i < (int)allQValues.at(0).size(); i++) {
+      printf("%d\t", i);
+    }
+    printf("\n");
+    for (auto qValues: allQValues) {
+      for (float qValue: qValues) {
+        printf("%.4f\t", qValue);
+      }
+      printf("\n");
+    }
+  }
+
+  vector<float> combinedQValues;
+
+  for (int action = 0; action < (int)allQValues.at(0).size(); action++) {
+    float qSum = 0;
+    for (int i = 0; i < (int)allQValues.size(); i++) {
+      float weight = convexHullWeights_.at(i);
+      float scaledQ = allQValues.at(i).at(action) * weight;
+      qSum += scaledQ;
+    }
+    combinedQValues.push_back(qSum);
+  }
+
+  reply["all_q"] = torch::tensor(combinedQValues);
+  int actorAction = getLegalGreedyAction(combinedQValues, legalMoves);
+  reply["a"] = torch::tensor(actorAction);
+
+  return reply;
+}
+
+int R2D2Actor::getLegalGreedyAction(std::vector<float> allQValues,
+    std::vector<float> legalMoves) {
+  int action = 0; 
+  float maxQValue = std::numeric_limits<int>::min();
+
+  if (CV) {
+    printf("combined values:\n");
+    for (int i = 0; i < (int)allQValues.size(); i++) {
+      printf("%d\t", i);
+    }
+    printf("\n");
+    for (auto q: allQValues) {
+      printf("%.4f\t", q);
+    }
+    printf("\n");
+    printf("legal moves:\n");
+    for (auto a: legalMoves) {
+      printf("%d\t", (int)a);
+    }
+    printf("\n");
+  }
+
+  for (int i = 0; i < (int)allQValues.size(); i++) {
+    float value = allQValues.at(i);
+    int legal = (int)legalMoves.at(i);
+
+    if (!legal) {
       continue;
     }
 
-    if (actorAction == action) {
-      incrementStat("turn_" + to_string(env.numStep()) + "_same");
-    } else {
-      incrementStat("turn_" + to_string(env.numStep()) + "_different");
+    if (value > maxQValue) {
+      action = i;
+      maxQValue = value;
     }
   }
+
+  return action;
 }
 
 hle::HanabiMove R2D2Actor::overrideMove(const HanabiEnv& env, hle::HanabiMove move, 

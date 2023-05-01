@@ -99,8 +99,8 @@ def run_evaluation(args, weight_files):
         partner_models_path=partner_model_paths,
         convention_indexes=convention_indexes,
         sad_legacy=args.sad_legacy,
-        # partner_model_type="test",
         partner_model_type="train",
+        convex_hull=args.convex_hull,
     )
 
     return score, perfect, scores, actors
@@ -216,7 +216,7 @@ if __name__ == "__main__":
     parser.add_argument("--weight3", default=None, type=str)
     parser.add_argument("--output", default=None, type=str)
     parser.add_argument("--num_player", default=2, type=int)
-    parser.add_argument("--seed", default=1, type=int)
+    parser.add_argument("--seed", default=0, type=int)
     parser.add_argument("--bomb", default=0, type=int)
     parser.add_argument("--num_game", default=5000, type=int)
     parser.add_argument("--num_run", default=1, type=int)
@@ -232,6 +232,7 @@ if __name__ == "__main__":
     parser.add_argument("--train_test_splits", type=str, default="None")
     parser.add_argument("--split_index", default=0, type=int)
     parser.add_argument("--csv_name", default="None", type=str)
+    parser.add_argument("--convex_hull", default=0, type=int)
     args = parser.parse_args()
 
     args.sad_legacy = [int(x) for x in args.sad_legacy.split(",")]

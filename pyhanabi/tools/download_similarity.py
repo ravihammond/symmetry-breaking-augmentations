@@ -138,7 +138,7 @@ if __name__ == "__main__":
     parser.add_argument("--model1", type=str, default="sad")
     parser.add_argument("--model2", type=str, default="sad")
     parser.add_argument("--verbose", type=int, default=0)
-    parser.add_argument("--dir", type=str, default="hanabi-similarity")
+    parser.add_argument("--dir", type=str, default="hanabi-similarity-new")
     parser.add_argument("--out", type=str, default="similarity")
     args = parser.parse_args()
 

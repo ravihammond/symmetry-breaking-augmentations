@@ -276,6 +276,7 @@ def play_games(args, agents, runners, colour_permutes,
                     [comp_agents[i]["cfg"]["hide_action"]],
                     [comp_agents[i]["name"]],
                 )
+                pprint([comp_agents[i]["shuffle_colour"]])
 
                 actor.set_colour_permute(
                     [actor_colour_permutes[i]],

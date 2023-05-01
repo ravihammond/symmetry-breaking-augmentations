@@ -29,11 +29,9 @@ class R2D2Actor {
         bool hideAction,
         bool trinary,  // trinary aux task or full aux
         std::shared_ptr<rela::RNNPrioritizedReplay> replayBuffer,
-        // if replay buffer is None, then all params below are not used
         int multiStep,
         int seqLen,
         float gamma,
-        // My changes
         std::vector<std::vector<std::vector<std::string>>> convention,
         bool actParameterized,
         int conventionIdx,
@@ -43,7 +41,8 @@ class R2D2Actor {
         bool beliefStats,
         bool sadLegacy,
         bool beliefSadLegacy,
-        bool colorShuffleSync)
+        bool colorShuffleSync,
+        bool convexHull)
           : runner_(std::move(runner))
             , rng_(seed)
             , numPlayer_(numPlayer)
@@ -81,25 +80,25 @@ class R2D2Actor {
             , sentSignalStats_(false)
             , beliefStatsSignalReceived_(false) 
             , colorShuffleSync_(colorShuffleSync) 
-            , colourPermuteConstant_(false) {
-              //printf("multiStep: %d, seqLen: %d, gamma: %f\n", 
-                  //multiStep, seqLen, gamma);
-              if (beliefStats_ && convention_.size() > 0) {
-                auto responseMove = strToMove(convention_[conventionIdx_][0][1]);
-                beliefStatsResponsePosition_ = responseMove.CardIndex();
-              }
+            , colourPermuteConstant_(false) 
+            , convexHull_(convexHull) {
+      if (beliefStats_ && convention_.size() > 0) {
+        auto responseMove = strToMove(convention_[conventionIdx_][0][1]);
+        beliefStatsResponsePosition_ = responseMove.CardIndex();
+      }
 
-              if (sadLegacy_) {
-                showOwnCards_ = false;
-              } else {
-                showOwnCards_ = true;
-              }
-            }
+      if (sadLegacy_) {
+        showOwnCards_ = false;
+      } else {
+        showOwnCards_ = true;
+      }
+    }
 
 
     // simpler constructor for eval mode
     R2D2Actor(
         std::shared_ptr<rela::BatchRunner> runner,
+        int seed,
         int numPlayer,
         int playerIdx,
         bool vdn,
@@ -111,9 +110,10 @@ class R2D2Actor {
         int conventionOverride,
         bool beliefStats,
         bool sadLegacy,
-        bool shuffleColor)
+        bool shuffleColor,
+        bool convexHull)
       : runner_(std::move(runner))
-        , rng_(1)  // not used in eval mode
+        , rng_(seed) 
         , numPlayer_(numPlayer)
         , playerIdx_(playerIdx)
         , epsList_({0})
@@ -146,7 +146,8 @@ class R2D2Actor {
         , sentSignalStats_(false)
         , beliefStatsSignalReceived_(false)
         , colorShuffleSync_(false) 
-        , colourPermuteConstant_(false) {
+        , colourPermuteConstant_(false) 
+        , convexHull_(convexHull) {
           if (beliefStats_ && convention_.size() > 0) {
             auto responseMove = strToMove(convention_[conventionIdx_][0][1]);
             beliefStatsResponsePosition_ = responseMove.CardIndex();
@@ -157,7 +158,7 @@ class R2D2Actor {
           } else {
             showOwnCards_ = true;
           }
-        }
+    }
 
     void setPartners(std::vector<std::shared_ptr<R2D2Actor>> partners) {
       partners_.reserve(partners.size());
@@ -214,37 +215,51 @@ class R2D2Actor {
 
     int getConventionIndex() { return conventionIdx_; }
 
-    void setCompareRunners(
-        std::vector<std::shared_ptr<rela::BatchRunner>> compRunners,
-        std::vector<bool> compSad,
-        std::vector<bool> compSadLegacy,
-        std::vector<bool> compHideAction,
-        std::vector<std::string> compNames) {
+    void setShadowRunners(
+        std::vector<std::shared_ptr<rela::BatchRunner>> shadowRunners,
+        std::vector<bool> shadowSad,
+        std::vector<bool> shadowSadLegacy,
+        std::vector<bool> shadowHideAction,
+        std::vector<std::string> shadowNames) {
 
-      for (auto compRunner: compRunners) {
-        compRunners_.push_back(std::move(compRunner));
-        compHidden_.push_back(rela::TensorDict());
-        compFutReply_.push_back(rela::FutureReply());
+      for (auto shadowRunner: shadowRunners) {
+        shadowRunners_.push_back(std::move(shadowRunner));
+        shadowHidden_.push_back(rela::TensorDict());
+        shadowFutReply_.push_back(rela::FutureReply());
       }
 
-      compSad_ = compSad;
-      compSadLegacy_ = compSadLegacy;
-      compHideAction_ = compHideAction;
-      compNames_ = compNames;
+      shadowSad_ = shadowSad;
+      shadowSadLegacy_ = shadowSadLegacy;
+      shadowHideAction_ = shadowHideAction;
+      shadowNames_ = shadowNames;
+
+      int numRunners = (int)shadowRunners_.size();
+
+      if (shadowShuffleColor_.size() == 0) {
+        shadowShuffleColor_ = std::vector<bool>(numRunners, false);
+      }
+      if (shadowColorPermutes_.size() == 0) {
+        shadowColorPermutes_ = std::vector<std::vector<int>>(numRunners, 
+            std::vector<int>());
+      }
+      if (shadowInvColorPermutes_.size() == 0) {
+        shadowInvColorPermutes_ = std::vector<std::vector<int>>(numRunners, 
+            std::vector<int>());
+      }
     }
 
     void setColourPermute(
         std::vector<std::vector<int>> colorPermute,
         std::vector<std::vector<int>> invColorPermute,
-        std::vector<bool> compShuffleColor,
-        std::vector<std::vector<int>> compColorPermute,
-        std::vector<std::vector<int>> compInvColorPermute) {
+        std::vector<bool> shadowShuffleColor,
+        std::vector<std::vector<int>> shadowColorPermute,
+        std::vector<std::vector<int>> shadowInvColorPermute) {
       colourPermuteConstant_ = true;
       colorPermutes_ = colorPermute;
       invColorPermutes_ = invColorPermute;
-      compShuffleColor_ = compShuffleColor;
-      compColorPermutes_ = compColorPermute;
-      compInvColorPermutes_ = compInvColorPermute;
+      shadowShuffleColor_ = shadowShuffleColor;
+      shadowColorPermutes_ = shadowColorPermute;
+      shadowInvColorPermutes_ = shadowInvColorPermute;
     }
 
   private:
@@ -280,7 +295,8 @@ class R2D2Actor {
         std::vector<hle::HanabiMove> exclude,
         std::vector<float> actionQ, bool exploreAction,
         std::vector<float> legalMoves);
-    bool movePlayableOnFireworks(const HanabiEnv& env, hle::HanabiMove move, int player);
+    bool movePlayableOnFireworks(const HanabiEnv& env, 
+        hle::HanabiMove move, int player);
     bool discardMovePlayable(const HanabiEnv& env, hle::HanabiMove move);
     hle::HanabiMove strToMove(std::string key);
     std::tuple<int,int,std::vector<int>> beliefConventionPlayable(
@@ -289,8 +305,16 @@ class R2D2Actor {
         std::shared_ptr<hle::HanabiHand> playedHand);
     void possibleResponseCards(const HanabiEnv& env,
         std::vector<int>& playableCards);
-    void callCompareAct(HanabiEnv& env);
-    void replyCompareAct(const HanabiEnv& env, int actorAction, int curPlayer);
+    void shadowObserve(HanabiEnv& env);
+    rela::TensorDict shadowAct(const HanabiEnv& env, 
+        rela::TensorDict actorAction, int curPlayer);
+    void compareShadowAction(const HanabiEnv& env, rela::TensorDict actorReply, 
+        int action);
+    rela::TensorDict combineQValues(std::vector<std::vector<float>> allQValues,
+        std::vector<float> legalMoves);
+    int getLegalGreedyAction(std::vector<float> allQValues,
+        std::vector<float> legalMoves);
+    std::vector<float> normalize(std::vector<float> vec);
 
     std::shared_ptr<rela::BatchRunner> runner_;
     std::shared_ptr<rela::BatchRunner> classifier_;
@@ -372,15 +396,17 @@ class R2D2Actor {
     std::shared_ptr<hle::HanabiHand> previousHand_ = nullptr;
     bool colorShuffleSync_;
     bool colourPermuteConstant_;
-    std::vector<bool> compShuffleColor_;
-    std::vector<std::vector<int>> compColorPermutes_;
-    std::vector<std::vector<int>> compInvColorPermutes_;
+    std::vector<bool> shadowShuffleColor_;
+    std::vector<std::vector<int>> shadowColorPermutes_;
+    std::vector<std::vector<int>> shadowInvColorPermutes_;
 
-    std::vector<std::shared_ptr<rela::BatchRunner>> compRunners_;
-    std::vector<rela::TensorDict> compHidden_;
-    std::vector<bool> compSad_;
-    std::vector<bool> compSadLegacy_;
-    std::vector<bool> compHideAction_;
-    std::vector<std::string> compNames_;
-    std::vector<rela::FutureReply> compFutReply_;
+    std::vector<std::shared_ptr<rela::BatchRunner>> shadowRunners_;
+    std::vector<rela::TensorDict> shadowHidden_;
+    std::vector<bool> shadowSad_;
+    std::vector<bool> shadowSadLegacy_;
+    std::vector<bool> shadowHideAction_;
+    std::vector<std::string> shadowNames_;
+    std::vector<rela::FutureReply> shadowFutReply_;
+    bool convexHull_;
+    std::vector<float> convexHullWeights_;
 };

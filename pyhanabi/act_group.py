@@ -21,8 +21,7 @@ assert hanalearn.__file__.endswith(".so")
 class ActGroup:
     def __init__(
         self,
-        devices,
-        agents,
+        devices, agents,
         cfgs,
         seed,
         num_thread,
@@ -48,6 +47,7 @@ class ActGroup:
         runner_div="duplicated",
         num_parameters=0,
         shuffle_color_sync=False,
+        convex_hull=False,
     ):
         self.devices = devices.split(",")
         self.method = method
@@ -79,6 +79,7 @@ class ActGroup:
         if self.sad_legacy:
             self.trinary = True
         self.num_agents = len(agents)
+        self.convex_hull = convex_hull
 
         (self.model_runners, 
          self.belief_runner, 
@@ -142,6 +143,7 @@ class ActGroup:
 
         actors = []
         shuffle_color_sync = [False, self.shuffle_color_sync]
+        convex_hull = [False, self.convex_hull]
 
         if self.method == "vdn":
             for i in range(self.num_thread):
@@ -206,6 +208,9 @@ class ActGroup:
                             sad_legacy = partner["sad_legacy"]
                             shuffle_colour = 0
 
+                        if convex_hull[k]:
+                            runner = None
+
                         actor = hanalearn.R2D2Actor(
                             runner,
                             self.seed,
@@ -232,6 +237,7 @@ class ActGroup:
                             sad_legacy,
                             belief_sad_legacy,
                             shuffle_color_sync[k],
+                            convex_hull[k],
                         )
 
                         if self.off_belief:
@@ -239,6 +245,17 @@ class ActGroup:
                                 actor.set_belief_runner(None)
                             else:
                                 actor.set_belief_runner(self.belief_runner)
+
+                        if k > 0 and self.convex_hull and \
+                                len(self.partner_runners) > 0:
+                            actor.set_shadow_runners(
+                                self.partner_runners,
+                                [x["sad"] for x in self.partners],
+                                [x["sad_legacy"] for x in self.partners],
+                                [x["hide_action"] for x in self.partners],
+                                [x["name"] for x in self.partners]
+                            )
+
                         self.seed += 1
                         game_actors.append(actor)
 
@@ -254,8 +271,6 @@ class ActGroup:
 
                     if self.num_parameters > 0:
                         parameter_index = (parameter_index + 1) % self.num_parameters
-
-
 
                 actors.append(thread_actors)
 

@@ -77,7 +77,6 @@ PYBIND11_MODULE(hanalearn, m) {
         bool,  //  hideAction,
         bool,  // trinary, trinary aux task or full aux
         std::shared_ptr<rela::RNNPrioritizedReplay>,  //  replayBuffer,
-        // if replay buffer is None, then all params below are not used
         int, // multiStep,
         int, // seqLen,
         float,  // gamma
@@ -90,9 +89,11 @@ PYBIND11_MODULE(hanalearn, m) {
         bool, // beliefStats
         bool, // sadLegacy
         bool, // beliefSadLegacy
-        bool>()) // colorShuffleSync
+        bool, // colorShuffleSync
+        bool>()) // convexHull
     .def(py::init<
         std::shared_ptr<rela::BatchRunner>,
+        int,  // seed
         int,  // numPlayer
         int,  // playerIdx
         bool,  // vdn
@@ -104,14 +105,15 @@ PYBIND11_MODULE(hanalearn, m) {
         int, // conventionOverride
         bool, // beliefStats
         bool, // sadLegacy
-        bool>()) // shuffleColor
+        bool, // shuffleColor
+        bool>()) // convexHull
       .def("set_partners", &R2D2Actor::setPartners)
       .def("set_belief_runner", &R2D2Actor::setBeliefRunner)
       .def("set_belief_runner_stats", &R2D2Actor::setBeliefRunnerStats)
       .def("get_success_fict_rate", &R2D2Actor::getSuccessFictRate)
       .def("get_stats", &R2D2Actor::getStats)
       .def("get_convention_index", &R2D2Actor::getConventionIndex)
-      .def("set_compare_runners", &R2D2Actor::setCompareRunners)
+      .def("set_shadow_runners", &R2D2Actor::setShadowRunners)
       .def("set_colour_permute", &R2D2Actor::setColourPermute);
 
   m.def("observe", py::overload_cast<const hle::HanabiState&, int, bool>(&observe));

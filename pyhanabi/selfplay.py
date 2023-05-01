@@ -93,7 +93,7 @@ def selfplay(args):
         parameterized=args.parameterized,
         parameter_type=args.parameter_type,
         num_parameters=args.num_parameters,
-        weight_file=args.save_dir
+        weight_file=args.save_dir,
     )
     agent.sync_target_with_online()
 
@@ -202,6 +202,7 @@ def selfplay(args):
         False, # sad_legacy
         runner_div=args.runner_div, # runner_div
         num_parameters=args.num_parameters, # num_parameters
+        convex_hull=args.convex_hull, # convex_hull
     )
 
     context, threads = create_threads(
@@ -365,6 +366,7 @@ def run_evaluation(
             partners=partners,
             num_parameters=args.num_parameters,
             shuffle_colour=shuffle_colour,
+            convex_hull=args.convex_hull,
         )
 
     train_score, train_perfect, train_scores, _, train_eval_actors = eval(
@@ -463,6 +465,7 @@ def load_partner_agents(args, partner_models, sad_legacy, partner_type):
             "weight": partner_model_path,
             "sad_legacy": False,
         }
+        partner_cfg["name"] = get_model_name(partner_model_path)
 
         overwrite = {}
         overwrite["vdn"] = False
@@ -506,6 +509,27 @@ def load_partner_agents(args, partner_models, sad_legacy, partner_type):
         partners.append(partner_cfg)
 
     return partners
+
+
+def get_model_name(model_path):
+    num_models = 0
+    index = 0
+    name = "<none>"
+
+    if "op" in model_path:
+        name = "op"
+        num_models = 12
+    elif "sad" in model_path:
+        name = "sad"
+        num_models = 13
+
+    for i in range(num_models):
+        if name in model_path:
+            index = i + 1
+            break
+
+    return f"{name}_{index}"
+
 
 def parse_args():
     parser = argparse.ArgumentParser(description="train dqn on hanabi")
@@ -601,6 +625,7 @@ def parse_args():
     parser.add_argument("--runner_div", type=str, default="duplicated")
     parser.add_argument("--num_eval_games", type=int, default=1000)
     parser.add_argument("--record_convention_stats", type=int, default=0)
+    parser.add_argument("--convex_hull", type=int, default=0)
 
     args = parser.parse_args()
 
