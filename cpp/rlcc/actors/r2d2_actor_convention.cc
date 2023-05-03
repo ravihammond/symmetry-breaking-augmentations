@@ -8,7 +8,7 @@
 
 using namespace std;
 
-#define CV false
+#define PR false
 
 void R2D2Actor::conventionReset(const HanabiEnv& env) {
   (void)env;
@@ -24,28 +24,33 @@ void R2D2Actor::conventionReset(const HanabiEnv& env) {
 
 void R2D2Actor::shadowObserve(HanabiEnv& env) {
   const auto& state = env.getHleState();
+
+  rela::TensorDict input;
+  input = observe(
+      state,
+      playerIdx_,
+      shadowShuffleColor_.at(0),
+      shadowColorPermutes_.at(0),
+      shadowInvColorPermutes_.at(0),
+      shadowHideAction_.at(0),
+      trinary_,
+      shadowSad_.at(0),
+      showOwnCards_,
+      shadowSadLegacy_.at(0));
+  // add features such as eps and temperature
+  input["eps"] = torch::tensor(playerEps_);
+  if (playerTemp_.size() > 0) {
+    input["temperature"] = torch::tensor(playerTemp_);
+  }
+  input["convention_idx"] = torch::tensor(conventionIdx_);
+  input["actor_index"] = torch::tensor(playerIdx_); 
+
   for (size_t i = 0; i < shadowRunners_.size(); i++) {
-    rela::TensorDict input;
-    input = observe(
-        state,
-        playerIdx_,
-        shadowShuffleColor_.at(i),
-        shadowColorPermutes_.at(i),
-        shadowInvColorPermutes_.at(i),
-        shadowHideAction_.at(i),
-        trinary_,
-        shadowSad_.at(i),
-        showOwnCards_,
-        shadowSadLegacy_.at(i));
-    // add features such as eps and temperature
-    input["eps"] = torch::tensor(playerEps_);
-    if (playerTemp_.size() > 0) {
-      input["temperature"] = torch::tensor(playerTemp_);
-    }
-    input["convention_idx"] = torch::tensor(conventionIdx_);
-    input["actor_index"] = torch::tensor(playerIdx_); 
     addHid(input, shadowHidden_.at(i));
     shadowFutReply_.at(i) = shadowRunners_.at(i)->call("act", input);
+    for (auto& kv: shadowHidden_.at(i)) {
+      input.erase(kv.first);
+    }
   }
 }
 
@@ -69,10 +74,10 @@ rela::TensorDict R2D2Actor::shadowAct(const HanabiEnv& env,
       char colourBefore = colourMap[move.Color()];
       int realColor = shadowInvColorPermutes_.at(i).at(move.Color());
       move.SetColor(realColor);
-      if(CV)printf("shadow action colour %c->%c\n", colourBefore, colourMap[move.Color()]);
+      if(PR)printf("shadow action colour %c->%c\n", colourBefore, colourMap[move.Color()]);
       action = game.GetMoveUid(move);
     }
-    if(CV)printf("model: %d, action: %d, %s %f\n", 
+    if(PR)printf("model: %d, action: %d, %s %f\n", 
         i, action, move.ToString().c_str(), convexHullWeights_.at(i));
 
     if (actorReply.size() > 0 && curPlayer == playerIdx_ && logStats_) {
@@ -117,7 +122,7 @@ void R2D2Actor::compareShadowAction(const HanabiEnv& env,
     auto invColorPermute = &(invColorPermutes_.at(0));
     int realActorColor = (*invColorPermute).at(actorMove.Color());
     actorMove.SetColor(realActorColor);
-    if(CV)printf("out actor action colour %c->%c\n", 
+    if(PR)printf("out actor action colour %c->%c\n", 
         colourBefore, colourMap[actorMove.Color()]);
     actorAction = game.GetMoveUid(actorMove);
   }
@@ -136,7 +141,7 @@ rela::TensorDict R2D2Actor::combineQValues(vector<vector<float>> allQValues,
     return reply;
   }
 
-  if (CV) {
+  if (PR) {
     printf("model q values:\n");
     for (int i = 0; i < (int)allQValues.at(0).size(); i++) {
       printf("%d\t", i);
@@ -174,7 +179,7 @@ int R2D2Actor::getLegalGreedyAction(std::vector<float> allQValues,
   int action = 0; 
   float maxQValue = std::numeric_limits<int>::min();
 
-  if (CV) {
+  if (PR) {
     printf("combined values:\n");
     for (int i = 0; i < (int)allQValues.size(); i++) {
       printf("%d\t", i);

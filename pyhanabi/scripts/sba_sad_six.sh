@@ -28,8 +28,8 @@ python selfplay.py \
        --static_partner 1 \
        --shuffle_color 1 \
        --save_checkpoints 10 \
-       --wandb 1 \
-       --gcloud_upload 1
+       --wandb 0 \
+       --gcloud_upload 0
        
 #python selfplay.py \
        #--save_dir exps/br_cshuffle_sad \

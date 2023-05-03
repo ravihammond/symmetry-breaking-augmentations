@@ -42,7 +42,7 @@ def evaluate(
     partners=None,
     sad_legacy=[0, 0],
     shuffle_colour=[0, 0],
-    convex_hull=False,
+    convex_hull=[0, 0],
 ):
     """
     evaluate agents as long as they have a "act" function
@@ -96,12 +96,10 @@ def evaluate(
                 hide_action_setting = hide_action[i]
                 act_parameterized_setting = act_parameterized[i]
                 sad_legacy_setting = sad_legacy[i]
-                convex_hull_setting = False
 
                 if i > 0 and partners is not None:
-                    if convex_hull:
+                    if convex_hull[i]:
                         runner = None
-                        convex_hull_setting = True
                     else:
                         runner = partner_runners[partner_idx]
                     sad_setting = partners[partner_idx]["sad"]
@@ -127,10 +125,10 @@ def evaluate(
                     belief_stats, # beliefStats
                     sad_legacy_setting, # sadLegacy
                     shuffle_colour[i], #shuffleColor
-                    convex_hull_setting, #convexHull
+                    convex_hull[i], #convexHull
                 )
 
-                if i > 0 and partners is not None and convex_hull:
+                if i > 0 and partners is not None and convex_hull[i]:
                     actor.set_shadow_runners(
                         partner_runners,
                         [sad_setting] * len(partner_runners),
@@ -244,7 +242,7 @@ def evaluate_saved_model(
     pre_loaded_data=None,
     sad_legacy=[0, 0],
     partner_model_type="train",
-    convex_hull=False,
+    convex_hull=[0, 0],
 ):
     if pre_loaded_data is None:
         pre_loaded_data = load_agents(
@@ -265,7 +263,8 @@ def evaluate_saved_model(
     if belief_model != "None" and belief_stats:
         belief_model_path = belief_model
 
-    partners = load_partner_agents(partner_models_path, partner_model_type, True)
+    partners = load_partner_agents(partner_models_path, 
+            partner_model_type, sad_legacy[1])
 
     scores = []
     perfect = 0
@@ -303,7 +302,7 @@ def evaluate_saved_model(
     perfect_rate = perfect / (num_game * num_run)
     if verbose:
         print(
-            "score: %.3f +/- %.3f" % (mean, sem),
+            "score: %f +/- %f" % (mean, sem),
             "; perfect: %.2f%%" % (100 * perfect_rate),
         )
     return mean, sem, perfect_rate, scores, games
@@ -403,18 +402,9 @@ def load_partner_agents(
         overwrite["device"] = "cuda:0"
         overwrite["boltzmann_act"] = False
 
-        if partner_sad_legacy:
-            partner_cfg["agent"] = utils.load_sad_model(
-                    partner_model_path, "cuda:0")
-            partner_cfg["sad"] = True
-            partner_cfg["hide_action"] = False
-            partner_cfg["parameterized"] = False
-            partner_cfg["sad_legacy"] = True
-            partners.append(partner_cfg)
-            continue
 
         if partner_sad_legacy or "op" in partner_model_path:
-            if "op" in weight_file:
+            if "op" in partner_model_path:
                 partner_cfg["agent"] = utils.load_op_model(
                         partner_model_path, "cuda:0")
             else:

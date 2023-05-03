@@ -26,9 +26,9 @@ RUN cmake ../cpp && make -j10
 # ===== PROD =====
 FROM ravihammond/cuda-conda AS prod
 
+COPY /training_models /app/training_models/
 COPY --from=builder /app/build /app/build
 COPY /pyhanabi /app/pyhanabi/
-COPY /training_models /app/training_models/
 
 COPY resolv.conf resolv.conf
 RUN touch /etc/resolv.conf

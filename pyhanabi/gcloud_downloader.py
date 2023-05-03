@@ -50,9 +50,9 @@ def download_from_gcloud(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--folder", type=str)
+    parser.add_argument("--folder", type=str, required=True)
     parser.add_argument("--rename", type=str, default=None)
-    parser.add_argument("--out", type=str)
-    parser.add_argument('--last_only', action="store_true")
+    parser.add_argument("--out", type=str, default="temp")
+    parser.add_argument('--last_only', type=int, default=1)
     args = parser.parse_args()
     download_from_gcloud(args)

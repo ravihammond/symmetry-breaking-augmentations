@@ -33,16 +33,16 @@ python selfplay.py \
 
 #python selfplay.py \
        #--save_dir exps/ch_sad_six \
-       #--num_thread 2 \
-       #--num_game_per_thread 2 \
+       #--num_thread 24 \
+       #--num_game_per_thread 80 \
        #--method iql \
        #--sad 0 \
        #--lr 6.25e-05 \
        #--eps 1.5e-05 \
        #--gamma 0.999 \
        #--seed $1 \
-       #--burn_in_frames 1000 \
-       #--replay_buffer_size 100000 \
+       #--burn_in_frames 200 \
+       #--replay_buffer_size 1000 \
        #--batchsize 128 \
        #--epoch_len 1 \
        #--num_epoch 1001 \
@@ -58,6 +58,6 @@ python selfplay.py \
        #--split_index $1 \
        #--static_partner 1 \
        #--convex_hull 1 \
-       #--save_checkpoints 100 \
+       #--save_checkpoints 10 \
        #--wandb 0 \
        #--gcloud_upload 0

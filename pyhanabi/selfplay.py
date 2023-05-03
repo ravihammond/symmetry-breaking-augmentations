@@ -350,7 +350,7 @@ def run_evaluation(
     eval_agent.load_state_dict(agent.state_dict())
     eval_agents = [eval_agent for _ in range(args.num_player)]
 
-    def eval(partners, convention_act_override, shuffle_colour):
+    def eval(partners, convention_act_override, shuffle_colour, convex_hull):
         return evaluate(
             eval_agents,
             args.num_eval_games,
@@ -366,11 +366,15 @@ def run_evaluation(
             partners=partners,
             num_parameters=args.num_parameters,
             shuffle_colour=shuffle_colour,
-            convex_hull=args.convex_hull,
+            convex_hull=convex_hull,
         )
 
     train_score, train_perfect, train_scores, _, train_eval_actors = eval(
-        train_partners, convention_act_override, [args.shuffle_color, 0])
+        train_partners, 
+        convention_act_override, 
+        [args.shuffle_color, 0],
+        [0, args.convex_hull],
+    )
 
     test_convention_override = [0,0]
     print("epoch %d" % epoch)
@@ -378,9 +382,12 @@ def run_evaluation(
             (train_score, train_perfect * 100))
 
     if args.test_partner_models != "None":
-        test_shuffle_colour = [0,0]
         test_score, test_perfect, test_scores, _, test_eval_actors = eval(
-            test_partners, test_convention_override, test_shuffle_colour)
+            test_partners, 
+            test_convention_override, 
+            [0,0],
+            [0,0],
+        )
 
         print("test score: %.4f, test perfect: %.2f" % \
                 (test_score, test_perfect * 100))

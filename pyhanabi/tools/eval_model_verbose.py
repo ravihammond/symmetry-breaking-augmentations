@@ -80,9 +80,12 @@ def run_evaluation(args, weight_files):
     partner_model_paths = []
     if args.partner_models != "None":
         model_paths = load_json_list(args.partner_models)
-        all_indexes =load_json_list(args.train_test_splits)
-        test_indexes = all_indexes[args.split_index]["train"]
-        partner_model_paths = [model_paths[i] for i in test_indexes]
+        if args.all_splits:
+            partner_model_paths = model_paths
+        else:
+            all_indexes =load_json_list(args.train_test_splits)
+            test_indexes = all_indexes[args.split_index][args.partner_type]
+            partner_model_paths = [model_paths[i] for i in test_indexes]
 
     score, _, perfect,scores, actors = evaluate_saved_model(
         weight_files,
@@ -99,8 +102,8 @@ def run_evaluation(args, weight_files):
         partner_models_path=partner_model_paths,
         convention_indexes=convention_indexes,
         sad_legacy=args.sad_legacy,
-        partner_model_type="train",
-        convex_hull=args.convex_hull,
+        partner_model_type=args.partner_type,
+        convex_hull=[0, args.convex_hull],
     )
 
     return score, perfect, scores, actors
@@ -233,6 +236,8 @@ if __name__ == "__main__":
     parser.add_argument("--split_index", default=0, type=int)
     parser.add_argument("--csv_name", default="None", type=str)
     parser.add_argument("--convex_hull", default=0, type=int)
+    parser.add_argument("--partner_type", default="test", type=str)
+    parser.add_argument("--all_splits", default=0, type=int)
     args = parser.parse_args()
 
     args.sad_legacy = [int(x) for x in args.sad_legacy.split(",")]
