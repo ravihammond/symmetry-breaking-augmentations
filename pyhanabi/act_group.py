@@ -48,6 +48,8 @@ class ActGroup:
         num_parameters=0,
         shuffle_color_sync=False,
         convex_hull=False,
+        convex_hull_type="uniform",
+        convex_hull_epsilon=0.5,
     ):
         self.devices = devices.split(",")
         self.method = method
@@ -80,6 +82,8 @@ class ActGroup:
             self.trinary = True
         self.num_agents = len(agents)
         self.convex_hull = convex_hull
+        self.convex_hull_type = convex_hull_type
+        self.convex_hull_epsilon = convex_hull_epsilon
 
         (self.model_runners, 
          self.belief_runner, 
@@ -238,6 +242,8 @@ class ActGroup:
                             belief_sad_legacy,
                             shuffle_color_sync[k],
                             convex_hull[k],
+                            self.convex_hull_type,
+                            self.convex_hull_epsilon,
                         )
 
                         if self.off_belief:

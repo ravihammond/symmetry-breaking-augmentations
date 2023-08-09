@@ -1,7 +1,7 @@
 #!/bin/bash
 
 python selfplay.py \
-       --save_dir exps/ch_sad_six \
+       --save_dir exps/sad_six \
        --num_thread 24 \
        --num_game_per_thread 80 \
        --method iql \
@@ -27,14 +27,16 @@ python selfplay.py \
        --split_index $1 \
        --static_partner 1 \
        --convex_hull 1 \
+       --convex_hull_epsilon 0.5 \
+       --convex_hull_type random_bool \
        --save_checkpoints 10 \
        --wandb 1 \
        --gcloud_upload 1
 
 #python selfplay.py \
-       #--save_dir exps/ch_sad_six \
-       #--num_thread 24 \
-       #--num_game_per_thread 80 \
+       #--save_dir exps/test \
+       #--num_thread 1 \
+       #--num_game_per_thread 10 \
        #--method iql \
        #--sad 0 \
        #--lr 6.25e-05 \
@@ -51,13 +53,15 @@ python selfplay.py \
        #--num_lstm_layer 2 \
        #--multi_step 3 \
        #--train_device cuda:0 \
-       #--act_device cuda:1,cuda:2,cuda:3 \
+       #--act_device cuda:1,cuda:2 \
        #--train_partner_models agent_groups/all_sad.json \
        #--train_partner_sad_legacy 1 \
        #--train_test_splits train_test_splits/sad_splits_six.json \
        #--split_index $1 \
        #--static_partner 1 \
        #--convex_hull 1 \
+       #--convex_hull_epsilon $2 \
+       #--convex_hull_type $3 \
        #--save_checkpoints 10 \
        #--wandb 0 \
        #--gcloud_upload 0

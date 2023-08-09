@@ -42,7 +42,9 @@ class R2D2Actor {
         bool sadLegacy,
         bool beliefSadLegacy,
         bool colorShuffleSync,
-        bool convexHull)
+        bool convexHull,
+        std::string convexHullType,
+        float convexHullEpsilon)
           : runner_(std::move(runner))
             , rng_(seed)
             , numPlayer_(numPlayer)
@@ -81,7 +83,9 @@ class R2D2Actor {
             , beliefStatsSignalReceived_(false) 
             , colorShuffleSync_(colorShuffleSync) 
             , colourPermuteConstant_(false) 
-            , convexHull_(convexHull) {
+            , convexHull_(convexHull) 
+            , convexHullType_(convexHullType) 
+            , convexHullEpsilon_(convexHullEpsilon) {
       if (beliefStats_ && convention_.size() > 0) {
         auto responseMove = strToMove(convention_[conventionIdx_][0][1]);
         beliefStatsResponsePosition_ = responseMove.CardIndex();
@@ -111,7 +115,9 @@ class R2D2Actor {
         bool beliefStats,
         bool sadLegacy,
         bool shuffleColor,
-        bool convexHull)
+        bool convexHull,
+        std::string convexHullType,
+        float convexHullEpsilon)
       : runner_(std::move(runner))
         , rng_(seed) 
         , numPlayer_(numPlayer)
@@ -147,7 +153,9 @@ class R2D2Actor {
         , beliefStatsSignalReceived_(false)
         , colorShuffleSync_(false) 
         , colourPermuteConstant_(false) 
-        , convexHull_(convexHull) {
+        , convexHull_(convexHull) 
+        , convexHullType_(convexHullType) 
+        , convexHullEpsilon_(convexHullEpsilon) {
           if (beliefStats_ && convention_.size() > 0) {
             auto responseMove = strToMove(convention_[conventionIdx_][0][1]);
             beliefStatsResponsePosition_ = responseMove.CardIndex();
@@ -272,6 +280,7 @@ class R2D2Actor {
     }
 
     // My changes
+    void setConvexHull();
     void conventionReset(const HanabiEnv& env);
     void incrementStat(std::string key);
     virtual void incrementStatsBeforeMove(
@@ -409,4 +418,6 @@ class R2D2Actor {
     std::vector<rela::FutureReply> shadowFutReply_;
     bool convexHull_;
     std::vector<float> convexHullWeights_;
+    std::string convexHullType_;
+    float convexHullEpsilon_;
 };

@@ -90,7 +90,9 @@ PYBIND11_MODULE(hanalearn, m) {
         bool, // sadLegacy
         bool, // beliefSadLegacy
         bool, // colorShuffleSync
-        bool>()) // convexHull
+        bool, // convexHull
+        std::string, // convexHullType
+        float>()) // convexHullEpsilon
     .def(py::init<
         std::shared_ptr<rela::BatchRunner>,
         int,  // seed
@@ -106,7 +108,9 @@ PYBIND11_MODULE(hanalearn, m) {
         bool, // beliefStats
         bool, // sadLegacy
         bool, // shuffleColor
-        bool>()) // convexHull
+        bool, // convexHull
+        std::string, // convexHullType
+        float>()) // convexHullEpsilon
       .def("set_partners", &R2D2Actor::setPartners)
       .def("set_belief_runner", &R2D2Actor::setBeliefRunner)
       .def("set_belief_runner_stats", &R2D2Actor::setBeliefRunnerStats)

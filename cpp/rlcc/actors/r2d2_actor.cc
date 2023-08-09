@@ -195,21 +195,15 @@ void R2D2Actor::reset(const HanabiEnv& env) {
           assert(invColorPermute.at(colorPermute.at(i)) == i);
         }
       }
-
     }
+
     if (PR) {
-      if (runner_ != nullptr) {
-        runner_->printModel();
-      }
       printf("shuffle: %d, colour permute: { ", (int)shuffleColor_);
       for (int colour: colorPermutes_.at(0)) {
         printf("%d ", colour);
       }
       printf("}\n");
       if (shadowRunners_.size() > 0 && shadowShuffleColor_.size() > 0) {
-        for (auto shadowRunner: shadowRunners_) {
-          shadowRunner->printModel();
-        }
         printf("shadow shuffle: %d, colour permute: { ", (int)shadowShuffleColor_.at(0));
         for (int colour: shadowColorPermutes_.at(0)) {
           printf("%d ", colour);
@@ -226,31 +220,61 @@ void R2D2Actor::reset(const HanabiEnv& env) {
         conv.at(0).c_str(), conv.at(1).c_str());
   }
 
-  if (convexHull_ && shadowRunners_.size() > 0) {
-    convexHullWeights_.clear();
-    vector<float> weights;
-    std::uniform_real_distribution<> dis(0, 1);
+  setConvexHull();
+}
 
-    float sum = 0;
-    do {
-      weights.clear();
-      sum = 0;
-      for (int i = 0; i < (int)shadowRunners_.size(); i++) {
-        float weight = dis(rng_);
-        weights.push_back(weight);
-        sum += weight;
-      }
-    } while(sum == 0);
+void R2D2Actor::setConvexHull() {
+  if (!convexHull_ || shadowRunners_.size() == 0) {
+    return;
+  }
 
-    convexHullWeights_ = normalize(weights);
+  convexHullWeights_.clear();
+  vector<float> weights;
 
-    if (PR) {
-      printf("convex hull weights: { ");
-      for (auto weight: convexHullWeights_) {
-        printf("%f ", weight);
-      }
-      printf("}\n");
+  // Select random single partner
+  weights = vector<float>(shadowRunners_.size(), 0);
+  std::uniform_int_distribution<> selectionDist(0, shadowRunners_.size() - 1);
+  int selection = selectionDist(rng_);
+  weights[selection] = 1;
+
+  std::uniform_real_distribution<> realDist(0, 1);
+  float epsilonRand = realDist(rng_);
+
+  // Select group of random partners
+  if (epsilonRand > convexHullEpsilon_) {
+    if (convexHullType_ == "boolean_random") {
+      std::uniform_int_distribution<> booleanDist(0, 1);
+      float sum = 0;
+
+      do {
+        weights.clear();
+        sum = 0;
+        for (int i = 0; i < (int)shadowRunners_.size(); i++) {
+          float weight = booleanDist(rng_);
+          weights.push_back(weight);
+          sum += weight;
+        }
+      } while(sum == 0);
+
+    } else if (convexHullType_ == "boolean_two") {
+        int secondSelection = 0;
+
+        do {
+          secondSelection = selectionDist(rng_);
+        } while(selection == secondSelection);
+
+        weights[secondSelection] = 1;
     }
+  }
+
+  convexHullWeights_ = normalize(weights);
+
+  if (PR) {
+    printf("convex hull weights: { ");
+    for (auto weight: convexHullWeights_) {
+      printf("%f ", weight);
+    }
+    printf("}\n");
   }
 }
 

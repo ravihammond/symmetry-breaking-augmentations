@@ -46,6 +46,9 @@ void R2D2Actor::shadowObserve(HanabiEnv& env) {
   input["actor_index"] = torch::tensor(playerIdx_); 
 
   for (size_t i = 0; i < shadowRunners_.size(); i++) {
+    if (convexHull_ && convexHullWeights_.at(i) == 0) {
+      continue;
+    }
     addHid(input, shadowHidden_.at(i));
     shadowFutReply_.at(i) = shadowRunners_.at(i)->call("act", input);
     for (auto& kv: shadowHidden_.at(i)) {
@@ -63,6 +66,10 @@ rela::TensorDict R2D2Actor::shadowAct(const HanabiEnv& env,
   vector<float> legalMoves;
 
   for (int i = 0; i < (int)shadowRunners_.size(); i++) {
+    if (convexHull_ && convexHullWeights_.at(i) == 0) {
+      allQValues.push_back(vector<float>(21, 0));
+      continue;
+    }
     auto reply = shadowFutReply_.at(i).get();
     moveHid(reply, shadowHidden_.at(i));
 

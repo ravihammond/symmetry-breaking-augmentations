@@ -43,6 +43,8 @@ def evaluate(
     sad_legacy=[0, 0],
     shuffle_colour=[0, 0],
     convex_hull=[0, 0],
+    convex_hull_type="epsilon_random_bool",
+    convex_hull_epsilon=0.5,
 ):
     """
     evaluate agents as long as they have a "act" function
@@ -126,6 +128,8 @@ def evaluate(
                     sad_legacy_setting, # sadLegacy
                     shuffle_colour[i], #shuffleColor
                     convex_hull[i], #convexHull
+                    convex_hull_type, #convexHullType
+                    convex_hull_epsilon, #convecHullEpsilon
                 )
 
                 if i > 0 and partners is not None and convex_hull[i]:

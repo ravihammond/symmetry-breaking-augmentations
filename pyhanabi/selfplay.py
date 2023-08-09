@@ -203,6 +203,8 @@ def selfplay(args):
         runner_div=args.runner_div, # runner_div
         num_parameters=args.num_parameters, # num_parameters
         convex_hull=args.convex_hull, # convex_hull
+        convex_hull_type=args.convex_hull_type, # convex_hull_type
+        convex_hull_epsilon=args.convex_hull_epsilon, # convex_hull_epsilon
     )
 
     context, threads = create_threads(
@@ -633,6 +635,8 @@ def parse_args():
     parser.add_argument("--num_eval_games", type=int, default=1000)
     parser.add_argument("--record_convention_stats", type=int, default=0)
     parser.add_argument("--convex_hull", type=int, default=0)
+    parser.add_argument("--convex_hull_type", type=str, default="boolean_random")
+    parser.add_argument("--convex_hull_epsilon", type=float, default=0)
 
     args = parser.parse_args()
 
@@ -666,6 +670,16 @@ def parse_args():
         args.test_partner_models = args.train_partner_models
     if args.test_partner_sad_legacy == None:
         args.test_partner_sad_legacy = args.train_partner_sad_legacy
+
+    if args.convex_hull:
+        prefix = "ch_"
+        eps = int(args.convex_hull_epsilon * 100)
+        prefix += f"e{eps}_"
+        if args.convex_hull_type == "boolean_two":
+            prefix += "b2_"
+        filename = os.path.basename(args.save_dir)
+        dirname = os.path.dirname(args.save_dir)
+        args.save_dir = os.path.join(dirname, prefix + filename)
 
     return args
 
