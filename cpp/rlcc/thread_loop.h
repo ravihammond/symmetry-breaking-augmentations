@@ -34,6 +34,7 @@ class HanabiThreadLoop : public rela::ThreadLoop {
   virtual void mainLoop() override {
     clock_t t;
     int game_turn = 0;
+    bool returning = false;
     while (!terminated()) {
       if(PR)printf("\n=======================================\n");
       if(PR)printf("Game Turn: %d\n", game_turn);
@@ -41,7 +42,6 @@ class HanabiThreadLoop : public rela::ThreadLoop {
       // call in seperate for-loops to maximize parallization
 
       t = clock();
-      bool returning = false;
       for (size_t i = 0; i < envs_.size(); ++i) {
         if (done_[i] == 1) {
           continue;
@@ -59,7 +59,6 @@ class HanabiThreadLoop : public rela::ThreadLoop {
                 returning = true;
               }
             }
-
           }
 
           envs_[i]->reset();

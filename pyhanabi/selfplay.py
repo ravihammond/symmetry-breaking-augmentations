@@ -76,6 +76,9 @@ def selfplay(args):
     else:
         agent_in_dim = tuple([x for x in agent_in_dim[0]])
 
+    num_train_partners = len(load_json_list(
+            args.train_test_splits)[args.split_index]["train"])
+
     agent = r2d2.R2D2Agent(
         (args.method == "vdn"),
         args.multi_step,
@@ -93,7 +96,8 @@ def selfplay(args):
         parameterized=args.parameterized,
         parameter_type=args.parameter_type,
         num_parameters=args.num_parameters,
-        weight_file=args.save_dir
+        weight_file=args.save_dir,
+        num_partners=num_train_partners,
     )
     agent.sync_target_with_online()
 
@@ -106,6 +110,7 @@ def selfplay(args):
         "gamma": args.gamma,
         "parameterized": args.parameterized,
     }
+
 
     if args.load_model and args.load_model != "None":
         if args.off_belief and args.belief_model != "None":
@@ -241,7 +246,7 @@ def selfplay(args):
     stopwatch = common_utils.Stopwatch()
 
     last_loss = 0
-
+    last_aux_loss = 0
 
     for epoch in range(args.num_epoch):
         print("beginning of epoch:", epoch)
@@ -260,16 +265,21 @@ def selfplay(args):
             torch.cuda.synchronize()
             stopwatch.time("sync and updating")
 
+            # sample_id_list = [*range(0, num_train_partners)]
+            # batch, _ = replay_buffer.sample_from_list_split(
+                    # args.batchsize, args.train_device, sample_id_list)
             batch, weight = replay_buffer.sample(args.batchsize, args.train_device)
             stopwatch.time("sample data")
 
-            loss, priority, online_q = agent.loss(batch, args.aux_weight, stat)
+            loss, priority, online_q, aux_loss = agent.loss(batch, 
+                    args.aux_weight, stat, args.class_aux_weight)
             if clone_bot is not None and args.clone_weight > 0:
                 bc_loss = agent.behavior_clone_loss(
                     online_q, batch, args.clone_t, clone_bot, stat
                 )
                 loss = loss + bc_loss * args.clone_weight
             loss = (loss * weight).mean()
+            aux_loss = (aux_loss * weight).mean()
             loss.backward()
 
             torch.cuda.synchronize()
@@ -288,6 +298,7 @@ def selfplay(args):
             stopwatch.time("updating priority")
 
             last_loss = loss.detach().item()
+            last_aux_loss = aux_loss.detach().item()
             stat["loss"].feed(loss.detach().item())
             stat["grad_norm"].feed(g_norm)
             stat["boltzmann_t"].feed(batch.obs["temperature"][0].mean())
@@ -312,6 +323,7 @@ def selfplay(args):
             clone_bot,
             act_group,
             last_loss,
+            last_aux_loss,
         )
 
         force_save_name = None
@@ -344,6 +356,7 @@ def run_evaluation(
     clone_bot,
     act_group,
     last_loss,
+    last_aux_loss,
 ):
     eval_seed = (9917 + epoch * 999999) % 7777777
     eval_agent.load_state_dict(agent.state_dict())
@@ -395,6 +408,7 @@ def run_evaluation(
                 train_scores, 
                 train_eval_actors, 
                 last_loss, 
+                last_aux_loss, 
                 test_score, 
                 test_perfect, 
                 test_scores, 
@@ -407,6 +421,7 @@ def run_evaluation(
                 train_scores, 
                 train_eval_actors, 
                 last_loss, 
+                last_aux_loss, 
                 convention_for_stats)
 
     if args.test_partner_models != "None":
@@ -513,6 +528,7 @@ def parse_args():
     parser.add_argument("--method", type=str, default="vdn")
     parser.add_argument("--shuffle_color", type=int, default=0)
     parser.add_argument("--aux_weight", type=float, default=0)
+    parser.add_argument("--class_aux_weight", type=float, default=0)
     parser.add_argument("--boltzmann_act", type=int, default=0)
     parser.add_argument("--min_t", type=float, default=1e-3)
     parser.add_argument("--max_t", type=float, default=1e-1)
@@ -603,6 +619,9 @@ def parse_args():
     parser.add_argument("--record_convention_stats", type=int, default=0)
 
     args = parser.parse_args()
+
+    if args.class_aux_weight > 0:
+        args.save_dir = f"{args.save_dir}_{args.class_aux_weight}"
 
     if args.off_belief == 1:
         args.method = "iql"

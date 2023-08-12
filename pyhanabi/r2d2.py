@@ -10,6 +10,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from typing import Tuple, Dict
 from net import FFWDNet, PublicLSTMNet, LSTMNet
+import numpy as np
 
 
 class R2D2Agent(torch.jit.ScriptModule):
@@ -46,6 +47,7 @@ class R2D2Agent(torch.jit.ScriptModule):
         parameterized=0,
         parameter_type="one_hot",
         num_parameters=0,
+        num_partners=0,
     ):
         super().__init__()
 
@@ -61,10 +63,10 @@ class R2D2Agent(torch.jit.ScriptModule):
             ).to(device)
         elif net == "lstm":
             self.online_net = LSTMNet(
-                device, in_dim, hid_dim, out_dim, num_lstm_layer
+                device, in_dim, hid_dim, out_dim, num_lstm_layer, num_partners
             ).to(device)
             self.target_net = LSTMNet(
-                device, in_dim, hid_dim, out_dim, num_lstm_layer
+                device, in_dim, hid_dim, out_dim, num_lstm_layer, num_partners
             ).to(device)
         elif net == "transformer":
             self.online_net = TransformerNet(
@@ -97,6 +99,7 @@ class R2D2Agent(torch.jit.ScriptModule):
         self.parameter_type = parameter_type
         self.num_parameters = num_parameters
         self.model_name = weight_file
+        self.num_partners = num_partners
 
     @torch.jit.script_method
     def get_h0(self, batchsize: int) -> Dict[str, torch.Tensor]:
@@ -136,6 +139,7 @@ class R2D2Agent(torch.jit.ScriptModule):
             parameterized=self.parameterized,
             parameter_type=self.parameter_type,
             num_parameters=self.num_parameters,
+            num_partners=self.num_partners,
         )
         cloned.load_state_dict(self.state_dict())
         cloned.train(self.training)
@@ -183,7 +187,6 @@ class R2D2Agent(torch.jit.ScriptModule):
         output: {'a' : actions}, a long Tensor of shape
             [batchsize] or [batchsize, num_player]
         """
-        # print("act() r2d2.py=======")
         priv_s = obs["priv_s"]
         publ_s = obs["publ_s"]
         legal_move = obs["legal_move"]
@@ -404,10 +407,42 @@ class R2D2Agent(torch.jit.ScriptModule):
             err = err * obs["valid_fict"]
         return err, lstm_o, online_q
 
+    def to_array(self, tensor):
+        return np.array(tensor.clone().detach().cpu())
+
+    def class_aux_task_iql(self, lstm_o, partner_idx, num_partners, 
+            seq_len, rl_loss_size, stat):
+        print("class_aux_task_iql() net.py ======")
+        p_idx = self.to_array(partner_idx)
+        num_p = self.to_array(num_partners)
+        seq_l = self.to_array(seq_len)
+        print("p_idx:", p_idx.shape)
+        print(p_idx)
+        print("num_p:", num_p.shape)
+        print(num_p)
+        print("seq_l:", seq_l.shape)
+        print(seq_l)
+
+
+        num_partners = num_partners.cpu()[0,0].item()
+        partner_idx_one_hot = F.one_hot(partner_idx, 
+                num_classes=num_partners)
+
+        pred_loss1, avg_xent1, _, _ = self.online_net.pred_loss_class(
+            lstm_o, partner_idx_one_hot, seq_len
+        )
+        
+        assert pred_loss1.size() == rl_loss_size
+        stat["aux"].feed(avg_xent1)
+        return pred_loss1
+
+
     def aux_task_iql(self, lstm_o, hand, seq_len, rl_loss_size, stat):
         seq_size, bsize, _ = hand.size()
+
         own_hand = hand.view(seq_size, bsize, 5, 3)
         own_hand_slot_mask = own_hand.sum(3)
+
         pred_loss1, avg_xent1, _, _ = self.online_net.pred_loss_1st(
             lstm_o, own_hand, own_hand_slot_mask, seq_len
         )
@@ -434,7 +469,7 @@ class R2D2Agent(torch.jit.ScriptModule):
         agg_priority = self.eta * p_max + (1.0 - self.eta) * p_mean
         return agg_priority
 
-    def loss(self, batch, aux_weight, stat):
+    def loss(self, batch, aux_weight, stat, class_aux_weight):
         err, lstm_o, online_q = self.td_error(
             batch.obs,
             batch.h0,
@@ -454,30 +489,42 @@ class R2D2Agent(torch.jit.ScriptModule):
         priority = self.aggregate_priority(priority, batch.seq_len).detach().cpu()
 
         loss = rl_loss
-        if aux_weight <= 0:
-            return loss, priority, online_q
+        aux_loss = 0
+    
+        if aux_weight > 0:
+            if self.vdn:
+                pred1 = self.aux_task_vdn(
+                    lstm_o,
+                    batch.obs["own_hand"],
+                    batch.obs["temperature"],
+                    batch.seq_len,
+                    rl_loss.size(),
+                    stat,
+                )
+                loss = rl_loss + aux_weight * pred1
+            else:
+                pred = self.aux_task_iql(
+                    lstm_o,
+                    batch.obs["own_hand"],
+                    batch.seq_len,
+                    rl_loss.size(),
+                    stat,
+                )
+                loss = rl_loss + aux_weight * pred
 
-        if self.vdn:
-            pred1 = self.aux_task_vdn(
+        if class_aux_weight > 0:
+            pred = self.class_aux_task_iql(
                 lstm_o,
-                batch.obs["own_hand"],
-                batch.obs["temperature"],
+                batch.obs["partner_idx"],
+                batch.obs["num_partners"],
                 batch.seq_len,
                 rl_loss.size(),
                 stat,
             )
-            loss = rl_loss + aux_weight * pred1
-        else:
-            pred = self.aux_task_iql(
-                lstm_o,
-                batch.obs["own_hand"],
-                batch.seq_len,
-                rl_loss.size(),
-                stat,
-            )
-            loss = rl_loss + aux_weight * pred
+            aux_loss = pred
+            loss = rl_loss + class_aux_weight * pred
 
-        return loss, priority, online_q
+        return loss, priority, online_q, aux_loss
 
     def behavior_clone_loss(self, online_q, batch, t, clone_bot, stat):
         max_seq_len = batch.obs["priv_s"].size(0)

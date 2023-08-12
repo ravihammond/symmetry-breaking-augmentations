@@ -43,7 +43,9 @@ class R2D2Actor {
         bool beliefStats,
         bool sadLegacy,
         bool beliefSadLegacy,
-        bool colorShuffleSync)
+        bool colorShuffleSync,
+        int partnerIdx,
+        int numPartners)
           : runner_(std::move(runner))
             , rng_(seed)
             , numPlayer_(numPlayer)
@@ -81,7 +83,9 @@ class R2D2Actor {
             , sentSignalStats_(false)
             , beliefStatsSignalReceived_(false) 
             , colorShuffleSync_(colorShuffleSync) 
-            , colourPermuteConstant_(false) {
+            , colourPermuteConstant_(false) 
+            , partnerIdx_(partnerIdx) 
+            , numPartners_(numPartners) {
               //printf("multiStep: %d, seqLen: %d, gamma: %f\n", 
                   //multiStep, seqLen, gamma);
               if (beliefStats_ && convention_.size() > 0) {
@@ -146,7 +150,9 @@ class R2D2Actor {
         , sentSignalStats_(false)
         , beliefStatsSignalReceived_(false)
         , colorShuffleSync_(false) 
-        , colourPermuteConstant_(false) {
+        , colourPermuteConstant_(false) 
+        , partnerIdx_(-1)
+        , numPartners_(0) {
           if (beliefStats_ && convention_.size() > 0) {
             auto responseMove = strToMove(convention_[conventionIdx_][0][1]);
             beliefStatsResponsePosition_ = responseMove.CardIndex();
@@ -383,4 +389,6 @@ class R2D2Actor {
     std::vector<bool> compHideAction_;
     std::vector<std::string> compNames_;
     std::vector<rela::FutureReply> compFutReply_;
+    int partnerIdx_;
+    int numPartners_;
 };

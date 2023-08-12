@@ -90,7 +90,9 @@ PYBIND11_MODULE(hanalearn, m) {
         bool, // beliefStats
         bool, // sadLegacy
         bool, // beliefSadLegacy
-        bool>()) // colorShuffleSync
+        bool, // colorShuffleSync
+        int, // partnerIdx
+        int>()) // numPartners
     .def(py::init<
         std::shared_ptr<rela::BatchRunner>,
         int,  // numPlayer

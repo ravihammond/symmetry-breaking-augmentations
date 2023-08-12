@@ -142,6 +142,7 @@ class ActGroup:
 
         actors = []
         shuffle_color_sync = [False, self.shuffle_color_sync]
+        print("partner runner size:", len(self.partner_runners))
 
         if self.method == "vdn":
             for i in range(self.num_thread):
@@ -232,7 +233,10 @@ class ActGroup:
                             sad_legacy,
                             belief_sad_legacy,
                             shuffle_color_sync[k],
+                            partner_idx,
+                            len(self.partner_runners),
                         )
+                        print("partner_index:", partner_idx)
 
                         if self.off_belief:
                             if self.belief_runner is None:
@@ -254,8 +258,6 @@ class ActGroup:
 
                     if self.num_parameters > 0:
                         parameter_index = (parameter_index + 1) % self.num_parameters
-
-
 
                 actors.append(thread_actors)
 

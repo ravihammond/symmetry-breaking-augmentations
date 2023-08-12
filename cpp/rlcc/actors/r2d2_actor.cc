@@ -277,6 +277,9 @@ void R2D2Actor::observeBeforeAct(HanabiEnv& env) {
     input["playable_cards"] = torch::tensor(playableCards);
   }
   input["actor_index"] = torch::tensor(playerIdx_); 
+  input["partner_idx"] = torch::tensor(partnerIdx_);
+  input["num_partners"] = torch::tensor(numPartners_);
+
   // push before we add hidden
   if (replayBuffer_ != nullptr) {
     r2d2Buffer_->pushObs(input);
@@ -566,8 +569,9 @@ void R2D2Actor::observeAfterAct(const HanabiEnv& env) {
 
 void R2D2Actor::pushToReplayBuffer() {
   if (!futPriority_.isNull() && useExperience_) {
-    auto priority = futPriority_.get()["priority"].item<float>();
-    replayBuffer_->add(std::move(lastEpisode_), priority);
+    //auto priority = futPriority_.get()["priority"].item<float>();
+    //replayBuffer_->add(std::move(lastEpisode_), priority);
+    replayBuffer_->add(std::move(lastEpisode_), 1);
   }
 }
 

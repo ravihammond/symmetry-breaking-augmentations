@@ -12,6 +12,7 @@ def log_wandb_test(
         train_scores, 
         train_eval_actors, 
         last_loss, 
+        last_aux_loss, 
         test_score, 
         test_perfect, 
         test_scores, 
@@ -37,6 +38,7 @@ def log_wandb_test(
     )
 
     stats["loss"] = last_loss
+    stats["aux_loss"] = last_aux_loss
 
     wandb.log(dict(stats))
 
@@ -45,7 +47,7 @@ def log_wandb(
         train_perfect, 
         train_scores, 
         train_eval_actors, 
-        last_loss, 
+        last_aux_loss, 
         conventions):
 
     stats = collect_stats(
@@ -57,5 +59,6 @@ def log_wandb(
     )
 
     stats["loss"] = last_loss
+    stats["aux_loss"] = last_aux_loss
 
     wandb.log(dict(stats))

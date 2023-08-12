@@ -10,6 +10,8 @@ import torch.nn as nn
 from typing import Tuple, Dict, Optional
 import common_utils
 import math
+import numpy as np
+import sys
 
 
 @torch.jit.script
@@ -21,14 +23,14 @@ def duel(v: torch.Tensor, a: torch.Tensor, legal_move: torch.Tensor) -> torch.Te
     return q
 
 
-def cross_entropy(net, lstm_o, target_p, hand_slot_mask, seq_len):
+def cross_entropy(net, lstm_o, target_p, mask, seq_len):
     # target_p: [seq_len, batch, num_player, 5, 3]
-    # hand_slot_mask: [seq_len, batch, num_player, 5]
+    # mask: [seq_len, batch, num_player, 5]
     logit = net(lstm_o).view(target_p.size())
     q = nn.functional.softmax(logit, -1)
     logq = nn.functional.log_softmax(logit, -1)
     plogq = (target_p * logq).sum(-1)
-    xent = -(plogq * hand_slot_mask).sum(-1) / hand_slot_mask.sum(-1).clamp(min=1e-6)
+    xent = -(plogq * mask).sum(-1) / mask.sum(-1).clamp(min=1e-6)
 
     if xent.dim() == 3:
         # [seq, batch, num_player]
@@ -124,7 +126,8 @@ class FFWDNet(torch.jit.ScriptModule):
 class LSTMNet(torch.jit.ScriptModule):
     __constants__ = ["hid_dim", "out_dim", "num_lstm_layer"]
 
-    def __init__(self, device, in_dim, hid_dim, out_dim, num_lstm_layer):
+    def __init__(self, device, in_dim, hid_dim, out_dim, 
+            num_lstm_layer, num_partners):
         super().__init__()
         # for backward compatibility
         if isinstance(in_dim, int):
@@ -160,6 +163,8 @@ class LSTMNet(torch.jit.ScriptModule):
 
         # for aux task
         self.pred_1st = nn.Linear(self.hid_dim, 5 * 3)
+        # for class aux task
+        self.pred_class = nn.Linear(self.hid_dim, num_partners)
 
     @torch.jit.script_method
     def get_h0(self, batchsize: int) -> Dict[str, torch.Tensor]:
@@ -254,6 +259,25 @@ class LSTMNet(torch.jit.ScriptModule):
     def pred_loss_1st(self, lstm_o, target, hand_slot_mask, seq_len):
         return cross_entropy(self.pred_1st, lstm_o, target, hand_slot_mask, seq_len)
 
+    def pred_loss_class(self, lstm_o, target, seq_len):
+        np.set_printoptions(threshold=sys.maxsize)
+        print("pred_loss_class() net.py ======")
+        target_a = to_array(target)
+        seq_len_a = to_array(seq_len)
+
+        # print(lstm_o_a)
+        print("target:", target_a.shape)
+        print(target_a)
+        # print("seq_len:", seq_len_a.shape)
+        # print(seq_len_a)
+
+        # logit = net(lstm_o).view(target.size())
+        exit()
+        # return cross_entropy(self.pred_class, lstm_o, target, mask, seq_len)
+
+def to_array(tensor):
+    return np.array(tensor.clone().detach().cpu())
+
 
 class PublicLSTMNet(torch.jit.ScriptModule):
     __constants__ = ["hid_dim", "out_dim", "num_lstm_layer"]
@@ -330,16 +354,6 @@ class PublicLSTMNet(torch.jit.ScriptModule):
 
         priv_s = priv_s.unsqueeze(0)
         publ_s = publ_s.unsqueeze(0)
-        # print("priv_s")
-        # print(priv_s.shape)
-        # print("publ_s")
-        # print(publ_s.shape)
-        # print("legal_move")
-        # print(legal_move.shape)
-        # print("h0")
-        # print(hid["h0"].shape)
-        # print("c0")
-        # print(hid["c0"].shape)
 
         x = self.publ_net(publ_s)
         publ_o, (h, c) = self.lstm(x, (hid["h0"], hid["c0"]))
@@ -412,3 +426,4 @@ class PublicLSTMNet(torch.jit.ScriptModule):
 
     def pred_loss_1st(self, lstm_o, target, hand_slot_mask, seq_len):
         return cross_entropy(self.pred_1st, lstm_o, target, hand_slot_mask, seq_len)
+
