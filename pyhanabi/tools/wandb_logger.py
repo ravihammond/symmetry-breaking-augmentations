@@ -11,8 +11,10 @@ def log_wandb_test(
         train_perfect, 
         train_scores, 
         train_eval_actors, 
-        last_loss, 
-        last_aux_loss, 
+        loss_mean,
+        aux_loss_mean,
+        aux_accuracy_mean,
+        aux_accuracy_per_step_mean,
         test_score, 
         test_perfect, 
         test_scores, 
@@ -37,8 +39,11 @@ def log_wandb_test(
         stats=stats,
     )
 
-    stats["loss"] = last_loss
-    stats["aux_loss"] = last_aux_loss
+    stats["loss"] = loss_mean
+    stats["aux_loss"] = aux_loss_mean
+    stats["aux_accuracy"] = aux_accuracy_mean
+    for i, accuracy in enumerate(aux_accuracy_per_step_mean):
+        stats[f"aux_accuracy_step_{i + 1}"] = accuracy
 
     wandb.log(dict(stats))
 
@@ -47,7 +52,10 @@ def log_wandb(
         train_perfect, 
         train_scores, 
         train_eval_actors, 
-        last_aux_loss, 
+        loss_mean,
+        aux_loss_mean,
+        aux_accuracy_mean,
+        aux_accuracy_per_step_mean,
         conventions):
 
     stats = collect_stats(

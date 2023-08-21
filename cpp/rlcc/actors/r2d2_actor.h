@@ -45,7 +45,8 @@ class R2D2Actor {
         bool beliefSadLegacy,
         bool colorShuffleSync,
         int partnerIdx,
-        int numPartners)
+        int numPartners,
+        std::unordered_map<std::string,int> colourPermutationMap)
           : runner_(std::move(runner))
             , rng_(seed)
             , numPlayer_(numPlayer)
@@ -85,7 +86,8 @@ class R2D2Actor {
             , colorShuffleSync_(colorShuffleSync) 
             , colourPermuteConstant_(false) 
             , partnerIdx_(partnerIdx) 
-            , numPartners_(numPartners) {
+            , numPartners_(numPartners) 
+            , colourPermutationMap_(colourPermutationMap) {
               //printf("multiStep: %d, seqLen: %d, gamma: %f\n", 
                   //multiStep, seqLen, gamma);
               if (beliefStats_ && convention_.size() > 0) {
@@ -391,4 +393,5 @@ class R2D2Actor {
     std::vector<rela::FutureReply> compFutReply_;
     int partnerIdx_;
     int numPartners_;
+    std::unordered_map<std::string,int> colourPermutationMap_;
 };

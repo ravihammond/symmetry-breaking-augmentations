@@ -1,7 +1,7 @@
 #!/bin/bash
 
 python selfplay.py \
-       --save_dir exps/br_aux_sad_six \
+       --save_dir exps/sba_aux_sad_six \
        --num_thread 24 \
        --num_game_per_thread 80 \
        --method iql \
@@ -26,6 +26,7 @@ python selfplay.py \
        --train_test_splits train_test_splits/sad_splits_six.json \
        --split_index $1 \
        --static_partner 1 \
+       --shuffle_color 1 \
        --save_checkpoints 10 \
        --class_aux_weight $2 \
        --wandb 1 \
@@ -57,7 +58,8 @@ python selfplay.py \
        #--train_test_splits train_test_splits/sad_splits_six.json \
        #--split_index 0 \
        #--static_partner 1 \
+       #--shuffle_color 1 \
        #--save_checkpoints 10 \
-       #--wandb 1 \
+       #--wandb 0 \
        #--gcloud_upload 0 \
        #--class_aux_weight 1 \

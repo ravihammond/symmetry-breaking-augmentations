@@ -412,29 +412,28 @@ class R2D2Agent(torch.jit.ScriptModule):
 
     def class_aux_task_iql(self, lstm_o, partner_idx, num_partners, 
             seq_len, rl_loss_size, stat):
-        print("class_aux_task_iql() net.py ======")
-        p_idx = self.to_array(partner_idx)
-        num_p = self.to_array(num_partners)
-        seq_l = self.to_array(seq_len)
-        print("p_idx:", p_idx.shape)
-        print(p_idx)
-        print("num_p:", num_p.shape)
-        print(num_p)
-        print("seq_l:", seq_l.shape)
-        print(seq_l)
-
-
         num_partners = num_partners.cpu()[0,0].item()
-        partner_idx_one_hot = F.one_hot(partner_idx, 
+        one_hot = F.one_hot(partner_idx, 
                 num_classes=num_partners)
+        one_hot = torch.unsqueeze(one_hot, 2)
+        mask = one_hot.sum(3)
 
-        pred_loss1, avg_xent1, _, _ = self.online_net.pred_loss_class(
-            lstm_o, partner_idx_one_hot, seq_len
+        pred_loss1, avg_xent1, probs, _ = self.online_net.pred_loss_class(
+            lstm_o, one_hot, partner_idx, mask, seq_len
         )
+
+        selection = self.to_array(torch.argmax(probs, -1)).squeeze()
+        equal = selection == self.to_array(partner_idx)
+        equal_all_summed = equal.sum()
+        total_all = np.prod([*selection.shape])
+        aux_accuracy = equal_all_summed / total_all
+
+        aux_accuracy_per_step = equal.sum(axis=1) / selection.shape[1]
         
         assert pred_loss1.size() == rl_loss_size
         stat["aux"].feed(avg_xent1)
-        return pred_loss1
+
+        return pred_loss1, aux_accuracy, list(aux_accuracy_per_step)
 
 
     def aux_task_iql(self, lstm_o, hand, seq_len, rl_loss_size, stat):
@@ -490,6 +489,8 @@ class R2D2Agent(torch.jit.ScriptModule):
 
         loss = rl_loss
         aux_loss = 0
+        aux_accuracy = 0
+        aux_accuracies = []
     
         if aux_weight > 0:
             if self.vdn:
@@ -513,7 +514,7 @@ class R2D2Agent(torch.jit.ScriptModule):
                 loss = rl_loss + aux_weight * pred
 
         if class_aux_weight > 0:
-            pred = self.class_aux_task_iql(
+            pred, aux_accuracy, aux_accuracies = self.class_aux_task_iql(
                 lstm_o,
                 batch.obs["partner_idx"],
                 batch.obs["num_partners"],
@@ -524,7 +525,7 @@ class R2D2Agent(torch.jit.ScriptModule):
             aux_loss = pred
             loss = rl_loss + class_aux_weight * pred
 
-        return loss, priority, online_q, aux_loss
+        return loss, priority, online_q, aux_loss, aux_accuracy, aux_accuracies
 
     def behavior_clone_loss(self, online_q, batch, t, clone_bot, stat):
         max_seq_len = batch.obs["priv_s"].size(0)

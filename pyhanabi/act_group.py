@@ -6,6 +6,7 @@
 #
 import pprint
 pprint = pprint.pprint
+import itertools
 
 import set_path
 
@@ -48,6 +49,7 @@ class ActGroup:
         runner_div="duplicated",
         num_parameters=0,
         shuffle_color_sync=False,
+        num_train_partners=0,
     ):
         self.devices = devices.split(",")
         self.method = method
@@ -79,6 +81,7 @@ class ActGroup:
         if self.sad_legacy:
             self.trinary = True
         self.num_agents = len(agents)
+        self.num_train_partners = num_train_partners
 
         (self.model_runners, 
          self.belief_runner, 
@@ -93,6 +96,14 @@ class ActGroup:
         )
 
         self.num_runners = len(self.model_runners)
+
+        colour_permutations = list(itertools.permutations([0, 1, 2, 3, 4]))
+        self.colour_permutation_map = {}
+        for i, permutation in enumerate(colour_permutations):
+            key = ""
+            for colour in permutation:
+                key += f"{colour}."
+            self.colour_permutation_map[key] = i
 
         self.actors = self.create_r2d2_actors()
 
@@ -234,9 +245,9 @@ class ActGroup:
                             belief_sad_legacy,
                             shuffle_color_sync[k],
                             partner_idx,
-                            len(self.partner_runners),
+                            self.num_train_partners,
+                            self.colour_permutation_map,
                         )
-                        print("partner_index:", partner_idx)
 
                         if self.off_belief:
                             if self.belief_runner is None:

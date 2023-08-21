@@ -92,7 +92,8 @@ PYBIND11_MODULE(hanalearn, m) {
         bool, // beliefSadLegacy
         bool, // colorShuffleSync
         int, // partnerIdx
-        int>()) // numPartners
+        int, // numPartners
+        std::unordered_map<std::string,int>>()) // colourPermutationMap
     .def(py::init<
         std::shared_ptr<rela::BatchRunner>,
         int,  // numPlayer

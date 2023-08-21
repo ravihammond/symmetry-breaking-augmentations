@@ -193,7 +193,6 @@ void R2D2Actor::reset(const HanabiEnv& env) {
           assert(invColorPermute[colorPermute[i]] == i);
         }
       }
-
     }
     if (PR) {
       runner_->printModel();
@@ -277,8 +276,19 @@ void R2D2Actor::observeBeforeAct(HanabiEnv& env) {
     input["playable_cards"] = torch::tensor(playableCards);
   }
   input["actor_index"] = torch::tensor(playerIdx_); 
-  input["partner_idx"] = torch::tensor(partnerIdx_);
   input["num_partners"] = torch::tensor(numPartners_);
+
+  int partnerIdx = partnerIdx_;
+  if (shuffleColor_) {
+    string key = "";
+    for (int colour: colorPermutes_.at(0)) {
+      key += to_string(colour) + ".";
+    }
+    partnerIdx = partnerIdx_ * colourPermutationMap_.size() +
+                 colourPermutationMap_[key];
+  }
+
+  input["partner_idx"] = torch::tensor(partnerIdx);
 
   // push before we add hidden
   if (replayBuffer_ != nullptr) {

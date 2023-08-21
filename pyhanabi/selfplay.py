@@ -79,6 +79,9 @@ def selfplay(args):
     num_train_partners = len(load_json_list(
             args.train_test_splits)[args.split_index]["train"])
 
+    if args.shuffle_color == 1:
+        num_train_partners = num_train_partners * 120
+
     agent = r2d2.R2D2Agent(
         (args.method == "vdn"),
         args.multi_step,
@@ -207,6 +210,7 @@ def selfplay(args):
         False, # sad_legacy
         runner_div=args.runner_div, # runner_div
         num_parameters=args.num_parameters, # num_parameters
+        num_train_partners=num_train_partners # num_train_partners
     )
 
     context, threads = create_threads(
@@ -255,6 +259,11 @@ def selfplay(args):
         stat.reset()
         stopwatch.reset()
 
+        loss_list = []
+        aux_loss_list = []
+        aux_accuracy_list = []
+        aux_accuracy_per_step_list = []
+
         for batch_idx in range(args.epoch_len):
             num_update = batch_idx + epoch * args.epoch_len
             if num_update % args.num_update_between_sync == 0:
@@ -265,14 +274,17 @@ def selfplay(args):
             torch.cuda.synchronize()
             stopwatch.time("sync and updating")
 
-            # sample_id_list = [*range(0, num_train_partners)]
-            # batch, _ = replay_buffer.sample_from_list_split(
-                    # args.batchsize, args.train_device, sample_id_list)
             batch, weight = replay_buffer.sample(args.batchsize, args.train_device)
             stopwatch.time("sample data")
 
-            loss, priority, online_q, aux_loss = agent.loss(batch, 
-                    args.aux_weight, stat, args.class_aux_weight)
+            (
+                loss, 
+                priority, 
+                online_q, 
+                aux_loss, 
+                aux_accuracy,
+                aux_accuracy_per_step
+            ) = agent.loss(batch, args.aux_weight, stat, args.class_aux_weight)
             if clone_bot is not None and args.clone_weight > 0:
                 bc_loss = agent.behavior_clone_loss(
                     online_q, batch, args.clone_t, clone_bot, stat
@@ -297,8 +309,11 @@ def selfplay(args):
             replay_buffer.update_priority(priority)
             stopwatch.time("updating priority")
 
-            last_loss = loss.detach().item()
-            last_aux_loss = aux_loss.detach().item()
+            loss_list.append(loss.detach().item())
+            aux_loss_list.append(aux_loss.detach().item())
+            aux_accuracy_list.append(aux_accuracy)
+            aux_accuracy_per_step_list.append(aux_accuracy_per_step)
+
             stat["loss"].feed(loss.detach().item())
             stat["grad_norm"].feed(g_norm)
             stat["boltzmann_t"].feed(batch.obs["temperature"][0].mean())
@@ -308,6 +323,12 @@ def selfplay(args):
         tachometer.lap(replay_buffer, args.epoch_len * args.batchsize, count_factor)
         stopwatch.summary()
         stat.summary(epoch)
+
+        loss_mean = np.mean(loss_list)
+        aux_loss_mean = np.mean(aux_loss_list)
+        aux_accuracy_mean = np.mean(aux_accuracy_list)
+        aux_accuracy_per_step_arr = np.array(aux_accuracy_per_step_list)
+        aux_accuracy_per_step_mean = np.mean(aux_accuracy_per_step_arr, axis=0)
 
         train_eval_score = run_evaluation(
             args,
@@ -322,8 +343,10 @@ def selfplay(args):
             saver,
             clone_bot,
             act_group,
-            last_loss,
-            last_aux_loss,
+            loss_mean,
+            aux_loss_mean,
+            aux_accuracy_mean,
+            aux_accuracy_per_step_mean,
         )
 
         force_save_name = None
@@ -355,8 +378,10 @@ def run_evaluation(
     saver,
     clone_bot,
     act_group,
-    last_loss,
-    last_aux_loss,
+    loss_mean,
+    aux_loss_mean,
+    aux_accuracy_mean,
+    aux_accuracy_per_step_mean,
 ):
     eval_seed = (9917 + epoch * 999999) % 7777777
     eval_agent.load_state_dict(agent.state_dict())
@@ -407,8 +432,10 @@ def run_evaluation(
                 train_perfect, 
                 train_scores, 
                 train_eval_actors, 
-                last_loss, 
-                last_aux_loss, 
+                loss_mean,
+                aux_loss_mean,
+                aux_accuracy_mean,
+                aux_accuracy_per_step_mean,
                 test_score, 
                 test_perfect, 
                 test_scores, 
@@ -420,8 +447,10 @@ def run_evaluation(
                 train_perfect, 
                 train_scores, 
                 train_eval_actors, 
-                last_loss, 
-                last_aux_loss, 
+                loss_mean,
+                aux_loss_mean,
+                aux_accuracy_mean,
+                aux_accuracy_per_step_mean,
                 convention_for_stats)
 
     if args.test_partner_models != "None":

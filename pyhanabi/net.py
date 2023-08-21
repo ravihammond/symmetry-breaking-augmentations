@@ -27,7 +27,7 @@ def cross_entropy(net, lstm_o, target_p, mask, seq_len):
     # target_p: [seq_len, batch, num_player, 5, 3]
     # mask: [seq_len, batch, num_player, 5]
     logit = net(lstm_o).view(target_p.size())
-    q = nn.functional.softmax(logit, -1)
+    probs = nn.functional.softmax(logit, -1)
     logq = nn.functional.log_softmax(logit, -1)
     plogq = (target_p * logq).sum(-1)
     xent = -(plogq * mask).sum(-1) / mask.sum(-1).clamp(min=1e-6)
@@ -41,7 +41,7 @@ def cross_entropy(net, lstm_o, target_p, mask, seq_len):
     xent = xent.sum(0)
     assert xent.size() == seq_len.size()
     avg_xent = (xent / seq_len).mean().item()
-    return xent, avg_xent, q, seq_xent.detach()
+    return xent, avg_xent, probs, seq_xent.detach()
 
 
 class FFWDNet(torch.jit.ScriptModule):
@@ -166,6 +166,8 @@ class LSTMNet(torch.jit.ScriptModule):
         # for class aux task
         self.pred_class = nn.Linear(self.hid_dim, num_partners)
 
+        self.cross_entropy = nn.CrossEntropyLoss()
+
     @torch.jit.script_method
     def get_h0(self, batchsize: int) -> Dict[str, torch.Tensor]:
         shape = (self.num_lstm_layer, batchsize, self.hid_dim)
@@ -259,21 +261,8 @@ class LSTMNet(torch.jit.ScriptModule):
     def pred_loss_1st(self, lstm_o, target, hand_slot_mask, seq_len):
         return cross_entropy(self.pred_1st, lstm_o, target, hand_slot_mask, seq_len)
 
-    def pred_loss_class(self, lstm_o, target, seq_len):
-        np.set_printoptions(threshold=sys.maxsize)
-        print("pred_loss_class() net.py ======")
-        target_a = to_array(target)
-        seq_len_a = to_array(seq_len)
-
-        # print(lstm_o_a)
-        print("target:", target_a.shape)
-        print(target_a)
-        # print("seq_len:", seq_len_a.shape)
-        # print(seq_len_a)
-
-        # logit = net(lstm_o).view(target.size())
-        exit()
-        # return cross_entropy(self.pred_class, lstm_o, target, mask, seq_len)
+    def pred_loss_class(self, lstm_o, target, partner_idx, mask, seq_len):
+        return cross_entropy(self.pred_class, lstm_o, target, mask, seq_len)
 
 def to_array(tensor):
     return np.array(tensor.clone().detach().cpu())
