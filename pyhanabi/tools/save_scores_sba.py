@@ -12,6 +12,22 @@ lib_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(lib_path)
 from tools.eval_model_verbose import evaluate_model
 
+def save_scores_sba(args):
+    jobs = create_jobs(args)
+
+def create_jobs(args):
+    jobs = []
+    shuffle_indexes = parse_numbers(args.shuffle_index)
+
+    job = edict()
+
+    for shuffle_index in shuffle_indexes:
+        job2 = copy.copy(job)
+        job2.permute_index = shuffle_index
+        jobs.append(job2)
+
+    return jobs
+    
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -32,5 +48,5 @@ def parse_args():
 
 if __name__ == "__main__":
     args = parse_args()
-    save_scores(args)
+    save_scores_sba(args)
 

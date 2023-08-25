@@ -1,6 +1,6 @@
 #!/bin/bash
 
-python tools/save_score_sba.py \
+python tools/save_scores_sba.py \
     --outdir similarity \
     --policy1 ../training_models/sad_2p_models/sad_1.pthw \
     --policy2 ../training_models/sad_2p_models/sad_2.pthw \
