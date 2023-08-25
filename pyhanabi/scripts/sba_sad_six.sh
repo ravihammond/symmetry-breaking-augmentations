@@ -1,7 +1,7 @@
 #!/bin/bash
 
 python selfplay.py \
-       --save_dir exps/sba_sad_six \
+       --save_dir exps/sba_sad_long \
        --num_thread 24 \
        --num_game_per_thread 80 \
        --method iql \
@@ -14,7 +14,7 @@ python selfplay.py \
        --replay_buffer_size 100000 \
        --batchsize 128 \
        --epoch_len 1000 \
-       --num_epoch 1001 \
+       --num_epoch 10001 \
        --num_player 2 \
        --net lstm \
        --num_lstm_layer 2 \

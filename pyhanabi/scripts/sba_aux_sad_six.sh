@@ -1,7 +1,7 @@
 #!/bin/bash
 
 python selfplay.py \
-       --save_dir exps/sba_aux_sad_six \
+       --save_dir exps/sba_sad \
        --num_thread 24 \
        --num_game_per_thread 80 \
        --method iql \
@@ -29,6 +29,7 @@ python selfplay.py \
        --shuffle_color 1 \
        --save_checkpoints 10 \
        --class_aux_weight $2 \
+       --rnn_hid_dim $3 \
        --wandb 1 \
        --gcloud_upload 1
        
@@ -59,7 +60,8 @@ python selfplay.py \
        #--split_index 0 \
        #--static_partner 1 \
        #--shuffle_color 1 \
+       #--rnn_hid_dim 1024 \
+       #--class_aux_weight 0.05 \
        #--save_checkpoints 10 \
        #--wandb 0 \
        #--gcloud_upload 0 \
-       #--class_aux_weight 1 \

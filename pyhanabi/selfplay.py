@@ -31,6 +31,12 @@ from convention_belief import ConventionBelief
 from tools.wandb_logger import log_wandb, log_wandb_test
 from google_cloud_handler import GoogleCloudHandler
 
+INT_TO_NAME = {
+    0: "zero", 1: "one", 2: "two", 3: "three", 4: "four", 5: "five", 6: "six", 
+    7: "seven", 8: "eight", 9: "nine", 10: "ten", 11: "eleven", 12: "twelve"
+} 
+
+
 def selfplay(args):
     if not os.path.exists(args.save_dir):
         os.makedirs(args.save_dir)
@@ -650,7 +656,10 @@ def parse_args():
     args = parser.parse_args()
 
     if args.class_aux_weight > 0:
-        args.save_dir = f"{args.save_dir}_{args.class_aux_weight}"
+        args.save_dir = f"{args.save_dir}_aux{args.class_aux_weight}"
+
+    if args.rnn_hid_dim != 512:
+        args.save_dir = f"{args.save_dir}_hid{args.rnn_hid_dim}"
 
     if args.off_belief == 1:
         args.method = "iql"
@@ -664,7 +673,9 @@ def parse_args():
             args.train_test_splits != "None":
         indexes = load_json_list(args.train_test_splits)[args.split_index]["train"]
         indexes = [x + 1 for x in indexes]
-        args.save_dir = args.save_dir + "_" + '_'.join(str(x) for x in indexes)
+        length_name = INT_TO_NAME[len(indexes)]
+        args.save_dir = args.save_dir + f"_{length_name}_" + \
+                '_'.join(str(x) for x in indexes)
 
     # Single training partner being used
     if args.train_partner_model != "None" and \
@@ -682,6 +693,7 @@ def parse_args():
         args.test_partner_models = args.train_partner_models
     if args.test_partner_sad_legacy == None:
         args.test_partner_sad_legacy = args.train_partner_sad_legacy
+
 
     return args
 

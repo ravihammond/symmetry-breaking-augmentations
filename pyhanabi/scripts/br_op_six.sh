@@ -29,4 +29,3 @@ python selfplay.py \
        --save_checkpoints 10 \
        --wandb 1 \
        --gcloud_upload 1
-
