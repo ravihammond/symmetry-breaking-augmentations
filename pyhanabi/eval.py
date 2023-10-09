@@ -19,6 +19,7 @@ import rela
 import r2d2 
 import utils
 import gc
+import itertools
 
 def evaluate(
     agents,
@@ -42,7 +43,9 @@ def evaluate(
     partners=None,
     sad_legacy=[0, 0],
     shuffle_colour=[0, 0],
+    shuffle_constant_index=[-1,-1],
 ):
+    device="cuda:1"
     """
     evaluate agents as long as they have a "act" function
     """
@@ -82,6 +85,8 @@ def evaluate(
 
     partner_idx = 0
     convention_index = 0
+
+    colour_permutes, inverse_colour_permutes = get_colour_permutes()
 
     for t_idx in range(num_thread):
         thread_games = []
@@ -127,6 +132,13 @@ def evaluate(
                         actor.set_belief_runner_stats(None)
                     else:
                         actor.set_belief_runner_stats(belief_runner)
+                
+                if shuffle_constant_index[i] >= 0:
+                    actor.set_colour_permute(
+                        [colour_permutes[shuffle_constant_index[i]]],
+                        [inverse_colour_permutes[shuffle_constant_index[i]]],
+                        [], [], []
+                    )
 
                 actors.append(actor)
                 all_actors.append(actor)
@@ -206,6 +218,20 @@ def create_belief_runner(belief_model_path, device):
     return belief_runner
 
 
+def get_colour_permutes():
+    colour_permute_tuples = list(itertools.permutations([0,1,2,3,4]))
+    colour_permutes = [list(x) for x in colour_permute_tuples]
+    inverse_colour_permutes = []
+    for permute in colour_permutes:
+        inv_permute = [0,1,2,3,4]
+        inv_permute = sorted(inv_permute, key=lambda x: permute[x])
+        for i in range(5):
+            assert(inv_permute[permute[i]] == i)
+        inverse_colour_permutes.append(inv_permute)
+
+    return colour_permutes, inverse_colour_permutes
+
+
 def evaluate_saved_model(
     weight_files,
     num_game,
@@ -225,6 +251,7 @@ def evaluate_saved_model(
     pre_loaded_data=None,
     sad_legacy=[0, 0],
     partner_model_type="train",
+    shuffle_index=[-1, -1],
 ):
     if pre_loaded_data is None:
         pre_loaded_data = load_agents(
@@ -247,6 +274,8 @@ def evaluate_saved_model(
 
     partners = load_partner_agents(partner_models_path, partner_model_type, True)
 
+    shuffle_colour = [1 if x >= 0 else 0 for x in shuffle_index]
+
     scores = []
     perfect = 0
     for i in range(num_run):
@@ -267,6 +296,8 @@ def evaluate_saved_model(
             partners=partners,
             act_parameterized=parameterized,
             sad_legacy=sad_legacy,
+            shuffle_colour=shuffle_colour,
+            shuffle_constant_index=shuffle_index,
         )
         scores.extend(score)
         perfect += p

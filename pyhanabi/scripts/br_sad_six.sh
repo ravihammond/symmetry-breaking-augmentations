@@ -59,4 +59,3 @@ python selfplay.py \
        --save_checkpoints 10 \
        --wandb 0 \
        --gcloud_upload 0 \
-       --class_aux_weight 1 \

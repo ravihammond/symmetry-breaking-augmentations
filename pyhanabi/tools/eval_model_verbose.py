@@ -51,6 +51,8 @@ def evaluate_model(args):
             write = csv.writer(file)
             write.writerows(wrapped_scores)
 
+    return score
+
 
 def load_weights(args):
     weight_files = []
@@ -101,6 +103,7 @@ def run_evaluation(args, weight_files):
         sad_legacy=args.sad_legacy,
         # partner_model_type="test",
         partner_model_type="train",
+        shuffle_index=[args.shuffle_index1, args.shuffle_index2]
     )
 
     return score, perfect, scores, actors
@@ -232,6 +235,8 @@ if __name__ == "__main__":
     parser.add_argument("--train_test_splits", type=str, default="None")
     parser.add_argument("--split_index", default=0, type=int)
     parser.add_argument("--csv_name", default="None", type=str)
+    parser.add_argument("--shuffle_index1", default=-1, type=int)
+    parser.add_argument("--shuffle_index2", default=-1, type=int)
     args = parser.parse_args()
 
     args.sad_legacy = [int(x) for x in args.sad_legacy.split(",")]

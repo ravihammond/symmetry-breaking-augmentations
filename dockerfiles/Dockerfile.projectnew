@@ -1,4 +1,4 @@
-# ===== DEV =====
+# ===== PLAIN =====
 FROM ravihammond/cuda-conda AS plain
 
 RUN git config --global --add safe.directory /app

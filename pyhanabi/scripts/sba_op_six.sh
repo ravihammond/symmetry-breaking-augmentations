@@ -1,7 +1,7 @@
 #!/bin/bash
 
 python selfplay.py \
-       --save_dir exps/sba_op_six \
+       --save_dir exps/sba_op \
        --num_thread 24 \
        --num_game_per_thread 80 \
        --method iql \

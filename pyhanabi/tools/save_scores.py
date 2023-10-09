@@ -7,6 +7,9 @@ pprint = pprint.pprint
 import json
 import copy
 from datetime import datetime
+import numpy as np
+import pandas as pd
+
 
 lib_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(lib_path)
@@ -18,6 +21,8 @@ SPLIT_NAME = {
     "one": "1-12_Splits",
     "eleven": "11-2_Splits"
 }
+NUM_COLOUR_SHUFFLES = 120
+NUM_PARTNERS = {"sad": 13, "op": 12, "obl": 5}
 
 def save_scores(args):
     if args.crossplay:
@@ -28,7 +33,8 @@ def save_scores(args):
     else:
         run_args = generate_jobs(args)
 
-    run_save_scores(args, run_args)
+    df = run_save_scores(args, run_args)
+    save_data(args, df)
 
 
 def generate_jobs_crossplay(args):
@@ -50,10 +56,10 @@ def generate_jobs_crossplay(args):
                  args, args.model1[0], index_1, 0)
 
         for index_2 in range(len(model_weights2)):
-            run = copy.copy(run)
+            run2 = copy.copy(run)
 
-            (run.model2, 
-             run.sad_legacy[1], 
+            (run2.model2, 
+             run2.sad_legacy[1], 
              player_name_2) = model_to_weight(
                      args, args.model2[0], index_2, 0)
 
@@ -66,8 +72,15 @@ def generate_jobs_crossplay(args):
             )
             file_path = os.path.join(save_dir, file_name)
 
-            run.csv_name = file_path
-            run_args.append(run)
+            if args.sba:
+                for colour_shuffle in range(NUM_COLOUR_SHUFFLES):
+                    run3 = copy.copy(run2)
+                    run_colour_shuffle = colour_shuffle
+                    run.csv_name = file_path
+                    run_args.append(run3)
+            else:
+                run.csv_name = file_path
+                run_args.append(run2)
 
     return run_args
 
@@ -79,17 +92,22 @@ def generate_jobs_crossplay_self(args):
     run_args = []
 
     partner_types = ["crossplay_self", "crossplay_other"]
+    if args.sba:
+        partner_types = ["crossplay_other"]
     indexes = list(range(len(load_json_list(
         f"agent_groups/all_{args.model2[0]}.json")))) 
+
+    completed_pairs = set()
 
     for crossplay_index in indexes:
         for partner_type in partner_types:
             run = edict()
             run.sad_legacy = [0,0]
+            run.player1_index = crossplay_index
             model1 = args.model1[0]
             (run.model1, 
              run.sad_legacy[0], 
-             player_name_1) = model_to_weight(
+             run.player_name_1) = model_to_weight(
                      args, model1, crossplay_index, 0)
 
             for partner_i in indexes:
@@ -99,15 +117,22 @@ def generate_jobs_crossplay_self(args):
                 if partner_type == "crossplay_other":
                     if crossplay_index == partner_i:
                         continue
+                    if args.sba:
+                        pair_str = f"{crossplay_index}-{partner_i}"
+                        if pair_str in completed_pairs:
+                            continue
+                        pair_str_reversed = f"{partner_i}-{crossplay_index}"
+                        completed_pairs.add(pair_str_reversed)
 
-                run = copy.copy(run)
+                run2 = copy.copy(run)
+                run2.player2_index = partner_i
 
-                (run.model2, 
-                 run.sad_legacy[1], 
-                 player_name_2) = model_to_weight(
+                (run2.model2, 
+                 run2.sad_legacy[1], 
+                 run2.player_name_2) = model_to_weight(
                          args, args.model2[0], partner_i, 0)
 
-                file_name = f"{player_name_1}_vs_{player_name_2}"
+                file_name = f"{run2.player_name_1}_vs_{run2.player_name_2}"
                 save_dir = os.path.join(
                     args.out, 
                     f"{model1}_crossplay",
@@ -116,8 +141,15 @@ def generate_jobs_crossplay_self(args):
                 )
                 file_path = os.path.join(save_dir, file_name)
 
-                run.csv_name = file_path
-                run_args.append(run)
+                if args.sba:
+                    for colour_shuffle in range(NUM_COLOUR_SHUFFLES):
+                        run3 = copy.copy(run2)
+                        run3.colour_shuffle = colour_shuffle
+                        run3.csv_name = file_path
+                        run_args.append(run3)
+                else:
+                    run.csv_name = file_path
+                    run_args.append(run2)
 
     return run_args
 
@@ -219,36 +251,81 @@ def model_to_weight(args, model, policy_i, split_index):
 
 
 def run_save_scores(args, run_args):
+    df  = pd.DataFrame()
+
     for run in run_args:
-        now = datetime.now()
-        date_time = now.strftime("%m.%d.%Y_%H:%M:%S")
-        run.csv_name = f"{run.csv_name}_{date_time}.csv"
-        input_args = edict({
-            "weight1": run.model1,
-            "weight2": run.model2,
-            "csv_name": run.csv_name,
-            "sad_legacy": run.sad_legacy,
-            "num_game": args.num_game,
-            # other needed
-            "weight3": None,
-            "output": None,
-            "num_player": 2,
-            "seed": 0,
-            "bomb": 0,
-            "num_run": 1,
-            "device": "cuda:0",
-            "convention": "None",
-            "convention_index": None,
-            "override0": 0,
-            "override1": 0,
-            "belief_stats": 0,
-            "belief_model": "None",
-            "partner_models": "None",
-            "train_test_splits": None,
-            "split_index": 0,
-        })
-        evaluate_model(input_args)
-        print()
+        df_row = run_job(args, run)
+        df = pd.concat([df, df_row], ignore_index=True)
+
+    print(df.to_string())
+    print(df.info())
+    return df
+
+def run_job(args, run):
+    df = pd.DataFrame()
+
+    model1_shuffle_index = f"({run.colour_shuffle}) " if args.sba else ""
+    print(f"\n{run.player_name_1} {model1_shuffle_index}vs {run.player_name_2}")
+    now = datetime.now()
+    date_time = now.strftime("%m.%d.%Y_%H:%M:%S")
+    run.csv_name = f"{run.csv_name}_{date_time}.csv"
+    colour_shuffle = run.colour_shuffle if "colour_shuffle" in run else -1
+
+    input_args = edict({
+        "weight1": run.model1,
+        "weight2": run.model2,
+        "csv_name": "None",
+        "sad_legacy": run.sad_legacy,
+        "num_game": args.num_game,
+        # other needed
+        "weight3": None,
+        "output": None,
+        "num_player": 2,
+        "seed": 0,
+        "bomb": 0,
+        "num_run": 1,
+        "device": "cuda:0",
+        "convention": "None",
+        "convention_index": None,
+        "override0": 0,
+        "override1": 0,
+        "belief_stats": 0,
+        "belief_model": "None",
+        "partner_models": "None",
+        "train_test_splits": None,
+        "split_index": 0,
+        "shuffle_index1": run.colour_shuffle,
+        "shuffle_index2": -1,
+    })
+
+    score = evaluate_model(input_args)
+
+    return pd.DataFrame(
+        data=[[
+            f"{args.model1[0]}_{run.player1_index + 1}",
+            f"{args.model2[0]}_{run.player2_index + 1}",
+            int(run.colour_shuffle),
+            float(score),
+        ]],
+        columns=[
+            "actor1",
+            "actor2",
+            "shuffle_index",
+            "score",
+        ]
+    )
+
+
+
+def save_data(args, df):
+    if not os.path.exists(args.out):
+        os.makedirs(args.out)
+
+    filename = f"{args.model1[0]}_vs_{args.model2[0]}_scores.pkl"
+    filepath = os.path.join(args.out, filename)
+
+    print("Saving:", filepath)
+    df.to_pickle(filepath, compression="gzip")
 
 
 def load_json_list(path):
@@ -266,6 +343,7 @@ def parse_args():
     parser.add_argument("--split_type", type=str, default="six")
     parser.add_argument("--out", type=str, default="game_data_new")
     parser.add_argument("--crossplay", type=int, default=0)
+    parser.add_argument("--sba", type=int, default=0)
     args = parser.parse_args()
 
     args.model1 = args.model1.split(",")
@@ -276,3 +354,4 @@ def parse_args():
 if __name__ == "__main__":
     args = parse_args()
     save_scores(args)
+
