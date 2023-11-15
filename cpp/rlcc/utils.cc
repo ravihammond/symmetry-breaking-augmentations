@@ -46,7 +46,8 @@ rela::TensorDict observe(
     bool trinary,
     bool sad,
     bool showOwnCards,
-    bool legacySad) {
+    bool legacySad,
+    bool legacyIql) {
   const auto& game = *(state.ParentGame());
   auto obs = hle::HanabiObservation(state, playerIdx, showOwnCards);
   auto encoder = hle::CanonicalObservationEncoder(&game);
@@ -62,7 +63,9 @@ rela::TensorDict observe(
       hideAction);
 
   rela::TensorDict feat;
-  if (!sad) {
+  if (legacyIql) {
+    feat = {{"priv_s", torch::tensor(vS)}};
+  } else if (!sad) {
     feat = splitPrivatePublic(vS, game);
   } else {
     // only for evaluation

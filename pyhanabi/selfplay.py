@@ -175,12 +175,14 @@ def selfplay(args):
             args, 
             args.train_partner_models, 
             args.train_partner_sad_legacy, 
+            args.train_partner_iql_legacy, 
             "train")
     if args.test_partner_models != "None":
         test_partners = load_partner_agents(
                 args, 
                 args.test_partner_models, 
                 args.test_partner_sad_legacy, 
+                args.test_partner_iql_legacy, 
                 "test")
     else: 
         test_partners = None 
@@ -214,6 +216,7 @@ def selfplay(args):
         use_experience, # use_experience
         args.belief_stats, # belief_stats
         False, # sad_legacy
+        False, # iql_legacy
         runner_div=args.runner_div, # runner_div
         num_parameters=args.num_parameters, # num_parameters
         num_train_partners=num_train_partners # num_train_partners
@@ -490,7 +493,7 @@ def load_json_list(path):
     return json.load(file)
 
 
-def load_partner_agents(args, partner_models, sad_legacy, partner_type):
+def load_partner_agents(args, partner_models, sad_legacy, iql_legacy, partner_type):
     if partner_models is "None":
         return None
 
@@ -512,6 +515,7 @@ def load_partner_agents(args, partner_models, sad_legacy, partner_type):
             "hide_action": False,
             "weight": partner_model_path,
             "sad_legacy": False,
+            "iql_legacy": False,
         }
 
         overwrite = {}
@@ -526,10 +530,14 @@ def load_partner_agents(args, partner_models, sad_legacy, partner_type):
             else:
                 partner_cfg["agent"] = utils.load_sad_model(
                         partner_model_path, args.train_device)
-            partner_cfg["sad"] = True
+            if iql_legacy:
+                partner_cfg["sad"] = False
+            else:
+                partner_cfg["sad"] = True
             partner_cfg["hide_action"] = False
             partner_cfg["parameterized"] = False
-            partner_cfg["sad_legacy"] = True
+            partner_cfg["sad_legacy"] = sad_legacy
+            partner_cfg["iql_legacy"] = iql_legacy
             partners.append(partner_cfg)
             continue
 
@@ -643,6 +651,8 @@ def parse_args():
     parser.add_argument("--test_partner_models", type=str, default="None")
     parser.add_argument("--train_partner_sad_legacy", type=int, default=0)
     parser.add_argument("--test_partner_sad_legacy", type=int, default=None)
+    parser.add_argument("--train_partner_iql_legacy", type=int, default=0)
+    parser.add_argument("--test_partner_iql_legacy", type=int, default=None)
     parser.add_argument("--train_test_splits", type=str, default="None")
     parser.add_argument("--split_index", type=int, default=0)
     parser.add_argument("--static_partner", type=int, default=0)
@@ -693,6 +703,8 @@ def parse_args():
         args.test_partner_models = args.train_partner_models
     if args.test_partner_sad_legacy == None:
         args.test_partner_sad_legacy = args.train_partner_sad_legacy
+    if args.test_partner_iql_legacy == None:
+        args.test_partner_iql_legacy = args.train_partner_iql_legacy
 
 
     return args

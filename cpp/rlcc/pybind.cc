@@ -89,6 +89,7 @@ PYBIND11_MODULE(hanalearn, m) {
         bool, // useExperience
         bool, // beliefStats
         bool, // sadLegacy
+        bool, // iqlLegacy
         bool, // beliefSadLegacy
         bool, // colorShuffleSync
         int, // partnerIdx
@@ -107,6 +108,7 @@ PYBIND11_MODULE(hanalearn, m) {
         int, // conventionOverride
         bool, // beliefStats
         bool, // sadLegacy
+        bool, // iqlLegacy
         bool>()) // shuffleColor
       .def("set_partners", &R2D2Actor::setPartners)
       .def("set_belief_runner", &R2D2Actor::setBeliefRunner)
@@ -126,6 +128,7 @@ PYBIND11_MODULE(hanalearn, m) {
       bool,
       const std::vector<int>&,
       const std::vector<int>&,
+      bool,
       bool,
       bool,
       bool,

@@ -19,9 +19,9 @@ def extract_sba_diff_data(args):
     if args.model == "all":
         df = get_all_data(args)
         # extract_data(args, df)
-        plot_dists(args, df)
+        # plot_dists(args, df)
         # plot_score_diff(args, df)
-        # plot_all_per_pair(args, df)
+        plot_all_per_pair(args, df)
     else:
         df = pd.read_pickle(FILE[args.model], "gzip")
         df = adjust_data(args, df)
@@ -172,44 +172,6 @@ def plot_per_pair(args, df):
         "Score Difference"
     )
 
-    # df_original = df.loc[df.groupby("pair").shuffle_index.idxmin()]
-    # plot_scores(
-        # args, 
-        # df["pair"], 
-        # df["score"], 
-        # df_original["pair"],
-        # df_original["score"],
-        # 0,
-        # 25,
-        # "Score"
-    # )
-
-# def create_plot(ax, stats, data_type, title, ylim, legendshow, ylabelshow):
-    # model_types = list(stats.keys())
-    # num_runs = stats[model_types[0]].loss.shape[0]
-    # num_epochs = stats[model_types[0]].loss.shape[1]
-    # mode_labels = ['BR', 'SBA']
-    # colors = ['#d62728', '#1f77b4']
-
-    # x_vals = np.arange(num_epochs)
-    # for sba in model_types:
-        # if sba not in stats:
-            # continue
-        # y_vals = stats[sba][data_type]
-        # y_mean = y_vals.mean(0)
-        # y_std = y_vals.std(0) / np.sqrt(num_runs)
-        # ax.plot(x_vals, y_mean, colors[sba], label = mode_labels[sba])
-        # ax.fill_between(x_vals, y_mean + y_std, y_mean - y_std,
-                        # color= colors[sba], alpha = 0.3)
-    # ax.set_ylim([0, ylim])
-    # ax.set_xlim([0, num_epochs])
-
-    # if legendshow:
-        # ax.legend(loc="lower right")
-    # ax.set_title(title)
-    # ax.set_xlabel("Epoch")
-    # if ylabelshow:
-        # ax.set_ylabel("Return")
 
 def plot_all_per_pair(args, df):
     fig = plt.figure(constrained_layout=True, figsize=(10, 6))
@@ -250,31 +212,6 @@ def create_scores_plot(ars, df, model, ax, title, show_y_label=True):
     elif model == "OBL":
         ax.set_xlim(-1, 10)
     ax.set_title(title)
-
-
-# def plot_scores(args, score_labels, scores, orig_labels, orig_scores, 
-        # min_val, max_val, data_type_label):
-    # fig, ax = plt.subplots(figsize=(FIG_WIDTH[args.model], 3))
-
-    # # plt.vlines(score_labels, min_val, max_val, color="grey", 
-            # # linewidth=0.5, zorder=0, alpha=0.5)
-    # ax.scatter(score_labels, scores, zorder=1, alpha=0.2)
-    # ax.scatter(orig_labels, orig_scores, color="black",  marker='x', zorder=2)
-
-    # plt.xticks(rotation=60)
-    # plt.ylabel(data_type_label)
-    # plt.xlabel(f"{args.model} Pairs")
-    # plt.gca().set_xticklabels([])
-    # # plt.title(f"SBA {args.model} Pairs vs {data_type_label}")
-    # plt.ylim(-7, 7)
-    # if args.model == "SAD":
-        # plt.xlim(-1, 78)
-    # elif args.model == "OP":
-        # plt.xlim(-1, 66)
-    # elif args.model == "OBL":
-        # plt.xlim(-1, 10)
-    # fig.tight_layout()
-    # plt.show()
 
 
 if __name__ == "__main__":

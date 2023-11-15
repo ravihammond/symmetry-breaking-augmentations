@@ -240,7 +240,8 @@ void R2D2Actor::observeBeforeAct(HanabiEnv& env) {
             trinary_,
             sad_,
             showOwnCards_,
-            sadLegacy_));
+            sadLegacy_,
+            iqlLegacy_));
     }
     input = rela::tensor_dict::stack(vObs, 0);
   } else {
@@ -254,7 +255,8 @@ void R2D2Actor::observeBeforeAct(HanabiEnv& env) {
         trinary_,
         sad_,
         showOwnCards_,
-        sadLegacy_);
+        sadLegacy_,
+        iqlLegacy_);
   }
 
   // add features such as eps and temperature
@@ -415,6 +417,7 @@ void R2D2Actor::act(HanabiEnv& env, const int curPlayer) {
           partner->trinary_,
           partner->sad_,
           true,
+          false,
           false);
       // add features such as eps and temperature
       partnerInput["eps"] = torch::tensor(partner->playerEps_);
@@ -527,6 +530,7 @@ void R2D2Actor::fictAct(const HanabiEnv& env) {
       trinary_,
       sad_,
       true,
+      false,
       false);
 
   // the hidden is new, so we are good

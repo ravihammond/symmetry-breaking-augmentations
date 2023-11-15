@@ -101,6 +101,7 @@ def run_evaluation(args, weight_files):
         partner_models_path=partner_model_paths,
         convention_indexes=convention_indexes,
         sad_legacy=args.sad_legacy,
+        iql_legacy=args.iql_legacy,
         # partner_model_type="test",
         partner_model_type="train",
         shuffle_index=[args.shuffle_index1, args.shuffle_index2]
@@ -232,6 +233,7 @@ if __name__ == "__main__":
     parser.add_argument("--belief_model", default="None", type=str)
     parser.add_argument("--partner_models", default="None", type=str)
     parser.add_argument("--sad_legacy", default="0,0", type=str)
+    parser.add_argument("--iql_legacy", default="0,0", type=str)
     parser.add_argument("--train_test_splits", type=str, default="None")
     parser.add_argument("--split_index", default=0, type=int)
     parser.add_argument("--csv_name", default="None", type=str)
@@ -243,5 +245,10 @@ if __name__ == "__main__":
     assert(len(args.sad_legacy) <= 2)
     if (len(args.sad_legacy) == 1):
         args.sad_legacy *= 2
+
+    args.iql_legacy = [int(x) for x in args.iql_legacy.split(",")]
+    assert(len(args.iql_legacy) <= 2)
+    if (len(args.iql_legacy) == 1):
+        args.iql_legacy *= 2
 
     evaluate_model(args)

@@ -45,6 +45,7 @@ class ActGroup:
         use_experience,
         belief_stats,
         sad_legacy,
+        iql_legacy,
         *,
         runner_div="duplicated",
         num_parameters=0,
@@ -70,6 +71,7 @@ class ActGroup:
         self.use_experience = use_experience
         self.belief_stats = belief_stats
         self.sad_legacy = sad_legacy
+        self.iql_legacy = sad_legacy
         self.cfgs = cfgs
         self.off_belief = off_belief
         self.belief_model = belief_model
@@ -206,6 +208,7 @@ class ActGroup:
                         belief_sad_legacy = False
                         parameterized = self.cfgs[agent_idx]["parameterized"]
                         sad_legacy = self.sad_legacy
+                        iql_legacy = self.iql_legacy
                         shuffle_colour = self.cfgs[agent_idx]["shuffle_color"]
                         if self.belief_cfg is not None:
                             belief_sad_legacy = self.belief_cfg["sad_legacy"]
@@ -216,6 +219,7 @@ class ActGroup:
                             hide_action = partner["hide_action"]
                             parameterized = partner["parameterized"]
                             sad_legacy = partner["sad_legacy"]
+                            iql_legacy = partner["iql_legacy"]
                             shuffle_colour = 0
 
                         actor = hanalearn.R2D2Actor(
@@ -242,6 +246,7 @@ class ActGroup:
                             self.use_experience[k],
                             self.belief_stats,
                             sad_legacy,
+                            iql_legacy,
                             belief_sad_legacy,
                             shuffle_color_sync[k],
                             partner_idx,

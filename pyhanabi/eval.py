@@ -42,6 +42,7 @@ def evaluate(
     belief_model_path="None",
     partners=None,
     sad_legacy=[0, 0],
+    iql_legacy=[0, 0],
     shuffle_colour=[0, 0],
     shuffle_constant_index=[-1,-1],
 ):
@@ -100,6 +101,7 @@ def evaluate(
                 hide_action_setting = hide_action[i]
                 act_parameterized_setting = act_parameterized[i]
                 sad_legacy_setting = sad_legacy[i]
+                iql_legacy_setting = iql_legacy[i]
 
                 if i > 0 and partners is not None:
                     runner = partner_runners[partner_idx]
@@ -107,6 +109,7 @@ def evaluate(
                     hide_action_setting = partners[partner_idx]["hide_action"]
                     act_parameterized_setting = partners[partner_idx]["parameterized"]
                     sad_legacy_setting = partners[partner_idx]["sad_legacy"]
+                    iql_legacy_setting = partners[partner_idx]["iql_legacy"]
 
                 if convention_indexes is not None:
                     convention_index = convention_indexes[i]
@@ -124,6 +127,7 @@ def evaluate(
                     override[i], # conventionOverride
                     belief_stats, # beliefStats
                     sad_legacy_setting, # sadLegacy
+                    iql_legacy_setting, # sadLegacy
                     shuffle_colour[i], #shuffleColor
                 )
 
@@ -250,6 +254,7 @@ def evaluate_saved_model(
     partner_models_path="None",
     pre_loaded_data=None,
     sad_legacy=[0, 0],
+    iql_legacy=[0, 0],
     partner_model_type="train",
     shuffle_index=[-1, -1],
 ):
@@ -260,7 +265,8 @@ def evaluate_saved_model(
             device=device,
             belief_stats=belief_stats,
             partner_models_path=partner_models_path,
-            sad_legacy=sad_legacy
+            sad_legacy=sad_legacy,
+            iql_legacy=iql_legacy
         )
 
     agents = pre_loaded_data["agents"]
@@ -296,6 +302,7 @@ def evaluate_saved_model(
             partners=partners,
             act_parameterized=parameterized,
             sad_legacy=sad_legacy,
+            iql_legacy=iql_legacy,
             shuffle_colour=shuffle_colour,
             shuffle_constant_index=shuffle_index,
         )
@@ -325,6 +332,7 @@ def load_agents(
     belief_stats=False,
     partner_models_path="None",
     sad_legacy=[0, 0],
+    iql_legacy=[0, 0],
 ):
     agents = []
     sad = []
@@ -347,7 +355,10 @@ def load_agents(
             else:
                 agent = utils.load_sad_model(weight_file, device)
             agents.append(agent)
-            sad.append(True)
+            if iql_legacy[i]:
+                sad.append(False)
+            else:
+                sad.append(True)
             hide_action.append(False)
             parameterized.append(False)
             continue
@@ -401,11 +412,13 @@ def load_partner_agents(
     partners = []
 
     for partner_model_path in partner_models:
+        iql_legacy = "iql" in partner_model_path
         partner_cfg = {
             "sad": False, 
             "hide_action": False,
             "weight": partner_model_path,
             "sad_legacy": False,
+            "iql_legacy": False,
         }
 
         overwrite = {}
@@ -416,10 +429,14 @@ def load_partner_agents(
         if partner_sad_legacy:
             partner_cfg["agent"] = utils.load_sad_model(
                     partner_model_path, "cuda:0")
-            partner_cfg["sad"] = True
+            if iql_legacy:
+                partner_cfg["sad"] = False
+            else:
+                partner_cfg["sad"] = True
             partner_cfg["hide_action"] = False
             partner_cfg["parameterized"] = False
-            partner_cfg["sad_legacy"] = True
+            partner_cfg["sad_legacy"] = partner_sad_legacy
+            partner_cfg["iql_legacy"] = iql_legacy
             partners.append(partner_cfg)
             continue
 

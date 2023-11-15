@@ -74,7 +74,8 @@ rela::TensorDict observe(
     bool trinary,
     bool sad,
     bool showOwnCards,
-    bool legacySad);
+    bool legacySad,
+    bool legacyIql);
 
 inline rela::TensorDict observe(
     const hle::HanabiState& state, int playerIdx, bool hideAction) {
@@ -88,6 +89,7 @@ inline rela::TensorDict observe(
       true,
       false,
       true,
+      false,
       false);
 }
 
@@ -104,6 +106,7 @@ inline rela::TensorDict observeSAD(
       true, 
       true,
       true,
+      false,
       false);
 }
 

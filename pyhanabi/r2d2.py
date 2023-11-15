@@ -478,15 +478,11 @@ class R2D2Agent(torch.jit.ScriptModule):
             batch.bootstrap,
             batch.seq_len
         )
-        print("err:", err.shape)
         rl_loss = nn.functional.smooth_l1_loss(
             err, torch.zeros_like(err), reduction="none"
         )
-        print("rl_loss:", rl_loss.shape)
         rl_loss = rl_loss.sum(0)
-        print("rl_loss:", rl_loss.shape)
         stat["rl_loss"].feed((rl_loss / batch.seq_len).mean().item())
-        exit()
 
         priority = err.abs()
         priority = self.aggregate_priority(priority, batch.seq_len).detach().cpu()

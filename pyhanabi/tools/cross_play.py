@@ -51,6 +51,7 @@ def extract_model_args(args):
         "num_parameters": args.num_parameters1,
         "override": args.override1,
         "sad_legacy": args.sad_legacy1,
+        "iql_legacy": args.iql_legacy1,
     }
 
     if args.root2 == "None":
@@ -63,6 +64,7 @@ def extract_model_args(args):
         "num_parameters": args.num_parameters2,
         "override": args.override2,
         "sad_legacy": args.sad_legacy2,
+        "iql_legacy": args.iql_legacy2,
     }
 
     return [model_args1, model_args2]
@@ -98,11 +100,12 @@ def cross_play(all_models, args, margs):
     assert(len(num_parameters) == args.num_player)
 
     sad_legacy = [margs[i]["sad_legacy"] for i in range(2)]
+    iql_legacy = [margs[i]["iql_legacy"] for i in range(2)]
 
     for i in range(num_parameters[0]):
         row = []
         for j in range(num_parameters[1]):
-            print(f"evaluating: obl_{i + 1}, obl_{j + 1}")
+            print(f"evaluating: iql_{i + 1}, iql_{j + 1}")
 
             models = []
             model_idx = [i, j]
@@ -124,6 +127,7 @@ def cross_play(all_models, args, margs):
                     convention_indexes=convention_indexes,
                     device=args.device,
                     sad_legacy=sad_legacy,
+                    iql_legacy=iql_legacy,
             )[0]
 
             value_mean = copy.copy(np.mean(scores))
@@ -158,9 +162,9 @@ def create_model_key(i, conventions):
 
 def create_figure(plot_data, colour_max=25):
     data = plot_data["scores"]
-    title = "XP SAD vs POBL1_SAD"
-    ylabel = "Player 1 Agent (SAD)"
-    xlabel = "Player 2 Agent (POBL1_SAD)"
+    title = "XP IQL"
+    ylabel = "Player 1 Agent"
+    xlabel = "Player 2 Agent"
     xticklabels = plot_data["labels"]
     yticklabels = plot_data["labels"]
 
@@ -205,6 +209,8 @@ if __name__ == "__main__":
     parser.add_argument("--override2", default=0, type=int)
     parser.add_argument("--sad_legacy1", default=0, type=int)
     parser.add_argument("--sad_legacy2", default=0, type=int)
+    parser.add_argument("--iql_legacy1", default=0, type=int)
+    parser.add_argument("--iql_legacy2", default=0, type=int)
     parser.add_argument("--save_values", default=0, type=int)
 
     args = parser.parse_args()

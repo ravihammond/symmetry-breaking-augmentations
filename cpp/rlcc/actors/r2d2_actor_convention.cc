@@ -35,7 +35,8 @@ void R2D2Actor::callCompareAct(HanabiEnv& env) {
         trinary_,
         compSad_.at(i),
         showOwnCards_,
-        compSadLegacy_.at(i));
+        compSadLegacy_.at(i),
+        compIqlLegacy_.at(i));
     // add features such as eps and temperature
     input["eps"] = torch::tensor(playerEps_);
     if (playerTemp_.size() > 0) {

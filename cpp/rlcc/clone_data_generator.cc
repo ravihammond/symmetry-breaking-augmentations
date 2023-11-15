@@ -69,7 +69,8 @@ void DataGenLoop::mainLoop() {
             trinary_,  // trinary for aux task
             false,     //sad
             true,      // showOwnHand
-            false);    // legacySad
+            false,    // legacySad
+            false);    // legacyIql
         r2d2Buffers_[i].pushObs(obs);
         int action = -1;
         if (i == curPlayer) {

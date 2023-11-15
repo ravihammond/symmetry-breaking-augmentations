@@ -42,6 +42,7 @@ class R2D2Actor {
         bool useExperience,
         bool beliefStats,
         bool sadLegacy,
+        bool iqlLegacy,
         bool beliefSadLegacy,
         bool colorShuffleSync,
         int partnerIdx,
@@ -79,6 +80,7 @@ class R2D2Actor {
             , currentTwoStep_("X") 
             , beliefStats_(beliefStats) 
             , sadLegacy_(sadLegacy) 
+            , iqlLegacy_(iqlLegacy) 
             , beliefSadLegacy_(beliefSadLegacy) 
             , sentSignal_(false)
             , sentSignalStats_(false)
@@ -117,6 +119,7 @@ class R2D2Actor {
         int conventionOverride,
         bool beliefStats,
         bool sadLegacy,
+        bool iqlLegacy,
         bool shuffleColor)
       : runner_(std::move(runner))
         , rng_(1)  // not used in eval mode
@@ -148,6 +151,7 @@ class R2D2Actor {
         , currentTwoStep_("X") 
         , beliefStats_(beliefStats) 
         , sadLegacy_(sadLegacy) 
+        , iqlLegacy_(iqlLegacy) 
         , sentSignal_(false)
         , sentSignalStats_(false)
         , beliefStatsSignalReceived_(false)
@@ -226,6 +230,7 @@ class R2D2Actor {
         std::vector<std::shared_ptr<rela::BatchRunner>> compRunners,
         std::vector<bool> compSad,
         std::vector<bool> compSadLegacy,
+        std::vector<bool> compIqlLegacy,
         std::vector<bool> compHideAction,
         std::vector<std::string> compNames) {
 
@@ -237,6 +242,7 @@ class R2D2Actor {
 
       compSad_ = compSad;
       compSadLegacy_ = compSadLegacy;
+      compIqlLegacy_ = compIqlLegacy;
       compHideAction_ = compHideAction;
       compNames_ = compNames;
     }
@@ -372,6 +378,7 @@ class R2D2Actor {
     bool beliefStats_;
     bool showOwnCards_;
     bool sadLegacy_;
+    bool iqlLegacy_;
     bool beliefSadLegacy_;
     bool sentSignal_;
     bool sentSignalStats_;
@@ -388,6 +395,7 @@ class R2D2Actor {
     std::vector<rela::TensorDict> compHidden_;
     std::vector<bool> compSad_;
     std::vector<bool> compSadLegacy_;
+    std::vector<bool> compIqlLegacy_;
     std::vector<bool> compHideAction_;
     std::vector<std::string> compNames_;
     std::vector<rela::FutureReply> compFutReply_;

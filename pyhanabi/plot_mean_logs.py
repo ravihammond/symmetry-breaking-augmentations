@@ -133,7 +133,7 @@ def create_plot(args, ax, data, data_type, num_splits,
     for i, model in enumerate(data):
         y_vals = data[model][data_type]
         y_mean = y_vals.mean(1).squeeze()
-        y_std = y_vals.std(1).squeeze() / np.sqrt(num_splits)
+        y_std = y_vals.std(1).squeeze() / np.sqrt(num_splits * 5)
         ax.plot(x_vals, y_mean, colors[i], label=mode_labels[i])
         ax.fill_between(x_vals, y_mean + y_std, y_mean - y_std,
                         color=colors[i], alpha=0.3)
@@ -148,40 +148,6 @@ def create_plot(args, ax, data, data_type, num_splits,
         ax.set_ylabel("Score")
 
 
-def plot_datax(args, data):
-    epochs = np.arange(0, args.num_samples)
-
-    test_idx = 0
-    train_idx = 1
-
-    datasets = []
-    if args.test:
-        datasets.append("test")
-    if args.train:
-        datasets.append("train")
-    colours = {"train": "blue", "test": "green"}
-
-    for dataset in datasets:
-        mean = data[f"{dataset}_mean"]
-        stderr_high = data[f"{dataset}_stderr_high"]
-        stderr_low = data[f"{dataset}_stderr_low"]
-        # print("mean")
-        # print(mean)
-        # print("stderr high")
-        # print(stderr_high)
-         
-        plt.plot(epochs, mean, label=dataset, color=colours[dataset])
-        plt.fill_between(epochs, stderr_high, stderr_low, 
-                alpha=0.3, color=colours[dataset])
-
-    split_name = SPLIT_NAME[args.split_type]
-    plt.title(f"{args.model.upper()} Training Curves, {split_name}")
-    plt.xlabel("Epochs")
-    plt.ylabel("Score")
-    plt.legend(loc="best")
-    plt.show()
-
-
 def load_json_list(path):
     if path == "None":
         return []
@@ -194,8 +160,6 @@ if __name__ == "__main__":
     parser.add_argument("--models", type=str, default="br,sba")
     parser.add_argument("--split_types", type=str, default="one,six,eleven")
     parser.add_argument("--num_steps", type=int, default=1000)
-    # parser.add_argument('--test', type=int, default=1)
-    # parser.add_argument('--train', type=int, default=1)
     parser.parse_args()
     args = parser.parse_args()
 
