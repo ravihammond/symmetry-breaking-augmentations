@@ -5,7 +5,7 @@ python selfplay.py \
        --num_thread 24 \
        --num_game_per_thread 80 \
        --method iql \
-       --sad 0 \
+       --sad $1 \
        --lr 6.25e-05 \
        --eps 1.5e-05 \
        --gamma 0.999 \
@@ -24,8 +24,8 @@ python selfplay.py \
        --train_partner_models agent_groups/all_iql.json \
        --train_partner_sad_legacy 1 \
        --train_partner_iql_legacy 1 \
-       --train_test_splits train_test_splits/op_splits_six.json \
-       --split_index 0 \
+       --train_test_splits train_test_splits/iql_splits_six.json \
+       --split_index $1 \
        --static_partner 1 \
        --save_checkpoints 10 \
        --wandb 1 \
@@ -55,7 +55,7 @@ python selfplay.py \
 #       --train_partner_models agent_groups/all_iql.json \
 #       --train_partner_sad_legacy 1 \
 #       --train_partner_iql_legacy 1 \
-#       --train_test_splits train_test_splits/op_splits_six.json \
+#       --train_test_splits train_test_splits/iql_splits_six.json \
 #       --split_index 0 \
 #       --static_partner 1 \
 #       --save_checkpoints 10 \

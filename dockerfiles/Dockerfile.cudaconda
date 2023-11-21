@@ -75,5 +75,6 @@ RUN pip install \
 
 RUN conda install -c conda-forge \
     google-cloud-storage \
-    statsmodels
+    statsmodels \
+    scipy \
 

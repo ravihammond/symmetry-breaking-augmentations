@@ -163,7 +163,6 @@ def load_sad_weight(model, weight_file, device):
         else:
             source_state_dict[k] = state_dict[k]
 
-
     model.load_state_dict(source_state_dict)
     return
 
@@ -386,7 +385,7 @@ def load_weight(model, weight_file, device, *, state_dict=None):
 
     for k, v in target_state_dict.items():
         if k not in state_dict:
-            print("warning: %s not loaded [not found in file]" % k)
+            # print("warning: %s not loaded [not found in file]" % k)
             state_dict[k] = v
         elif state_dict[k].size() != v.size():
             print(

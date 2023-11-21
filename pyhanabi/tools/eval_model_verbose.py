@@ -51,7 +51,7 @@ def evaluate_model(args):
             write = csv.writer(file)
             write.writerows(wrapped_scores)
 
-    return score
+    return score, stats["bomb_out_rate"]
 
 
 def load_weights(args):
