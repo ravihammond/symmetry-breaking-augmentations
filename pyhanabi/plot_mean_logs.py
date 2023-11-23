@@ -13,10 +13,22 @@ pprint = pprint.pprint
 LOAD_DIR = "/app/pyhanabi/wandb_data"
 
 SPLITS = {
-    "one": "0,1,2,3,4,5,6,7,8,9,10,11,12",
-    "six": "0,1,2,3,4,5,6,7,8,9",
-    "eleven": "0,1,2,3,4,5,6,7,8,9"
-}
+    "sad": {
+        "one": "0,1,2,3,4,5,6,7,8,9,10,11,12",
+        "six": "0,1,2,3,4,5,6,7,8,9",
+        "eleven": "0,1,2,3,4,5,6,7,8,9"
+    },
+    "iql": {
+        "one": "0,1,2,3,4,5,6,7,8,9,10,11",
+        "six": "0,1,2,3,4,5,6,7,8,9",
+        "ten": "0,1,2,3,4,5,6,7,8,9"
+    },
+    "iql": {
+        "one": "0,1,2,3,4,5,6,7,8,9,10,11",
+        "six": "0,1,2,3,4,5,6,7,8,9",
+        "ten": "0,1,2,3,4,5,6,7,8,9"
+    },
+} 
 
 
 def plot_all_mean_logs(args):
@@ -37,7 +49,7 @@ def get_names(args):
         model_names[split_type] = {}
         for model in args.models:
             model_names[split_type][model] = []
-            split_ids = parse_number_list(SPLITS[split_type])
+            split_ids = parse_number_list(SPLITS[args.model_aht][split_type])
             splits_file = f"train_test_splits/sad_splits_{split_type}.json"
             splits = load_json_list(splits_file)
 
@@ -46,7 +58,7 @@ def get_names(args):
                 indexes = [x + 1 for x in indexes]
                 idx_str = '_'.join(str(x) for x in indexes)
 
-                name = f"{model}_sad_{split_type}_{idx_str}"
+                name = f"{model}_{args.model_aht}_{split_type}_{idx_str}"
                 model_names[split_type][model].append(name)
 
     return model_names
@@ -93,22 +105,26 @@ def load_scores(args, split_type, model, data_type, name):
 
 
 def plot_data(args, data):
-    if len(data) == 2:
+    if len(data) == 1:
+        fig_height = 3.5
+    elif len(data) == 2:
         fig_height = 7.5
     elif len(data) == 3:
         fig_height = 11.3
     fig = plt.figure(constrained_layout=True, figsize=(6.65, fig_height))
-    subfigs = fig.subfigures(len(data), 1)
+    subfigs_all = fig.subfigures(len(data), 1)
 
     split_titles = ["a)", "b)", "c)"]
     plot_titles = ["Training", "Testing (AHT)"]
     data_types = ["train", "test"]
 
     for i, split_type in enumerate(data):
-        axes = subfigs[i].subplots(1, len(data[split_type]), sharey=True)
+        subfigs = subfigs_all if len(data) == 1 else subfigs_all[i]
+        axes = subfigs.subplots(1, len(data[split_type][args.models[0]]), sharey=True)
 
         for j, data_type in enumerate(data_types):
-            num_splits = len(parse_number_list(SPLITS[split_type]))
+            num_splits = len(parse_number_list(
+                SPLITS[args.model_aht][split_type]))
             create_plot(
                 args,
                 axes[j], 
@@ -119,15 +135,16 @@ def plot_data(args, data):
                 i == 0 and j == 0,
                 j == 0,
             )
-        subfigs[i].suptitle(split_titles[i], fontsize=16)
+        if len(data) > 1:
+            subfigs.suptitle(split_titles[i], fontsize=16)
 
     plt.show()
 
 
 def create_plot(args, ax, data, data_type, num_splits, 
         title, show_legend, show_ylabel):
-    mode_labels = ["BR", "SBA"]
-    colors = ["#d62728", "#1f77b4"]
+    mode_labels = ["BR", "BR + CH", "SBA", "SBA + CH"]
+    colors = ["#d62728", "#479487", "#1f77b4", "#D6764F"]
 
     x_vals = np.arange(args.num_steps)
     for i, model in enumerate(data):
@@ -158,6 +175,7 @@ def load_json_list(path):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--models", type=str, default="br,sba")
+    parser.add_argument("--model_aht", type=str, default="sad")
     parser.add_argument("--split_types", type=str, default="one,six,eleven")
     parser.add_argument("--num_steps", type=int, default=1000)
     parser.parse_args()

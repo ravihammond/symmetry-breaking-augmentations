@@ -36,7 +36,6 @@ SPLIT_NAME = {
 def eval_aht(args):
     alter_args(args)
     jobs = create_jobs(args)
-    # jobs = [jobs[0], jobs[1]]
     run_jobs(args, jobs)
 
 
@@ -112,7 +111,7 @@ def load_json_list(path):
     
 
 def model_to_weight(args, aht_policy, model, split_index=0, policy_i=None):
-    splits = load_json_list(f"train_test_splits/sad_splits_{args.split_type}.json")
+    splits = load_json_list(f"train_test_splits/{args.train_partner_model}_splits_{args.split_type}.json")
     indices = splits[split_index]["train"]
     indices = [x + 1 for x in indices]
     indices_str = '_'.join(str(x) for x in indices)
@@ -187,18 +186,19 @@ def run_jobs(args, jobs):
                 "shuffle_index2": -1
             })
             print(job.pair_name)
-            if i == 0:
-                score, bombout = 12.7564, 0.3959
-            else: 
+            if i == 0 and args.aht_model == "ch_e50_sad":
+                score = 12
+                bombout = 0.41
+            else:
                 score, bombout = evaluate_model(input_args)
             print()
             split_scores.append(score)
             split_bombouts.append(bombout)
 
         split_scores_mean = np.mean(split_scores)
-        split_scores_sem = np.std(split_scores) / len(split_scores)
+        split_scores_sem = np.std(split_scores) / np.sqrt(len(split_scores))
         split_bombouts_mean = np.mean(split_bombouts)
-        split_bombouts_sem = np.std(split_bombouts) / len(split_bombouts)
+        split_bombouts_sem = np.std(split_bombouts) / np.sqrt(len(split_bombouts))
 
         print(f"{job.player_name[0]}")
         print(f"score: {split_scores_mean:.2f} ± {split_scores_sem:.2f}")
@@ -209,9 +209,9 @@ def run_jobs(args, jobs):
         bombouts.append(split_bombouts_mean)
 
     scores_mean = np.mean(scores)
-    scores_sem = np.std(scores) / len(scores)
+    scores_sem = np.std(scores) / np.sqrt(len(scores))
     bombouts_mean = np.mean(bombouts)
-    bombouts_sem = np.std(bombouts) / len(bombouts)
+    bombouts_sem = np.std(bombouts) / np.sqrt(len(bombouts))
 
     print()
     print("scores")

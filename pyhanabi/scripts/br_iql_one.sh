@@ -1,7 +1,7 @@
 #!/bin/bash
 
 python selfplay.py \
-       --save_dir exps/sba_sad \
+       --save_dir exps/br_iql \
        --num_thread 24 \
        --num_game_per_thread 80 \
        --method iql \
@@ -21,12 +21,12 @@ python selfplay.py \
        --multi_step 3 \
        --train_device cuda:0 \
        --act_device cuda:1,cuda:2,cuda:3 \
-       --train_partner_models agent_groups/all_sad.json \
+       --train_partner_models agent_groups/all_iql.json \
        --train_partner_sad_legacy 1 \
-       --train_test_splits train_test_splits/sad_splits_one.json \
+       --train_partner_iql_legacy 1 \
+       --train_test_splits train_test_splits/iql_splits_one.json \
        --split_index $1 \
        --static_partner 1 \
-       --shuffle_color 1 \
        --wandb 1 \
-       --gcloud_upload 1 
-       
+       --gcloud_upload 1
+

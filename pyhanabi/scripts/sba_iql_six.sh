@@ -5,11 +5,11 @@ python selfplay.py \
        --num_thread 24 \
        --num_game_per_thread 80 \
        --method iql \
-       --sad $1 \
+       --sad 0 \
        --lr 6.25e-05 \
        --eps 1.5e-05 \
        --gamma 0.999 \
-       --seed 0 \
+       --seed $1 \
        --burn_in_frames 10000 \
        --replay_buffer_size 100000 \
        --batchsize 128 \

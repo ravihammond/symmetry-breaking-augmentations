@@ -1,8 +1,20 @@
-
 #!/bin/bash
-python tools/cross_play.py \
-    --root1 ../training_models/iql_2p_models \
-    --all_models1 1 \
-    --sad_legacy1 1 \
-    --iql_legacy1 1 
+python tools/save_scores.py \
+    --model1 iql \
+    --model2 iql \
+    --crossplay 1 \
 
+python tools/save_scores.py \
+    --model1 iql \
+    --model2 sad \
+    --crossplay 1 \
+
+python tools/save_scores.py \
+    --model1 iql \
+    --model2 op \
+    --crossplay 1 \
+
+python tools/save_scores.py \
+    --model1 iql \
+    --model2 obl \
+    --crossplay 1 \

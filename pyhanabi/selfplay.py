@@ -523,7 +523,7 @@ def load_partner_agents(args, partner_models, sad_legacy, iql_legacy, partner_ty
         overwrite["device"] = "cuda:0"
         overwrite["boltzmann_act"] = False
 
-        if sad_legacy or "op" in partner_model_path:
+        if sad_legacy:
             if "op" in partner_model_path:
                 partner_cfg["agent"] = utils.load_op_model(
                         partner_model_path, args.train_device)

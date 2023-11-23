@@ -66,11 +66,40 @@ def mc_perm_test():
         [21.898, 21.015, 17.505, 20.36, 21.505, 3.892, 5.269]
     ], axis=1)
 
+    br_sad_six_vs_iql = [
+        15.220666666666668,
+        16.349666666666668,
+        15.216416666666666,
+        15.180416666666668,
+        15.65791666666667,
+        13.360166666666666,
+        14.788916666666667,
+        14.724750000000002,
+        16.05,
+        15.590083333333334
+    ]
+
+    sba_sad_six_vs_iql = [
+        16.352416666666667,
+        16.950916666666668,
+        17.562833333333334,
+        17.29216666666667,
+        17.690749999999998,
+        16.032833333333333,
+        15.547333333333333,
+        15.888166666666669,
+        16.966333333333335,
+        16.839666666666666
+    ]
+
     
     print("ch_e50_sba_sad_six > sba_sad_six")
     generate_mcpt_table(ch_e50_sba_sad_six, sba_sad_six)
 
     print("ch_e50_sba_sad_six > sba_sad_six")
+    generate_mcpt_table(ch_e50_sba_sad_six, sba_sad_six)
+
+    print("sba_sad_six_vs_iql > br_sad_six_vs_iql")
     generate_mcpt_table(ch_e50_sba_sad_six, sba_sad_six)
 
 

@@ -349,7 +349,7 @@ def load_agents(
     for i, weight_file in enumerate(weight_files):
         assert os.path.exists(weight_file), f"path file not found: {weight_file}"
 
-        if sad_legacy[i] or "op" in weight_file:
+        if sad_legacy[i]:
             if "op" in weight_file:
                 agent = utils.load_op_model(weight_file, device)
             else:
@@ -440,7 +440,7 @@ def load_partner_agents(
             partners.append(partner_cfg)
             continue
 
-        if partner_sad_legacy or "op" in partner_model_path:
+        if partner_sad_legacy:
             if "op" in weight_file:
                 partner_cfg["agent"] = utils.load_op_model(
                         partner_model_path, "cuda:0")
