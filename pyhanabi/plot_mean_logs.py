@@ -23,7 +23,7 @@ SPLITS = {
         "six": "0,1,2,3,4,5,6,7,8,9",
         "ten": "0,1,2,3,4,5,6,7,8,9"
     },
-    "iql": {
+    "op": {
         "one": "0,1,2,3,4,5,6,7,8,9,10,11",
         "six": "0,1,2,3,4,5,6,7,8,9",
         "ten": "0,1,2,3,4,5,6,7,8,9"
@@ -50,7 +50,7 @@ def get_names(args):
         for model in args.models:
             model_names[split_type][model] = []
             split_ids = parse_number_list(SPLITS[args.model_aht][split_type])
-            splits_file = f"train_test_splits/sad_splits_{split_type}.json"
+            splits_file = f"train_test_splits/{args.model_aht}_splits_{split_type}.json"
             splits = load_json_list(splits_file)
 
             for split_i in split_ids:
@@ -114,7 +114,8 @@ def plot_data(args, data):
     fig = plt.figure(constrained_layout=True, figsize=(6.65, fig_height))
     subfigs_all = fig.subfigures(len(data), 1)
 
-    split_titles = ["a)", "b)", "c)"]
+    # split_titles = ["a)", "b)", "c)"]
+    split_titles = ["1-12 Splits", "6-7 Splits", "11-2 Splits"]
     plot_titles = ["Training", "Testing (AHT)"]
     data_types = ["train", "test"]
 
@@ -143,8 +144,8 @@ def plot_data(args, data):
 
 def create_plot(args, ax, data, data_type, num_splits, 
         title, show_legend, show_ylabel):
-    mode_labels = ["BR", "BR + CH", "SBA", "SBA + CH"]
-    colors = ["#d62728", "#479487", "#1f77b4", "#D6764F"]
+    mode_labels = ["BR", "SBA"]
+    colors = ["#d62728", "#1f77b4"]
 
     x_vals = np.arange(args.num_steps)
     for i, model in enumerate(data):

@@ -10,6 +10,7 @@ import seaborn as sns
 FIG_WIDTH = {"SAD": 10, "OP": 9, "OBL": 2}
 FILE = {
     "SAD": "temp/sad_vs_sad_scores.pkl", 
+    "IQL": "temp/iql_vs_iql_scores.pkl", 
     "OP": "temp/op_vs_op_scores.pkl", 
     "OBL": "temp/obl_vs_obl_scores.pkl", 
 }
@@ -18,10 +19,10 @@ FILE = {
 def extract_sba_diff_data(args):
     if args.model == "all":
         df = get_all_data(args)
-        # extract_data(args, df)
-        # plot_dists(args, df)
+        extract_data(args, df)
+        plot_dists(args, df)
         # plot_score_diff(args, df)
-        plot_all_per_pair(args, df)
+        # plot_all_per_pair(args, df)
     else:
         df = pd.read_pickle(FILE[args.model], "gzip")
         df = adjust_data(args, df)
@@ -67,7 +68,7 @@ def extract_data(args, df):
     df_mean = df_abs_mean.groupby("model").score_diff_abs.mean().reset_index()
     df_sem = df_abs_mean.groupby("model").score_diff_abs.sem().reset_index()
     print("abs score-diff mean")
-    for row in [2, 1, 0]:
+    for row in [3, 0, 2, 1]:
         model_name = df_mean.loc[row, "model"]
         mean = df_mean.loc[row, "score_diff_abs"]
         sem = df_sem.loc[row, "score_diff_abs"]
@@ -80,6 +81,7 @@ def extract_data(args, df):
     score_diff_max_sem = df_max.groupby("model").score_diff.sem().reset_index()
     print("max score-diff mean")
     print(score_diff_max_mean.to_string())
+    print("max score-diff mean")
     print(score_diff_max_sem.to_string())
     print()
 
@@ -88,7 +90,7 @@ def extract_data(args, df):
         score_diff_quant_mean = df_quant.groupby("model").score_diff.mean().reset_index()
         score_diff_quant_sem = df_quant.groupby("model").score_diff.sem().reset_index()
         print(f"{quantile} quantile score-diff mean")
-        for row in [2, 1, 0]:
+        for row in [3, 0, 2, 1]:
             model_name = score_diff_quant_mean.loc[row, "model"]
             mean = score_diff_quant_mean.loc[row, "score_diff"]
             sem = score_diff_quant_sem.loc[row, "score_diff"]
@@ -96,7 +98,8 @@ def extract_data(args, df):
         print()
 
     df_std = df.groupby("model").score_diff.std().reset_index()
-    print("score-diff std")
+
+    print("std score-diff")
     print(df_std.to_string())
     print()
 
@@ -106,17 +109,23 @@ def plot_dists(args, df):
     # print(df.to_string())
 
 
-    ax = sns.displot(data=df, x="score_diff", hue="model", kind='kde', fill=True, 
-            palette=sns.color_palette('bright')[:3], height=3, aspect=3,
-            common_norm=False)
+    # ax = sns.displot(data=df, x="score_diff", hue="model", kind='kde', fill=True, 
+    #         palette=sns.color_palette('bright')[:3], height=3, aspect=3,
+    #         common_norm=False)
 
-    sns.move_legend(ax, "upper right", bbox_to_anchor=(.88, .9))
-    # sns.move_legend(g, "upper left", 
-    # sns.move_legend(ax, "best")
-    # plt.legend(loc='upper center')
+    # sns.move_legend(ax, "upper right", bbox_to_anchor=(.88, .9))
+    # # sns.move_legend(g, "upper left", 
+    # # sns.move_legend(ax, "best")
+    # # plt.legend(loc='upper center')
 
-    plt.xlim(-4, 4)
-    plt.xlabel('SBA Difference (augdiff)')
+    # plt.xlim(-4, 4)
+    # plt.xlabel('SBA Difference (augdiff)')
+    # plt.show()
+
+    ax = sns.boxplot(data=df, x="model", y="score_diff", showfliers=False,
+            palette=sns.color_palette('bright')[:3])
+
+    plt.ylabel('SBA Difference (augdiff)')
     plt.show()
 
 
@@ -174,16 +183,19 @@ def plot_per_pair(args, df):
 
 
 def plot_all_per_pair(args, df):
-    fig = plt.figure(constrained_layout=True, figsize=(10, 6))
-    subfigs = fig.subfigures(2, 1)
+    fig = plt.figure(constrained_layout=True, figsize=(10, 9))
+    subfigs = fig.subfigures(3, 1)
 
     axes0 = subfigs[0].subplots(1, 1)
     create_scores_plot(args, df, "SAD", axes0, "a)")
 
-    axes1 = subfigs[1].subplots(1, 2, sharey=True,
+    axes1 = subfigs[1].subplots(1, 1)
+    create_scores_plot(args, df, "IQL", axes1, "b)")
+
+    axes2 = subfigs[2].subplots(1, 2, sharey=True,
             gridspec_kw={'width_ratios': [6, 1]})
-    create_scores_plot(args, df, "OP", axes1[0], "b)")
-    create_scores_plot(args, df, "OBL", axes1[1], "c)", show_y_label=False)
+    create_scores_plot(args, df, "OP", axes2[0], "b)")
+    create_scores_plot(args, df, "OBL", axes2[1], "c)", show_y_label=False)
 
     plt.show()
 
@@ -204,14 +216,14 @@ def create_scores_plot(ars, df, model, ax, title, show_y_label=True):
         ax.set_ylabel("SBA Difference (augdiff)")
     ax.set_xlabel(f"{model} Pairs")
     ax.set_xticklabels([])
-    ax.set_ylim(-7, 7)
+    ax.set_ylim(-8, 8)
     if model == "SAD":
         ax.set_xlim(-1, 78)
     elif model == "OP":
         ax.set_xlim(-1, 66)
     elif model == "OBL":
         ax.set_xlim(-1, 10)
-    ax.set_title(title)
+    # ax.set_title(title)
 
 
 if __name__ == "__main__":
