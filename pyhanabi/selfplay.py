@@ -373,6 +373,7 @@ def selfplay(args):
 
         epoch += 1
         print("==========", flush=True)
+    exit()
 
 def run_evaluation(
     args,

@@ -20,7 +20,7 @@ def extract_sba_diff_data(args):
     if args.model == "all":
         df = get_all_data(args)
         extract_data(args, df)
-        plot_dists(args, df)
+        # plot_dists(args, df)
         # plot_score_diff(args, df)
         # plot_all_per_pair(args, df)
     else:
@@ -85,7 +85,7 @@ def extract_data(args, df):
     print(score_diff_max_sem.to_string())
     print()
 
-    for quantile in [0.9, 0.8, 0.7]:
+    for quantile in [0.75]:
         df_quant = df.groupby(["model", "pair"]).score_diff.quantile(quantile).reset_index()
         score_diff_quant_mean = df_quant.groupby("model").score_diff.mean().reset_index()
         score_diff_quant_sem = df_quant.groupby("model").score_diff.sem().reset_index()
@@ -96,6 +96,14 @@ def extract_data(args, df):
             sem = score_diff_quant_sem.loc[row, "score_diff"]
             print(f"{model_name}: {mean:.3f} ± {sem:.3f}")
         print()
+
+    print("=============================================")
+    df_quant_big = df.groupby(["model"]).score_diff.quantile(0.75).reset_index()
+    df_quant_small = df.groupby(["model"]).score_diff.quantile(0.25).reset_index()
+    df_quant_big["iqr"] = df_quant_big["score_diff"] - df_quant_small["score_diff"]
+    df_quant_big["upper"] = df_quant_big["score_diff"] + 1.5 * df_quant_big["iqr"]
+    print(df_quant_big.to_string())
+    print("=============================================")
 
     df_std = df.groupby("model").score_diff.std().reset_index()
 
@@ -125,7 +133,7 @@ def plot_dists(args, df):
     ax = sns.boxplot(data=df, x="model", y="score_diff", showfliers=False,
             palette=sns.color_palette('bright')[:3])
 
-    plt.ylabel('SBA Difference (augdiff)')
+    plt.ylabel('Augmentation Regret')
     plt.show()
 
 
