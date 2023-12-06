@@ -29,11 +29,9 @@ class R2D2Actor {
         bool hideAction,
         bool trinary,  // trinary aux task or full aux
         std::shared_ptr<rela::RNNPrioritizedReplay> replayBuffer,
-        // if replay buffer is None, then all params below are not used
         int multiStep,
         int seqLen,
         float gamma,
-        // My changes
         std::vector<std::vector<std::vector<std::string>>> convention,
         bool actParameterized,
         int conventionIdx,
@@ -47,7 +45,11 @@ class R2D2Actor {
         bool colorShuffleSync,
         int partnerIdx,
         int numPartners,
-        std::unordered_map<std::string,int> colourPermutationMap)
+        std::unordered_map<std::string,int> colourPermutationMap,
+        std::vector<std::vector<int>> allColourPermutations,
+        std::vector<std::vector<int>> allInvColourPermutations,
+        bool distShuffleColour,
+        std::vector<std::vector<float>> permutationDistribution)
           : runner_(std::move(runner))
             , rng_(seed)
             , numPlayer_(numPlayer)
@@ -89,7 +91,11 @@ class R2D2Actor {
             , colourPermuteConstant_(false) 
             , partnerIdx_(partnerIdx) 
             , numPartners_(numPartners) 
-            , colourPermutationMap_(colourPermutationMap) {
+            , colourPermutationMap_(colourPermutationMap) 
+            , allColourPermutations_(allColourPermutations)
+            , allInvColourPermutations_(allInvColourPermutations)
+            , distShuffleColour_(distShuffleColour) 
+            , permutationDistribution_(permutationDistribution) {
               //printf("multiStep: %d, seqLen: %d, gamma: %f\n", 
                   //multiStep, seqLen, gamma);
               if (beliefStats_ && convention_.size() > 0) {
@@ -305,6 +311,7 @@ class R2D2Actor {
         std::vector<int>& playableCards);
     void callCompareAct(HanabiEnv& env);
     void replyCompareAct(const HanabiEnv& env, int actorAction, int curPlayer);
+    std::tuple<std::vector<int>, std::vector<int>>selectColourShuffle();
 
     std::shared_ptr<rela::BatchRunner> runner_;
     std::shared_ptr<rela::BatchRunner> classifier_;
@@ -402,4 +409,8 @@ class R2D2Actor {
     int partnerIdx_;
     int numPartners_;
     std::unordered_map<std::string,int> colourPermutationMap_;
+    std::vector<std::vector<int>> allColourPermutations_;
+    std::vector<std::vector<int>> allInvColourPermutations_;
+    bool distShuffleColour_;
+    std::vector<std::vector<float>> permutationDistribution_;
 };

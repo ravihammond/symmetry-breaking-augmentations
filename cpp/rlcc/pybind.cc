@@ -76,8 +76,7 @@ PYBIND11_MODULE(hanalearn, m) {
         bool,  // shuffleColor,
         bool,  //  hideAction,
         bool,  // trinary, trinary aux task or full aux
-        std::shared_ptr<rela::RNNPrioritizedReplay>,  //  replayBuffer,
-        // if replay buffer is None, then all params below are not used
+        std::shared_ptr<rela::RNNPrioritizedReplay>,  //  replayBuffer, if replay buffer is None, then all params below are not used
         int, // multiStep,
         int, // seqLen,
         float,  // gamma
@@ -94,7 +93,11 @@ PYBIND11_MODULE(hanalearn, m) {
         bool, // colorShuffleSync
         int, // partnerIdx
         int, // numPartners
-        std::unordered_map<std::string,int>>()) // colourPermutationMap
+        std::unordered_map<std::string,int>, // colourPermutationMap
+        std::vector<std::vector<int>>, // allColourPermutations
+        std::vector<std::vector<int>>, // allInvColourPermutations
+        bool, // distShuffleColour
+        std::vector<std::vector<float>>>()) // permutationDistribution
     .def(py::init<
         std::shared_ptr<rela::BatchRunner>,
         int,  // numPlayer

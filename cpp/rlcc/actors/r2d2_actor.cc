@@ -13,7 +13,7 @@
 
 using namespace std;
 
-#define PR false
+#define PR true
 
 void R2D2Actor::addHid(rela::TensorDict& to, rela::TensorDict& hid) {
   for (auto& kv : hid) {
@@ -184,14 +184,7 @@ void R2D2Actor::reset(const HanabiEnv& env) {
         if (i == fixColorPlayer) {
           continue;
         }
-        std::shuffle(colorPermute.begin(), colorPermute.end(), rng_);
-
-        std::sort(invColorPermute.begin(), invColorPermute.end(), [&](int i, int j) {
-            return colorPermute[i] < colorPermute[j];
-        });
-        for (int i = 0; i < (int)colorPermute.size(); ++i) {
-          assert(invColorPermute[colorPermute[i]] == i);
-        }
+        tie(colorPermute, invColorPermute) = selectColourShuffle();
       }
     }
     if (PR) {
@@ -218,6 +211,35 @@ void R2D2Actor::reset(const HanabiEnv& env) {
     if(PR)printf("convention index: %d, %s->%s\n", conventionIdx_, 
         conv[0].c_str(), conv[1].c_str());
   }
+}
+
+tuple<vector<int>, vector<int>> R2D2Actor::selectColourShuffle() {
+  vector<int> colorPermute {0,1,2,3,4};
+  vector<int> invColorPermute {0,1,2,3,4};
+
+  if (distShuffleColour_) {
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    auto permDist = permutationDistribution_[partnerIdx_];
+    std::discrete_distribution<> d(permDist.begin(), permDist.end());
+
+    int sampledPermutationIndex = d(gen);
+    printf("sampledPermutationIndex: %d\n", sampledPermutationIndex);
+    colorPermute = allColourPermutations_[sampledPermutationIndex];
+    invColorPermute = allInvColourPermutations_[sampledPermutationIndex];
+  } else {
+    std::shuffle(colorPermute.begin(), colorPermute.end(), rng_);
+
+    std::sort(invColorPermute.begin(), invColorPermute.end(), [&](int i, int j) {
+        return colorPermute[i] < colorPermute[j];
+    });
+
+    for (int i = 0; i < (int)colorPermute.size(); ++i) {
+      assert(invColorPermute[colorPermute[i]] == i);
+    }
+  }
+
+  return std::make_tuple(colorPermute, invColorPermute);
 }
 
 void R2D2Actor::observeBeforeAct(HanabiEnv& env) {

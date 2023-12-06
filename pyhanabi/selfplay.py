@@ -192,6 +192,8 @@ def selfplay(args):
     convention_act_override = [0, args.convention_act_override]
     use_experience = [1, 1 - args.static_partner]
 
+    permutation_distribution = [[1 / 120] * 120] * len(train_partners)
+
     act_group = ActGroup(
         args.act_device, # devices
         [agent], # agents
@@ -219,7 +221,9 @@ def selfplay(args):
         False, # iql_legacy
         runner_div=args.runner_div, # runner_div
         num_parameters=args.num_parameters, # num_parameters
-        num_train_partners=num_train_partners # num_train_partners
+        num_train_partners=num_train_partners, # num_train_partners
+        dist_shuffle_colour=args.dist_shuffle_colour, # dist_shuffle_colour
+        permutation_distribution=permutation_distribution
     )
 
     context, threads = create_threads(
@@ -662,6 +666,7 @@ def parse_args():
     parser.add_argument("--runner_div", type=str, default="duplicated")
     parser.add_argument("--num_eval_games", type=int, default=1000)
     parser.add_argument("--record_convention_stats", type=int, default=0)
+    parser.add_argument("--dist_shuffle_colour", type=int, default=0)
 
     args = parser.parse_args()
 
