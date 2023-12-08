@@ -112,7 +112,12 @@ PYBIND11_MODULE(hanalearn, m) {
         bool, // beliefStats
         bool, // sadLegacy
         bool, // iqlLegacy
-        bool>()) // shuffleColor
+        bool, // shuffleColor
+        std::vector<std::vector<int>>, // allColourPermutations
+        std::vector<std::vector<int>>, // allInvColourPermutations
+        bool, // distShuffleColour
+        std::vector<std::vector<float>>, // permutationDistribution
+        int>()) // partnerIdx
       .def("set_partners", &R2D2Actor::setPartners)
       .def("set_belief_runner", &R2D2Actor::setBeliefRunner)
       .def("set_belief_runner_stats", &R2D2Actor::setBeliefRunnerStats)

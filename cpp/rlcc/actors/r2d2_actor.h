@@ -108,6 +108,8 @@ class R2D2Actor {
       } else {
         showOwnCards_ = true;
       }
+      printf("creating actor: %d\n", distShuffleColour);
+      printf("creating actor: %d\n", distShuffleColour_);
     }
 
 
@@ -126,9 +128,15 @@ class R2D2Actor {
         bool beliefStats,
         bool sadLegacy,
         bool iqlLegacy,
-        bool shuffleColor)
+        bool shuffleColor,
+        std::vector<std::vector<int>> allColourPermutations,
+        std::vector<std::vector<int>> allInvColourPermutations,
+        bool distShuffleColour,
+        std::vector<std::vector<float>> permutationDistribution,
+        int partnerIdx,
+        int seed)
       : runner_(std::move(runner))
-        , rng_(1)  // not used in eval mode
+        , rng_(seed)
         , numPlayer_(numPlayer)
         , playerIdx_(playerIdx)
         , epsList_({0})
@@ -163,8 +171,12 @@ class R2D2Actor {
         , beliefStatsSignalReceived_(false)
         , colorShuffleSync_(false) 
         , colourPermuteConstant_(false) 
-        , partnerIdx_(-1)
-        , numPartners_(0) {
+        , partnerIdx_(partnerIdx)
+        , numPartners_(0) 
+        , allColourPermutations_(allColourPermutations)
+        , allInvColourPermutations_(allInvColourPermutations)
+        , distShuffleColour_(distShuffleColour) 
+        , permutationDistribution_(permutationDistribution) {
           if (beliefStats_ && convention_.size() > 0) {
             auto responseMove = strToMove(convention_[conventionIdx_][0][1]);
             beliefStatsResponsePosition_ = responseMove.CardIndex();
@@ -316,7 +328,6 @@ class R2D2Actor {
         std::vector<int>& playableCards);
     void callCompareAct(HanabiEnv& env);
     void replyCompareAct(const HanabiEnv& env, int actorAction, int curPlayer);
-    std::tuple<std::vector<int>, std::vector<int>>selectColourShuffle();
 
     std::shared_ptr<rela::BatchRunner> runner_;
     std::shared_ptr<rela::BatchRunner> classifier_;

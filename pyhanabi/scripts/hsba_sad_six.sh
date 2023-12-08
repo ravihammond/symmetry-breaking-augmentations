@@ -58,6 +58,6 @@ python selfplay.py \
        --split_index 0 \
        --static_partner 1 \
        --shuffle_color 1 \
-       --dist_shuffle_colour 0 \
+       --dist_shuffle_colour 1 \
        --wandb 0 \
        --gcloud_upload 0

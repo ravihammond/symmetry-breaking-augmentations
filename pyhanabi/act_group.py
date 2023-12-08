@@ -236,8 +236,7 @@ class ActGroup:
                             shuffle_colour = 0
 
                         print("creating actor")
-                        for perm_dist in self.permutation_distribution:
-                            print(perm_dist[0])
+                        print(self.dist_shuffle_colour)
 
                         actor = hanalearn.R2D2Actor(
                             runner,

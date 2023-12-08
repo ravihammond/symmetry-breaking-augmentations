@@ -192,8 +192,7 @@ def selfplay(args):
     convention_act_override = [0, args.convention_act_override]
     use_experience = [1, 1 - args.static_partner]
 
-    # permutation_distribution = [[1 / 120] * 120] * len(train_partners)
-    permutation_distribution = [[100] * 120] * len(train_partners)
+    permutation_distribution = [[1 / 120] * 120] * len(train_partners)
 
     print("creating perm dist")
     for perm_dist in permutation_distribution:
@@ -336,13 +335,6 @@ def selfplay(args):
             stat["grad_norm"].feed(g_norm)
             stat["boltzmann_t"].feed(batch.obs["temperature"][0].mean())
 
-            update_colour_shuffle_distribution(
-                args,
-                act_group,
-                permutation_distribution,
-                batch,
-                epoch,
-            )
 
         count_factor = args.num_player if args.method == "vdn" else 1
         print("epoch: %d" % epoch)
@@ -356,7 +348,7 @@ def selfplay(args):
         aux_accuracy_per_step_arr = np.array(aux_accuracy_per_step_list)
         aux_accuracy_per_step_mean = np.mean(aux_accuracy_per_step_arr, axis=0)
 
-        train_eval_score = run_evaluation(
+        train_eval_score, train_eval_scores, train_eval_actors = run_evaluation(
             args,
             agent,
             eval_agent,
@@ -373,6 +365,14 @@ def selfplay(args):
             aux_loss_mean,
             aux_accuracy_mean,
             aux_accuracy_per_step_mean,
+            permutation_distribution
+        )
+
+        update_colour_shuffle_distribution(
+            args,
+            permutation_distribution,
+            train_eval_scores,
+            train_eval_actors,
         )
 
         force_save_name = None
@@ -393,18 +393,14 @@ def selfplay(args):
 
 def update_colour_shuffle_distribution(
     args,
-    act_group,
     permutation_distribution,
-    batch,
-    epoch,
+    train_eval_scores,
+    train_eval_actors,
 ): 
     print("updating permutation distribution")
     print("=========================================================")
-    for perm_dist in permutation_distribution:
-        perm_dist[0] = epoch
-
-    for perm_dist in permutation_distribution:
-        print(perm_dist[0])
+    print("num games:", len(train_eval_scores))
+    print("num actors:", len())
 
     act_group.set_permutation_distribution(permutation_distribution)
 
@@ -425,12 +421,18 @@ def run_evaluation(
     aux_loss_mean,
     aux_accuracy_mean,
     aux_accuracy_per_step_mean,
+    permutation_distribution,
 ):
     eval_seed = (9917 + epoch * 999999) % 7777777
     eval_agent.load_state_dict(agent.state_dict())
     eval_agents = [eval_agent for _ in range(args.num_player)]
 
-    def eval(partners, convention_act_override, shuffle_colour):
+    def eval(
+            partners, 
+            convention_act_override, 
+            shuffle_colour, 
+            dist_shuffle_colour,
+            permutation_distribution):
         return evaluate(
             eval_agents,
             args.num_eval_games,
@@ -446,10 +448,17 @@ def run_evaluation(
             partners=partners,
             num_parameters=args.num_parameters,
             shuffle_colour=shuffle_colour,
+            dist_shuffle_colour=dist_shuffle_colour,
+            permutation_distribution=permutation_distribution,
         )
 
     train_score, train_perfect, train_scores, _, train_eval_actors = eval(
-        train_partners, convention_act_override, [args.shuffle_color, 0])
+        train_partners, 
+        convention_act_override, 
+        [args.shuffle_color, 0],
+        [args.dist_shuffle_colour, 0],
+        permutation_distribution,
+    )
 
     test_convention_override = [0,0]
     print("epoch %d" % epoch)
@@ -458,8 +467,15 @@ def run_evaluation(
 
     if args.test_partner_models != "None":
         test_shuffle_colour = [0,0]
+        test_dist_shuffle_colour = [0,0]
+        test_permutation_distribution = []
         test_score, test_perfect, test_scores, _, test_eval_actors = eval(
-            test_partners, test_convention_override, test_shuffle_colour)
+            test_partners, 
+            test_convention_override, 
+            test_shuffle_colour,
+            test_dist_shuffle_colour,
+            test_permutation_distribution,
+        )
 
         print("test score: %.4f, test perfect: %.2f" % \
                 (test_score, test_perfect * 100))
@@ -499,7 +515,7 @@ def run_evaluation(
     if args.test_partner_models != "None":
         return copy.copy(test_score)
     
-    return copy.copy(train_score)
+    return copy.copy(train_score), train_eval_scores, train_eval_actors
 
 
 def upload_to_google_cloud(args, gc_handler, epoch):

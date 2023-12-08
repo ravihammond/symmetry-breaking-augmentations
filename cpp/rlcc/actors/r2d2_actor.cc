@@ -184,7 +184,36 @@ void R2D2Actor::reset(const HanabiEnv& env) {
         if (i == fixColorPlayer) {
           continue;
         }
-        tie(colorPermute, invColorPermute) = selectColourShuffle();
+
+        if (distShuffleColour_) {
+          int partnerIdx = partnerIdx_ == -1 ? 0 : partnerIdx_;
+          auto permDist = permutationDistribution_[partnerIdx];
+          std::discrete_distribution<> dist(permDist.begin(), permDist.end());
+          int sampledPermutationIndex = dist(rng_);
+
+          for (int i = 0; i < game.NumColors(); ++i) {
+            colorPermute[i] = allColourPermutations_[sampledPermutationIndex][i];
+            invColorPermute[i] = allInvColourPermutations_[sampledPermutationIndex][i];
+          }
+
+          if (logStats_) {
+            stats_["shuffle_index"] = sampledPermutationIndex;
+          }
+        } else {
+          std::shuffle(colorPermute.begin(), colorPermute.end(), rng_);
+
+          std::sort(invColorPermute.begin(), invColorPermute.end(), [&](int i, int j) {
+              return colorPermute[i] < colorPermute[j];
+          });
+        }
+
+        for (int i = 0; i < (int)colorPermute.size(); ++i) {
+          assert(invColorPermute[colorPermute[i]] == i);
+        }
+      }
+    } else {
+      if (logStats_) {
+        stats_["shuffle_index"] = -1;
       }
     }
     if (PR) {
@@ -211,40 +240,6 @@ void R2D2Actor::reset(const HanabiEnv& env) {
     if(PR)printf("convention index: %d, %s->%s\n", conventionIdx_, 
         conv[0].c_str(), conv[1].c_str());
   }
-}
-
-tuple<vector<int>, vector<int>> R2D2Actor::selectColourShuffle() {
-  vector<int> colorPermute {0,1,2,3,4};
-  vector<int> invColorPermute {0,1,2,3,4};
-
-  if (distShuffleColour_) {
-    std::random_device rd;
-    std::mt19937 gen(rd());
-    auto permDist = permutationDistribution_[partnerIdx_];
-    std::discrete_distribution<> d(permDist.begin(), permDist.end());
-
-    int sampledPermutationIndex = d(gen);
-    //printf("sampledPermutationIndex: %d\n", sampledPermutationIndex);
-    colorPermute = allColourPermutations_[sampledPermutationIndex];
-    invColorPermute = allInvColourPermutations_[sampledPermutationIndex];
-
-    //printf("prob 1st perm:\n");
-    //for (int i = 0; i < 6; i++) {
-    //  printf("%f\n", permutationDistribution_[i][0]);
-    //}
-  } else {
-    std::shuffle(colorPermute.begin(), colorPermute.end(), rng_);
-
-    std::sort(invColorPermute.begin(), invColorPermute.end(), [&](int i, int j) {
-        return colorPermute[i] < colorPermute[j];
-    });
-
-    for (int i = 0; i < (int)colorPermute.size(); ++i) {
-      assert(invColorPermute[colorPermute[i]] == i);
-    }
-  }
-
-  return std::make_tuple(colorPermute, invColorPermute);
 }
 
 void R2D2Actor::observeBeforeAct(HanabiEnv& env) {
@@ -336,9 +331,7 @@ void R2D2Actor::observeBeforeAct(HanabiEnv& env) {
   addHid(input, hidden_);
 
   // no-blocking async call to neural network
-  printf("before reply send\n");
   futReply_ = runner_->call("act", input);
-  printf("after reply send\n");
 
   callCompareAct(env);
 
@@ -381,12 +374,7 @@ void R2D2Actor::act(HanabiEnv& env, const int curPlayer) {
   torch::NoGradGuard ng;
 
   auto& state = env.getHleState();
-  printf("before reply get\n");
-  if (futReply_.isNull()) {
-    printf("fut_ in futReply_ object is null\n");
-  }
   auto reply = futReply_.get();
-  printf("after reply get\n");
   moveHid(reply, hidden_);
 
   if (replayBuffer_ != nullptr) {

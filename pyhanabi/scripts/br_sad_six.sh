@@ -40,11 +40,11 @@ python selfplay.py \
        --eps 1.5e-05 \
        --gamma 0.999 \
        --seed 0 \
-       --burn_in_frames 10000 \
-       --replay_buffer_size 100000 \
-       --batchsize 128 \
-       --epoch_len 1000 \
-       --num_epoch 1001 \
+       --burn_in_frames 1 \
+       --replay_buffer_size 1 \
+       --batchsize 1 \
+       --epoch_len 1 \
+       --num_epoch 10 \
        --num_player 2 \
        --net lstm \
        --num_lstm_layer 2 \
