@@ -27,10 +27,12 @@ def evaluate_model(args):
 
     stats = collect_stats(score, perfect, scores, actors, conventions)
 
-    # print()
+    if args.print_stats:
+        print()
     print_scores(stats)
-    # print_move_stats(stats, 0)
-    # print_move_stats(stats, 1)
+    if args.print_stats:
+        print_move_stats(stats, 0)
+        print_move_stats(stats, 1)
 
     for convention_string in convention_strings:
         if not any(convention_string in key for key in stats.keys()):
@@ -51,7 +53,7 @@ def evaluate_model(args):
             write = csv.writer(file)
             write.writerows(wrapped_scores)
 
-    return score, stats["bomb_out_rate"]
+    return score, stats["bomb_out_rate"], stats
 
 
 def load_weights(args):
@@ -239,6 +241,7 @@ if __name__ == "__main__":
     parser.add_argument("--csv_name", default="None", type=str)
     parser.add_argument("--shuffle_index1", default=-1, type=int)
     parser.add_argument("--shuffle_index2", default=-1, type=int)
+    parser.add_argument("--print_stats", default=1, type=int)
     args = parser.parse_args()
 
     args.sad_legacy = [int(x) for x in args.sad_legacy.split(",")]

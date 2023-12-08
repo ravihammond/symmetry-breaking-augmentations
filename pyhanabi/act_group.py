@@ -235,6 +235,10 @@ class ActGroup:
                             iql_legacy = partner["iql_legacy"]
                             shuffle_colour = 0
 
+                        print("creating actor")
+                        for perm_dist in self.permutation_distribution:
+                            print(perm_dist[0])
+
                         actor = hanalearn.R2D2Actor(
                             runner,
                             self.seed,
@@ -319,3 +323,10 @@ class ActGroup:
     def update_model(self, agent):
         for runner in self.model_runners:
             runner.update_model(agent)
+
+    def set_permutation_distribution(self, permutation_distribution):
+        for thread_actors in self.actors:
+            for game_actors in thread_actors:
+                for actor in game_actors:
+                    actor.set_permutation_distribution(permutation_distribution)
+

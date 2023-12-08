@@ -35,6 +35,7 @@ pyhanabi/similarity
 pyhanabi/similarity-old/
 pyhanabi/exps/
 pyhanabi/aht_scores/
+pyhanabi/action_stats/
 
 wandb_api_key.txt
 */wandb/*

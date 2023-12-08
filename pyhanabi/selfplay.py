@@ -192,7 +192,12 @@ def selfplay(args):
     convention_act_override = [0, args.convention_act_override]
     use_experience = [1, 1 - args.static_partner]
 
-    permutation_distribution = [[1 / 120] * 120] * len(train_partners)
+    # permutation_distribution = [[1 / 120] * 120] * len(train_partners)
+    permutation_distribution = [[100] * 120] * len(train_partners)
+
+    print("creating perm dist")
+    for perm_dist in permutation_distribution:
+        print(perm_dist[0])
 
     act_group = ActGroup(
         args.act_device, # devices
@@ -331,6 +336,14 @@ def selfplay(args):
             stat["grad_norm"].feed(g_norm)
             stat["boltzmann_t"].feed(batch.obs["temperature"][0].mean())
 
+            update_colour_shuffle_distribution(
+                args,
+                act_group,
+                permutation_distribution,
+                batch,
+                epoch,
+            )
+
         count_factor = args.num_player if args.method == "vdn" else 1
         print("epoch: %d" % epoch)
         tachometer.lap(replay_buffer, args.epoch_len * args.batchsize, count_factor)
@@ -377,6 +390,23 @@ def selfplay(args):
 
         epoch += 1
         print("==========", flush=True)
+
+def update_colour_shuffle_distribution(
+    args,
+    act_group,
+    permutation_distribution,
+    batch,
+    epoch,
+): 
+    print("updating permutation distribution")
+    print("=========================================================")
+    for perm_dist in permutation_distribution:
+        perm_dist[0] = epoch
+
+    for perm_dist in permutation_distribution:
+        print(perm_dist[0])
+
+    act_group.set_permutation_distribution(permutation_distribution)
 
 def run_evaluation(
     args,

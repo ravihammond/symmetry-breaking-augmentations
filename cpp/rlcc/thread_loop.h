@@ -13,7 +13,7 @@
 #include "rela/thread_loop.h"
 #include "rlcc/actors/r2d2_actor.h"
 
-#define PR true
+#define PR false
 
 class HanabiThreadLoop : public rela::ThreadLoop {
  public:

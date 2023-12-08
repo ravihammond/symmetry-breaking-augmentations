@@ -41,11 +41,11 @@ python selfplay.py \
        --eps 1.5e-05 \
        --gamma 0.999 \
        --seed 0 \
-       --burn_in_frames 1 \
-       --replay_buffer_size 1 \
-       --batchsize 1 \
-       --epoch_len 1 \
-       --num_epoch 10 \
+       --burn_in_frames 100 \
+       --replay_buffer_size 10000 \
+       --batchsize 10 \
+       --epoch_len 10 \
+       --num_epoch 100 \
        --num_player 2 \
        --net lstm \
        --num_lstm_layer 2 \
@@ -58,6 +58,6 @@ python selfplay.py \
        --split_index 0 \
        --static_partner 1 \
        --shuffle_color 1 \
-       --dist_shuffle_colour 1 \
+       --dist_shuffle_colour 0 \
        --wandb 0 \
        --gcloud_upload 0

@@ -13,7 +13,7 @@
 
 using namespace std;
 
-#define PR true
+#define PR false
 
 void R2D2Actor::addHid(rela::TensorDict& to, rela::TensorDict& hid) {
   for (auto& kv : hid) {
@@ -224,9 +224,14 @@ tuple<vector<int>, vector<int>> R2D2Actor::selectColourShuffle() {
     std::discrete_distribution<> d(permDist.begin(), permDist.end());
 
     int sampledPermutationIndex = d(gen);
-    printf("sampledPermutationIndex: %d\n", sampledPermutationIndex);
+    //printf("sampledPermutationIndex: %d\n", sampledPermutationIndex);
     colorPermute = allColourPermutations_[sampledPermutationIndex];
     invColorPermute = allInvColourPermutations_[sampledPermutationIndex];
+
+    //printf("prob 1st perm:\n");
+    //for (int i = 0; i < 6; i++) {
+    //  printf("%f\n", permutationDistribution_[i][0]);
+    //}
   } else {
     std::shuffle(colorPermute.begin(), colorPermute.end(), rng_);
 
@@ -331,7 +336,9 @@ void R2D2Actor::observeBeforeAct(HanabiEnv& env) {
   addHid(input, hidden_);
 
   // no-blocking async call to neural network
+  printf("before reply send\n");
   futReply_ = runner_->call("act", input);
+  printf("after reply send\n");
 
   callCompareAct(env);
 
@@ -374,7 +381,12 @@ void R2D2Actor::act(HanabiEnv& env, const int curPlayer) {
   torch::NoGradGuard ng;
 
   auto& state = env.getHleState();
+  printf("before reply get\n");
+  if (futReply_.isNull()) {
+    printf("fut_ in futReply_ object is null\n");
+  }
   auto reply = futReply_.get();
+  printf("after reply get\n");
   moveHid(reply, hidden_);
 
   if (replayBuffer_ != nullptr) {

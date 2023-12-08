@@ -120,7 +120,8 @@ PYBIND11_MODULE(hanalearn, m) {
       .def("get_stats", &R2D2Actor::getStats)
       .def("get_convention_index", &R2D2Actor::getConventionIndex)
       .def("set_compare_runners", &R2D2Actor::setCompareRunners)
-      .def("set_colour_permute", &R2D2Actor::setColourPermute);
+      .def("set_colour_permute", &R2D2Actor::setColourPermute)
+      .def("set_permutation_distribution", &R2D2Actor::setPermutationDistribution);
 
   m.def("observe", py::overload_cast<const hle::HanabiState&, int, bool>(&observe));
 

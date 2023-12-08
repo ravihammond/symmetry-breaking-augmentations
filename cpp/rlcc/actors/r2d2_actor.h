@@ -96,19 +96,19 @@ class R2D2Actor {
             , allInvColourPermutations_(allInvColourPermutations)
             , distShuffleColour_(distShuffleColour) 
             , permutationDistribution_(permutationDistribution) {
-              //printf("multiStep: %d, seqLen: %d, gamma: %f\n", 
-                  //multiStep, seqLen, gamma);
-              if (beliefStats_ && convention_.size() > 0) {
-                auto responseMove = strToMove(convention_[conventionIdx_][0][1]);
-                beliefStatsResponsePosition_ = responseMove.CardIndex();
-              }
+      //printf("multiStep: %d, seqLen: %d, gamma: %f\n", 
+          //multiStep, seqLen, gamma);
+      if (beliefStats_ && convention_.size() > 0) {
+        auto responseMove = strToMove(convention_[conventionIdx_][0][1]);
+        beliefStatsResponsePosition_ = responseMove.CardIndex();
+      }
 
-              if (sadLegacy_) {
-                showOwnCards_ = false;
-              } else {
-                showOwnCards_ = true;
-              }
-            }
+      if (sadLegacy_) {
+        showOwnCards_ = false;
+      } else {
+        showOwnCards_ = true;
+      }
+    }
 
 
     // simpler constructor for eval mode
@@ -265,6 +265,11 @@ class R2D2Actor {
       compShuffleColor_ = compShuffleColor;
       compColorPermutes_ = compColorPermute;
       compInvColorPermutes_ = compInvColorPermute;
+    }
+
+    void setPermutationDistribution(
+        std::vector<std::vector<float>> permutationDistribution) {
+      permutationDistribution_ = permutationDistribution;
     }
 
   private:
