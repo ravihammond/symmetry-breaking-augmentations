@@ -26,6 +26,7 @@ import common_utils
 import rela
 import r2d2
 import utils
+from scipy.special import softmax
 
 from convention_belief import ConventionBelief
 from tools.wandb_logger import log_wandb, log_wandb_test
@@ -192,6 +193,8 @@ def selfplay(args):
     convention_act_override = [0, args.convention_act_override]
     use_experience = [1, 1 - args.static_partner]
 
+    permutation_distribution = [[1 / 120] * 120] * len(train_partners)
+
     act_group = ActGroup(
         args.act_device, # devices
         [agent], # agents
@@ -219,7 +222,9 @@ def selfplay(args):
         False, # iql_legacy
         runner_div=args.runner_div, # runner_div
         num_parameters=args.num_parameters, # num_parameters
-        num_train_partners=num_train_partners # num_train_partners
+        num_train_partners=num_train_partners, # num_train_partners
+        dist_shuffle_colour=args.dist_shuffle_colour, # dist_shuffle_colour
+        permutation_distribution=permutation_distribution
     )
 
     context, threads = create_threads(
@@ -327,8 +332,8 @@ def selfplay(args):
             stat["grad_norm"].feed(g_norm)
             stat["boltzmann_t"].feed(batch.obs["temperature"][0].mean())
 
+
         count_factor = args.num_player if args.method == "vdn" else 1
-        print("epoch: %d" % epoch)
         tachometer.lap(replay_buffer, args.epoch_len * args.batchsize, count_factor)
         stopwatch.summary()
         stat.summary(epoch)
@@ -339,7 +344,7 @@ def selfplay(args):
         aux_accuracy_per_step_arr = np.array(aux_accuracy_per_step_list)
         aux_accuracy_per_step_mean = np.mean(aux_accuracy_per_step_arr, axis=0)
 
-        train_eval_score = run_evaluation(
+        test_eval_score, train_eval_scores, train_eval_actors = run_evaluation(
             args,
             agent,
             eval_agent,
@@ -356,7 +361,17 @@ def selfplay(args):
             aux_loss_mean,
             aux_accuracy_mean,
             aux_accuracy_per_step_mean,
+            permutation_distribution
         )
+
+        if args.dist_shuffle_colour:
+            update_colour_shuffle_distribution(
+                args,
+                permutation_distribution,
+                train_eval_scores,
+                train_eval_actors,
+                act_group
+            )
 
         force_save_name = None
         if epoch > 0 and epoch % args.save_checkpoints == 0:
@@ -364,7 +379,7 @@ def selfplay(args):
         saver.save(
             None, 
             agent.online_net.state_dict(), 
-            train_eval_score, 
+            test_eval_score, 
             force_save_name=force_save_name,
         )
 
@@ -374,6 +389,66 @@ def selfplay(args):
         epoch += 1
         print("==========", flush=True)
     exit()
+
+def update_colour_shuffle_distribution(
+    args,
+    permutation_distribution,
+    scores,
+    actors,
+    act_group
+): 
+    mean_all_scores = np.mean(scores)
+
+    shuffle_indexes = []
+    partner_indexes = []
+    for i, actor in enumerate(actors):
+        if i % 2 == 0:
+            stats = actor.get_stats()
+            shuffle_indexes.append(int(stats["shuffle_index"]))
+            partner_indexes.append(int(stats["partner_index"]))
+
+    for partner_idx in range(len(permutation_distribution)):
+        # print("partner:", partner_idx)
+        score_sum = [0] * len(permutation_distribution[partner_idx])
+        score_count = [0] * len(permutation_distribution[partner_idx])
+
+        for score, shuffle_index, p_index in zip(
+                scores, shuffle_indexes, partner_indexes):
+            if p_index == partner_idx:
+                score_sum[shuffle_index] += score
+                score_count[shuffle_index] += 1
+
+        avg_scores = []
+        for score_sum, score_count in zip(score_sum, score_count):
+            if score_count == 0:
+                avg_score = mean_all_scores
+            else:
+                avg_score = score_sum / score_count
+            avg_scores.append(avg_score)
+
+
+        regret = [25 - x for x in avg_scores]
+
+        old_perm_dist = copy.copy(permutation_distribution[partner_idx])
+
+        np_softmax = np.array(softmax(regret))
+        np_perm_dist = np.array(permutation_distribution[partner_idx])
+        lr = args.dist_shuffle_colour_lr
+        np_perm_dist = np_perm_dist + lr * (np_softmax - np_perm_dist)
+        permutation_distribution[partner_idx] = np_perm_dist.tolist()
+
+        # print("avg scores:")
+        # for i, avg_score in enumerate(avg_scores):
+        #     print(f"{i}: {avg_score}")
+        # print("permutation_distribution:")
+        # for i, (prob, sm, old_prob) in enumerate(zip(
+        #     permutation_distribution[partner_idx],
+        #     np_softmax.tolist(),
+        #     old_perm_dist,
+        # )):
+        #     print(f"{i}: {prob} {old_prob} {sm}")
+
+    act_group.set_permutation_distribution(permutation_distribution)
 
 def run_evaluation(
     args,
@@ -392,12 +467,18 @@ def run_evaluation(
     aux_loss_mean,
     aux_accuracy_mean,
     aux_accuracy_per_step_mean,
+    permutation_distribution,
 ):
     eval_seed = (9917 + epoch * 999999) % 7777777
     eval_agent.load_state_dict(agent.state_dict())
     eval_agents = [eval_agent for _ in range(args.num_player)]
 
-    def eval(partners, convention_act_override, shuffle_colour):
+    def eval(
+            partners, 
+            convention_act_override, 
+            shuffle_colour, 
+            dist_shuffle_colour,
+            permutation_distribution):
         return evaluate(
             eval_agents,
             args.num_eval_games,
@@ -413,10 +494,17 @@ def run_evaluation(
             partners=partners,
             num_parameters=args.num_parameters,
             shuffle_colour=shuffle_colour,
+            dist_shuffle_colour=dist_shuffle_colour,
+            permutation_distribution=permutation_distribution,
         )
 
     train_score, train_perfect, train_scores, _, train_eval_actors = eval(
-        train_partners, convention_act_override, [args.shuffle_color, 0])
+        train_partners, 
+        convention_act_override, 
+        [args.shuffle_color, 0],
+        [args.dist_shuffle_colour, 0],
+        permutation_distribution,
+    )
 
     test_convention_override = [0,0]
     print("epoch %d" % epoch)
@@ -425,8 +513,15 @@ def run_evaluation(
 
     if args.test_partner_models != "None":
         test_shuffle_colour = [0,0]
+        test_dist_shuffle_colour = [0,0]
+        test_permutation_distribution = []
         test_score, test_perfect, test_scores, _, test_eval_actors = eval(
-            test_partners, test_convention_override, test_shuffle_colour)
+            test_partners, 
+            test_convention_override, 
+            test_shuffle_colour,
+            test_dist_shuffle_colour,
+            test_permutation_distribution,
+        )
 
         print("test score: %.4f, test perfect: %.2f" % \
                 (test_score, test_perfect * 100))
@@ -464,9 +559,9 @@ def run_evaluation(
                 convention_for_stats)
 
     if args.test_partner_models != "None":
-        return copy.copy(test_score)
-    
-    return copy.copy(train_score)
+        return copy.copy(test_score), train_scores, train_eval_actors
+
+    return copy.copy(train_score), train_scores, train_eval_actors
 
 
 def upload_to_google_cloud(args, gc_handler, epoch):
@@ -663,6 +758,8 @@ def parse_args():
     parser.add_argument("--runner_div", type=str, default="duplicated")
     parser.add_argument("--num_eval_games", type=int, default=1000)
     parser.add_argument("--record_convention_stats", type=int, default=0)
+    parser.add_argument("--dist_shuffle_colour", type=int, default=0)
+    parser.add_argument("--dist_shuffle_colour_lr", type=float, default=0)
 
     args = parser.parse_args()
 

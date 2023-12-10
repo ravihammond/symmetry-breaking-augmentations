@@ -51,6 +51,8 @@ class ActGroup:
         num_parameters=0,
         shuffle_color_sync=False,
         num_train_partners=0,
+        dist_shuffle_colour=0,
+        permutation_distribution=[]
     ):
         self.devices = devices.split(",")
         self.method = method
@@ -84,6 +86,8 @@ class ActGroup:
             self.trinary = True
         self.num_agents = len(agents)
         self.num_train_partners = num_train_partners
+        self.dist_shuffle_colour = dist_shuffle_colour
+        self.permutation_distribution = permutation_distribution
 
         (self.model_runners, 
          self.belief_runner, 
@@ -99,9 +103,18 @@ class ActGroup:
 
         self.num_runners = len(self.model_runners)
 
-        colour_permutations = list(itertools.permutations([0, 1, 2, 3, 4]))
+        self.all_colour_permutations = list(itertools.permutations([0, 1, 2, 3, 4]))
+
+        self.all_inverse_colour_permutations = []
+        for i in range(len(self.all_colour_permutations)):
+            inverese_colour_permutation = [0, 1, 2, 3, 4]
+            colour_permutation = self.all_colour_permutations[i]
+            for j in range(len(colour_permutation)):
+                inverese_colour_permutation[colour_permutation[j]] = j
+            self.all_inverse_colour_permutations.append(inverese_colour_permutation)
+
         self.colour_permutation_map = {}
-        for i, permutation in enumerate(colour_permutations):
+        for i, permutation in enumerate(self.all_colour_permutations):
             key = ""
             for colour in permutation:
                 key += f"{colour}."
@@ -155,7 +168,6 @@ class ActGroup:
 
         actors = []
         shuffle_color_sync = [False, self.shuffle_color_sync]
-        print("partner runner size:", len(self.partner_runners))
 
         if self.method == "vdn":
             for i in range(self.num_thread):
@@ -252,6 +264,10 @@ class ActGroup:
                             partner_idx,
                             self.num_train_partners,
                             self.colour_permutation_map,
+                            self.all_colour_permutations,
+                            self.all_inverse_colour_permutations,
+                            self.dist_shuffle_colour,
+                            self.permutation_distribution,
                         )
 
                         if self.off_belief:
@@ -302,3 +318,10 @@ class ActGroup:
     def update_model(self, agent):
         for runner in self.model_runners:
             runner.update_model(agent)
+
+    def set_permutation_distribution(self, permutation_distribution):
+        for thread_actors in self.actors:
+            for game_actors in thread_actors:
+                for actor in game_actors:
+                    actor.set_permutation_distribution(permutation_distribution)
+

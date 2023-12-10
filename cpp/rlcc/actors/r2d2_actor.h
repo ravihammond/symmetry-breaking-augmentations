@@ -29,11 +29,9 @@ class R2D2Actor {
         bool hideAction,
         bool trinary,  // trinary aux task or full aux
         std::shared_ptr<rela::RNNPrioritizedReplay> replayBuffer,
-        // if replay buffer is None, then all params below are not used
         int multiStep,
         int seqLen,
         float gamma,
-        // My changes
         std::vector<std::vector<std::vector<std::string>>> convention,
         bool actParameterized,
         int conventionIdx,
@@ -47,7 +45,11 @@ class R2D2Actor {
         bool colorShuffleSync,
         int partnerIdx,
         int numPartners,
-        std::unordered_map<std::string,int> colourPermutationMap)
+        std::unordered_map<std::string,int> colourPermutationMap,
+        std::vector<std::vector<int>> allColourPermutations,
+        std::vector<std::vector<int>> allInvColourPermutations,
+        bool distShuffleColour,
+        std::vector<std::vector<float>> permutationDistribution)
           : runner_(std::move(runner))
             , rng_(seed)
             , numPlayer_(numPlayer)
@@ -89,20 +91,24 @@ class R2D2Actor {
             , colourPermuteConstant_(false) 
             , partnerIdx_(partnerIdx) 
             , numPartners_(numPartners) 
-            , colourPermutationMap_(colourPermutationMap) {
-              //printf("multiStep: %d, seqLen: %d, gamma: %f\n", 
-                  //multiStep, seqLen, gamma);
-              if (beliefStats_ && convention_.size() > 0) {
-                auto responseMove = strToMove(convention_[conventionIdx_][0][1]);
-                beliefStatsResponsePosition_ = responseMove.CardIndex();
-              }
+            , colourPermutationMap_(colourPermutationMap) 
+            , allColourPermutations_(allColourPermutations)
+            , allInvColourPermutations_(allInvColourPermutations)
+            , distShuffleColour_(distShuffleColour) 
+            , permutationDistribution_(permutationDistribution) {
+      //printf("multiStep: %d, seqLen: %d, gamma: %f\n", 
+          //multiStep, seqLen, gamma);
+      if (beliefStats_ && convention_.size() > 0) {
+        auto responseMove = strToMove(convention_[conventionIdx_][0][1]);
+        beliefStatsResponsePosition_ = responseMove.CardIndex();
+      }
 
-              if (sadLegacy_) {
-                showOwnCards_ = false;
-              } else {
-                showOwnCards_ = true;
-              }
-            }
+      if (sadLegacy_) {
+        showOwnCards_ = false;
+      } else {
+        showOwnCards_ = true;
+      }
+    }
 
 
     // simpler constructor for eval mode
@@ -120,9 +126,15 @@ class R2D2Actor {
         bool beliefStats,
         bool sadLegacy,
         bool iqlLegacy,
-        bool shuffleColor)
+        bool shuffleColor,
+        std::vector<std::vector<int>> allColourPermutations,
+        std::vector<std::vector<int>> allInvColourPermutations,
+        bool distShuffleColour,
+        std::vector<std::vector<float>> permutationDistribution,
+        int partnerIdx,
+        int seed)
       : runner_(std::move(runner))
-        , rng_(1)  // not used in eval mode
+        , rng_(seed)
         , numPlayer_(numPlayer)
         , playerIdx_(playerIdx)
         , epsList_({0})
@@ -157,8 +169,12 @@ class R2D2Actor {
         , beliefStatsSignalReceived_(false)
         , colorShuffleSync_(false) 
         , colourPermuteConstant_(false) 
-        , partnerIdx_(-1)
-        , numPartners_(0) {
+        , partnerIdx_(partnerIdx)
+        , numPartners_(0) 
+        , allColourPermutations_(allColourPermutations)
+        , allInvColourPermutations_(allInvColourPermutations)
+        , distShuffleColour_(distShuffleColour) 
+        , permutationDistribution_(permutationDistribution) {
           if (beliefStats_ && convention_.size() > 0) {
             auto responseMove = strToMove(convention_[conventionIdx_][0][1]);
             beliefStatsResponsePosition_ = responseMove.CardIndex();
@@ -259,6 +275,11 @@ class R2D2Actor {
       compShuffleColor_ = compShuffleColor;
       compColorPermutes_ = compColorPermute;
       compInvColorPermutes_ = compInvColorPermute;
+    }
+
+    void setPermutationDistribution(
+        std::vector<std::vector<float>> permutationDistribution) {
+      permutationDistribution_ = permutationDistribution;
     }
 
   private:
@@ -402,4 +423,8 @@ class R2D2Actor {
     int partnerIdx_;
     int numPartners_;
     std::unordered_map<std::string,int> colourPermutationMap_;
+    std::vector<std::vector<int>> allColourPermutations_;
+    std::vector<std::vector<int>> allInvColourPermutations_;
+    bool distShuffleColour_;
+    std::vector<std::vector<float>> permutationDistribution_;
 };

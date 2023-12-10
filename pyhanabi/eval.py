@@ -45,11 +45,13 @@ def evaluate(
     iql_legacy=[0, 0],
     shuffle_colour=[0, 0],
     shuffle_constant_index=[-1,-1],
+    dist_shuffle_colour=[0, 0], #distShuffleColor
+    permutation_distribution=[],
 ):
-    device="cuda:1"
     """
     evaluate agents as long as they have a "act" function
     """
+    device="cuda:1"
     if num_game < num_thread:
         num_thread = num_game
 
@@ -88,6 +90,16 @@ def evaluate(
     convention_index = 0
 
     colour_permutes, inverse_colour_permutes = get_colour_permutes()
+
+    all_colour_permutations = list(itertools.permutations([0, 1, 2, 3, 4]))
+
+    all_inverse_colour_permutations = []
+    for i in range(len(all_colour_permutations)):
+        inverse_colour_permutation = [0, 1, 2, 3, 4]
+        colour_permutation = all_colour_permutations[i]
+        for j in range(len(colour_permutation)):
+            inverse_colour_permutation[colour_permutation[j]] = j
+        all_inverse_colour_permutations.append(inverse_colour_permutation)
 
     for t_idx in range(num_thread):
         thread_games = []
@@ -129,6 +141,12 @@ def evaluate(
                     sad_legacy_setting, # sadLegacy
                     iql_legacy_setting, # sadLegacy
                     shuffle_colour[i], #shuffleColor
+                    all_colour_permutations,
+                    all_inverse_colour_permutations,
+                    dist_shuffle_colour[i], #distShuffleColor
+                    permutation_distribution, #permutationDistribution
+                    partner_idx, #partnerIdx
+                    seed, #seed
                 )
 
                 if belief_stats:
@@ -143,6 +161,7 @@ def evaluate(
                         [inverse_colour_permutes[shuffle_constant_index[i]]],
                         [], [], []
                     )
+                seed += 1
 
                 actors.append(actor)
                 all_actors.append(actor)

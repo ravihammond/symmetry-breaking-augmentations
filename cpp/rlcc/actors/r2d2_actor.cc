@@ -184,16 +184,42 @@ void R2D2Actor::reset(const HanabiEnv& env) {
         if (i == fixColorPlayer) {
           continue;
         }
-        std::shuffle(colorPermute.begin(), colorPermute.end(), rng_);
 
-        std::sort(invColorPermute.begin(), invColorPermute.end(), [&](int i, int j) {
-            return colorPermute[i] < colorPermute[j];
-        });
+        if (distShuffleColour_) {
+          int partnerIdx = partnerIdx_ == -1 ? 0 : partnerIdx_;
+          auto permDist = permutationDistribution_[partnerIdx];
+          std::discrete_distribution<> dist(permDist.begin(), permDist.end());
+          int sampledPermutationIndex = dist(rng_);
+
+          for (int i = 0; i < game.NumColors(); ++i) {
+            colorPermute[i] = allColourPermutations_[sampledPermutationIndex][i];
+            invColorPermute[i] = allInvColourPermutations_[sampledPermutationIndex][i];
+          }
+
+          if (logStats_) {
+            stats_["shuffle_index"] = sampledPermutationIndex;
+          }
+        } else {
+          std::shuffle(colorPermute.begin(), colorPermute.end(), rng_);
+
+          std::sort(invColorPermute.begin(), invColorPermute.end(), [&](int i, int j) {
+              return colorPermute[i] < colorPermute[j];
+          });
+        }
+
         for (int i = 0; i < (int)colorPermute.size(); ++i) {
           assert(invColorPermute[colorPermute[i]] == i);
         }
       }
+    } else {
+      if (logStats_) {
+        stats_["shuffle_index"] = -1;
+      }
     }
+    if (logStats_) {
+      stats_["partner_index"] = partnerIdx_;
+    }
+
     if (PR) {
       runner_->printModel();
       printf("shuffle: %d, colour permute: { ", (int)shuffleColor_);
