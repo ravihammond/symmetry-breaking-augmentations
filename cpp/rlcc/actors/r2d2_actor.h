@@ -108,8 +108,6 @@ class R2D2Actor {
       } else {
         showOwnCards_ = true;
       }
-      printf("creating actor: %d\n", distShuffleColour);
-      printf("creating actor: %d\n", distShuffleColour_);
     }
 
 

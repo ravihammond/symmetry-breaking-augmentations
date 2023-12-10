@@ -216,6 +216,10 @@ void R2D2Actor::reset(const HanabiEnv& env) {
         stats_["shuffle_index"] = -1;
       }
     }
+    if (logStats_) {
+      stats_["partner_index"] = partnerIdx_;
+    }
+
     if (PR) {
       runner_->printModel();
       printf("shuffle: %d, colour permute: { ", (int)shuffleColor_);

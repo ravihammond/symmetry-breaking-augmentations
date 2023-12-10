@@ -146,6 +146,7 @@ def evaluate(
                     dist_shuffle_colour[i], #distShuffleColor
                     permutation_distribution, #permutationDistribution
                     partner_idx, #partnerIdx
+                    seed, #seed
                 )
 
                 if belief_stats:
@@ -160,6 +161,7 @@ def evaluate(
                         [inverse_colour_permutes[shuffle_constant_index[i]]],
                         [], [], []
                     )
+                seed += 1
 
                 actors.append(actor)
                 all_actors.append(actor)

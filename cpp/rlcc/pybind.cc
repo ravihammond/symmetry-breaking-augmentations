@@ -117,7 +117,8 @@ PYBIND11_MODULE(hanalearn, m) {
         std::vector<std::vector<int>>, // allInvColourPermutations
         bool, // distShuffleColour
         std::vector<std::vector<float>>, // permutationDistribution
-        int>()) // partnerIdx
+        int, // partnerIdx
+        int>()) // seed
       .def("set_partners", &R2D2Actor::setPartners)
       .def("set_belief_runner", &R2D2Actor::setBeliefRunner)
       .def("set_belief_runner_stats", &R2D2Actor::setBeliefRunnerStats)

@@ -168,7 +168,6 @@ class ActGroup:
 
         actors = []
         shuffle_color_sync = [False, self.shuffle_color_sync]
-        print("partner runner size:", len(self.partner_runners))
 
         if self.method == "vdn":
             for i in range(self.num_thread):
@@ -234,9 +233,6 @@ class ActGroup:
                             sad_legacy = partner["sad_legacy"]
                             iql_legacy = partner["iql_legacy"]
                             shuffle_colour = 0
-
-                        print("creating actor")
-                        print(self.dist_shuffle_colour)
 
                         actor = hanalearn.R2D2Actor(
                             runner,
