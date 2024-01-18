@@ -15,6 +15,7 @@ import gc
 import pprint
 pprint = pprint.pprint
 import copy
+import random
 import numpy as np
 import torch
 from torch import nn
@@ -194,6 +195,7 @@ def selfplay(args):
     use_experience = [1, 1 - args.static_partner]
 
     permutation_distribution = [[1 / 120] * 120] * len(train_partners)
+    permutation_regret = [np.full((120,), 25)] * len(train_partners)
 
     act_group = ActGroup(
         args.act_device, # devices
@@ -344,7 +346,7 @@ def selfplay(args):
         aux_accuracy_per_step_arr = np.array(aux_accuracy_per_step_list)
         aux_accuracy_per_step_mean = np.mean(aux_accuracy_per_step_arr, axis=0)
 
-        test_eval_score, train_eval_scores, train_eval_actors = run_evaluation(
+        test_eval_score = run_evaluation(
             args,
             agent,
             eval_agent,
@@ -368,9 +370,12 @@ def selfplay(args):
             update_colour_shuffle_distribution(
                 args,
                 permutation_distribution,
-                train_eval_scores,
-                train_eval_actors,
-                act_group
+                permutation_regret,
+                act_group,
+                train_partners,
+                agent,
+                eval_agent,
+                epoch,
             )
 
         force_save_name = None
@@ -388,67 +393,7 @@ def selfplay(args):
 
         epoch += 1
         print("==========", flush=True)
-    exit()
 
-def update_colour_shuffle_distribution(
-    args,
-    permutation_distribution,
-    scores,
-    actors,
-    act_group
-): 
-    mean_all_scores = np.mean(scores)
-
-    shuffle_indexes = []
-    partner_indexes = []
-    for i, actor in enumerate(actors):
-        if i % 2 == 0:
-            stats = actor.get_stats()
-            shuffle_indexes.append(int(stats["shuffle_index"]))
-            partner_indexes.append(int(stats["partner_index"]))
-
-    for partner_idx in range(len(permutation_distribution)):
-        # print("partner:", partner_idx)
-        score_sum = [0] * len(permutation_distribution[partner_idx])
-        score_count = [0] * len(permutation_distribution[partner_idx])
-
-        for score, shuffle_index, p_index in zip(
-                scores, shuffle_indexes, partner_indexes):
-            if p_index == partner_idx:
-                score_sum[shuffle_index] += score
-                score_count[shuffle_index] += 1
-
-        avg_scores = []
-        for score_sum, score_count in zip(score_sum, score_count):
-            if score_count == 0:
-                avg_score = mean_all_scores
-            else:
-                avg_score = score_sum / score_count
-            avg_scores.append(avg_score)
-
-
-        regret = [25 - x for x in avg_scores]
-
-        old_perm_dist = copy.copy(permutation_distribution[partner_idx])
-
-        np_softmax = np.array(softmax(regret))
-        np_perm_dist = np.array(permutation_distribution[partner_idx])
-        lr = args.dist_shuffle_colour_lr
-        np_perm_dist = np_perm_dist + lr * (np_softmax - np_perm_dist)
-        permutation_distribution[partner_idx] = np_perm_dist.tolist()
-
-        # print("avg scores:")
-        # for i, avg_score in enumerate(avg_scores):
-        #     print(f"{i}: {avg_score}")
-        # print("permutation_distribution:")
-        # for i, (prob, sm, old_prob) in enumerate(zip(
-        #     permutation_distribution[partner_idx],
-        #     np_softmax.tolist(),
-        #     old_perm_dist,
-        # )):
-        #     print(f"{i}: {prob} {old_prob} {sm}")
-
-    act_group.set_permutation_distribution(permutation_distribution)
 
 def run_evaluation(
     args,
@@ -559,9 +504,93 @@ def run_evaluation(
                 convention_for_stats)
 
     if args.test_partner_models != "None":
-        return copy.copy(test_score), train_scores, train_eval_actors
+        return copy.copy(test_score)
 
-    return copy.copy(train_score), train_scores, train_eval_actors
+    return copy.copy(train_score)
+
+
+def update_colour_shuffle_distribution(
+    args,
+    permutation_distribution,
+    permutation_regret,
+    act_group,
+    partners,
+    act_agent,
+    eval_agent,
+    epoch,
+): 
+    eval_seed = (9917 + epoch * 999999) % 7777777
+    eval_agent.load_state_dict(act_agent.state_dict())
+    eval_agents = [eval_agent for _ in range(args.num_player)]
+    seed = random.randint(-2000000000, 2000000000)
+    num_game_per_partner_shuffle = 20
+
+    _, _, scores, _, actors = evaluate(
+        eval_agents,
+        num_game_per_partner_shuffle * len(partners) \
+                * len(permutation_distribution[0]),
+        eval_seed,
+        args.eval_bomb,
+        0,
+        args.sad,
+        args.hide_action,
+        device=args.train_device,
+        act_parameterized=[args.parameterized, args.parameterized],
+        partners=partners,
+        num_parameters=args.num_parameters,
+        shuffle_colour=[1, 0],
+        iterate_forced_shuffle_index=[1, 0],
+    )
+    mean_all_scores = np.mean(scores)
+
+    shuffle_indexes = []
+    partner_indexes = []
+    for i, actor in enumerate(actors):
+        if i % 2 == 0:
+            stats = actor.get_stats()
+            shuffle_indexes.append(int(stats["shuffle_index"]))
+            partner_indexes.append(int(stats["partner_index"]))
+
+    for partner_idx in range(len(permutation_distribution)):
+        # print("partner:", partner_idx)
+        score_sums = [0] * len(permutation_distribution[partner_idx])
+        score_count = [0] * len(permutation_distribution[partner_idx])
+
+        for score, shuffle_index, p_index in zip(
+                scores, shuffle_indexes, partner_indexes):
+            if p_index == partner_idx:
+                score_sums[shuffle_index] += score
+                score_count[shuffle_index] += 1
+
+        avg_scores = []
+        for i, (score_sum, count) in enumerate(zip(score_sums, score_count)):
+            assert(count > 0)
+            avg_score = score_sum / count
+            avg_scores.append(avg_score)
+
+        new_regret = np.array([25 - x for x in avg_scores])
+        old_regret = permutation_regret[partner_idx]
+        lr = args.dist_shuffle_colour_lr
+        regret = old_regret + lr * (new_regret - old_regret)
+        permutation_regret[partner_idx] = regret
+        softmax_regret = np.exp(regret) / np.sum(np.exp(regret))
+        permutation_distribution[partner_idx] = softmax_regret
+
+        # for i, (avg_score,
+        #         u_reg,
+        #         o_reg,
+        #         n_reg,
+        #         prob) in enumerate(zip(
+        #     avg_scores,
+        #     regret.tolist(),
+        #     old_regret.tolist(),
+        #     new_regret.tolist(),
+        #     permutation_distribution[partner_idx],
+        # )):
+        #     print(f"{i}: score: {avg_score:.6f}, prob: {prob:.6f}, " + \
+        #             f"regret: {u_reg:.6f}, old: {o_reg:.6f}, new: {n_reg:.6f}")
+
+    act_group.set_permutation_distribution(permutation_distribution)
 
 
 def upload_to_google_cloud(args, gc_handler, epoch):
@@ -762,6 +791,9 @@ def parse_args():
     parser.add_argument("--dist_shuffle_colour_lr", type=float, default=0)
 
     args = parser.parse_args()
+
+    if args.dist_shuffle_colour_lr >= 0:
+        args.save_dir = f"{args.save_dir}_a{args.dist_shuffle_colour_lr}"
 
     if args.class_aux_weight > 0:
         args.save_dir = f"{args.save_dir}_aux{args.class_aux_weight}"

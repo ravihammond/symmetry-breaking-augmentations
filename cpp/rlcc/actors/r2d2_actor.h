@@ -266,6 +266,7 @@ class R2D2Actor {
     void setColourPermute(
         std::vector<std::vector<int>> colorPermute,
         std::vector<std::vector<int>> invColorPermute,
+        std::vector<int> shuffleIndex,
         std::vector<bool> compShuffleColor,
         std::vector<std::vector<int>> compColorPermute,
         std::vector<std::vector<int>> compInvColorPermute) {
@@ -273,6 +274,7 @@ class R2D2Actor {
       colorPermutes_ = colorPermute;
       invColorPermutes_ = invColorPermute;
       compShuffleColor_ = compShuffleColor;
+      shuffleIndex_ = shuffleIndex;
       compColorPermutes_ = compColorPermute;
       compInvColorPermutes_ = compInvColorPermute;
     }
@@ -427,4 +429,5 @@ class R2D2Actor {
     std::vector<std::vector<int>> allInvColourPermutations_;
     bool distShuffleColour_;
     std::vector<std::vector<float>> permutationDistribution_;
+    std::vector<int> shuffleIndex_;
 };

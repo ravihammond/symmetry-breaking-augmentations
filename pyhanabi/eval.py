@@ -47,6 +47,7 @@ def evaluate(
     shuffle_constant_index=[-1,-1],
     dist_shuffle_colour=[0, 0], #distShuffleColor
     permutation_distribution=[],
+    iterate_forced_shuffle_index=[0, 0],
 ):
     """
     evaluate agents as long as they have a "act" function
@@ -91,15 +92,7 @@ def evaluate(
 
     colour_permutes, inverse_colour_permutes = get_colour_permutes()
 
-    all_colour_permutations = list(itertools.permutations([0, 1, 2, 3, 4]))
-
-    all_inverse_colour_permutations = []
-    for i in range(len(all_colour_permutations)):
-        inverse_colour_permutation = [0, 1, 2, 3, 4]
-        colour_permutation = all_colour_permutations[i]
-        for j in range(len(colour_permutation)):
-            inverse_colour_permutation[colour_permutation[j]] = j
-        all_inverse_colour_permutations.append(inverse_colour_permutation)
+    forced_shuffle_index = [0] * len(partners)
 
     for t_idx in range(num_thread):
         thread_games = []
@@ -141,8 +134,8 @@ def evaluate(
                     sad_legacy_setting, # sadLegacy
                     iql_legacy_setting, # sadLegacy
                     shuffle_colour[i], #shuffleColor
-                    all_colour_permutations,
-                    all_inverse_colour_permutations,
+                    colour_permutes,
+                    inverse_colour_permutes,
                     dist_shuffle_colour[i], #distShuffleColor
                     permutation_distribution, #permutationDistribution
                     partner_idx, #partnerIdx
@@ -156,12 +149,25 @@ def evaluate(
                         actor.set_belief_runner_stats(belief_runner)
                 
                 if shuffle_constant_index[i] >= 0:
+                    shuffle_index = colour_permutes[shuffle_constant_index[i]]
                     actor.set_colour_permute(
-                        [colour_permutes[shuffle_constant_index[i]]],
-                        [inverse_colour_permutes[shuffle_constant_index[i]]],
+                        [colour_permutes[shuffle_index]],
+                        [inverse_colour_permutes[shuffle_index]],
+                        [shuffle_index],
                         [], [], []
                     )
                 seed += 1
+
+                if iterate_forced_shuffle_index[i] > 0:
+                    shuffle_index = forced_shuffle_index[partner_idx]
+                    actor.set_colour_permute(
+                        [colour_permutes[shuffle_index]],
+                        [inverse_colour_permutes[shuffle_index]],
+                        [shuffle_index],
+                        [], [], []
+                    )
+                    forced_shuffle_index[partner_idx] = \
+                            (forced_shuffle_index[partner_idx] + 1) % 120
 
                 actors.append(actor)
                 all_actors.append(actor)

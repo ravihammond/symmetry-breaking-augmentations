@@ -211,6 +211,8 @@ void R2D2Actor::reset(const HanabiEnv& env) {
           assert(invColorPermute[colorPermute[i]] == i);
         }
       }
+    } else if (shuffleColor_ && colourPermuteConstant_){
+      stats_["shuffle_index"] = shuffleIndex_[0];
     } else {
       if (logStats_) {
         stats_["shuffle_index"] = -1;
