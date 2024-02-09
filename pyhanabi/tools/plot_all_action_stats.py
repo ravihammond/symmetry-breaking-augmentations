@@ -16,13 +16,13 @@ SPLIT_SIZES = {
         "eleven"
     ],
     "iql": [
-        # "one", 
+        "one", 
         "six", 
-        # "ten"
+        "ten"
     ],
     "op": [
         # "one", 
-        "six", 
+        # "six", 
         # "ten",
     ]
 }
@@ -110,8 +110,8 @@ def plot_clustered(args, data, labels):
     labels.insert(0, "")
     ax.set_xticklabels(labels)
 
-    # ax.legend(loc="upper right")
-    ax.legend(bbox_to_anchor=(0.7, 1))
+    ax.legend(loc="upper right")
+    # ax.legend(bbox_to_anchor=(0.7, 1))
 
     plt.show()
 
@@ -147,7 +147,7 @@ def plot_stacked(args, data, labels):
     labels.insert(0, "")
     ax.set_xticklabels(labels)
 
-    ax.legend(loc="best")
+    ax.legend(loc="upper right")
 
     plt.show()
 

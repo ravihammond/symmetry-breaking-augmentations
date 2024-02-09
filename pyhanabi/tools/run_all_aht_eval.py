@@ -17,7 +17,8 @@ sys.path.append(lib_path)
 
 SPLIT_TYPES = {
     "sad": ["one", "six", "eleven"],
-    "iql": ["one", "six", "ten"],
+    # "iql": ["one", "six", "ten"],
+    "iql": ["one", "ten"],
     "op": ["one", "six", "ten"],
 }
 

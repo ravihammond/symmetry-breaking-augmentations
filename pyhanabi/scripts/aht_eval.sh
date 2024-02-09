@@ -68,6 +68,22 @@
 
 # IQL ======================================
 
+# BR_IQL_one vs IQL
+python tools/aht_eval.py \
+    --aht_model br_iql \
+    --train_partner_model iql \
+    --partner_model iql_aht \
+    --split_type one \
+    --split_indices 0-11 \
+
+# SBA_IQL_one vs IQL
+python tools/aht_eval.py \
+    --aht_model sba_iql \
+    --train_partner_model iql \
+    --partner_model iql_aht \
+    --split_type one \
+    --split_indices 0-11 \
+
 ## BR_IQL_six vs IQL
 #python tools/aht_eval.py \
 #    --aht_model br_iql \
@@ -83,6 +99,38 @@
 #    --partner_model iql_aht \
 #    --split_type six \
 #    --split_indices 0-9 \
+
+# BR_IQL_ten vs IQL
+python tools/aht_eval.py \
+    --aht_model br_iql \
+    --train_partner_model iql \
+    --partner_model iql_aht \
+    --split_type ten \
+    --split_indices 0-9 \
+
+# SBA_IQL_ten vs IQL
+python tools/aht_eval.py \
+    --aht_model sba_iql \
+    --train_partner_model iql \
+    --partner_model iql_aht \
+    --split_type ten \
+    --split_indices 0-9 \
+
+# BR_IQL_one vs SAD
+python tools/aht_eval.py \
+    --aht_model br_iql \
+    --train_partner_model iql \
+    --partner_model sad \
+    --split_type one \
+    --split_indices 0-11 \
+
+# SBA_IQL_one vs SAD
+python tools/aht_eval.py \
+    --aht_model sba_iql \
+    --train_partner_model iql \
+    --partner_model sad \
+    --split_type one \
+    --split_indices 0-11 \
 
 # BR_IQL_six vs SAD
 #python tools/aht_eval.py \
@@ -100,6 +148,38 @@
 #    --split_type six \
 #    --split_indices 0-9 \
 
+# BR_IQL_ten vs SAD
+python tools/aht_eval.py \
+    --aht_model br_iql \
+    --train_partner_model iql \
+    --partner_model sad \
+    --split_type ten \
+    --split_indices 0-9 \
+
+# SBA_IQL_ten vs SAD
+python tools/aht_eval.py \
+    --aht_model sba_iql \
+    --train_partner_model iql \
+    --partner_model sad \
+    --split_type ten \
+    --split_indices 0-9 \
+
+# BR_IQL_one vs OP
+python tools/aht_eval.py \
+    --aht_model br_iql \
+    --train_partner_model iql \
+    --partner_model op \
+    --split_type one \
+    --split_indices 0-11 \
+
+# SBA_IQL_one vs OP
+python tools/aht_eval.py \
+    --aht_model sba_iql \
+    --train_partner_model iql \
+    --partner_model op \
+    --split_type one \
+    --split_indices 0-11 \
+
 ## BR_IQL_six vs OP
 #python tools/aht_eval.py \
 #    --aht_model br_iql \
@@ -116,6 +196,38 @@
 #    --split_type six \
 #    --split_indices 0-9 \
 
+# BR_IQL_ten vs OP
+python tools/aht_eval.py \
+    --aht_model br_iql \
+    --train_partner_model iql \
+    --partner_model op \
+    --split_type ten \
+    --split_indices 0-9 \
+
+# SBA_IQL_ten vs OP
+python tools/aht_eval.py \
+    --aht_model sba_iql \
+    --train_partner_model iql \
+    --partner_model op \
+    --split_type ten \
+    --split_indices 0-9 \
+
+# BR_IQL_one vs obl
+python tools/aht_eval.py \
+    --aht_model br_iql \
+    --train_partner_model iql \
+    --partner_model obl \
+    --split_type one \
+    --split_indices 0-11 \
+
+# SBA_IQL_one vs OBL
+python tools/aht_eval.py \
+    --aht_model sba_iql \
+    --train_partner_model iql \
+    --partner_model obl \
+    --split_type one \
+    --split_indices 0-11 \
+
 ## BR_IQL_six vs obl
 #python tools/aht_eval.py \
 #    --aht_model br_iql \
@@ -131,6 +243,22 @@
 #    --partner_model obl \
 #    --split_type six \
 #    --split_indices 0-9 \
+
+# BR_IQL_ten vs obl
+python tools/aht_eval.py \
+    --aht_model br_iql \
+    --train_partner_model iql \
+    --partner_model obl \
+    --split_type ten \
+    --split_indices 0-9 \
+
+# SBA_IQL_ten vs OBL
+python tools/aht_eval.py \
+    --aht_model sba_iql \
+    --train_partner_model iql \
+    --partner_model obl \
+    --split_type ten \
+    --split_indices 0-9 \
 
 # OP ======================================
 

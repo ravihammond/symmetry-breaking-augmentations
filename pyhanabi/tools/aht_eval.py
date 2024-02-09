@@ -183,14 +183,15 @@ def run_jobs(args, jobs):
                 "train_test_splits": None,
                 "split_index": 0,
                 "shuffle_index1": -1,
-                "shuffle_index2": -1
+                "shuffle_index2": -1,
+                "print_stats": 0,
             })
             print(job.pair_name)
             if i == 0 and args.aht_model == "ch_e50_sad":
                 score = 12
                 bombout = 0.41
             else:
-                score, bombout = evaluate_model(input_args)
+                score, bombout, _ = evaluate_model(input_args)
             print()
             split_scores.append(score)
             split_bombouts.append(bombout)

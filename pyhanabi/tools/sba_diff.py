@@ -19,15 +19,20 @@ FILE = {
 def extract_sba_diff_data(args):
     if args.model == "all":
         df = get_all_data(args)
-        extract_data(args, df)
+        # extract_data(args, df)
         # plot_dists(args, df)
         # plot_score_diff(args, df)
-        # plot_all_per_pair(args, df)
+        plot_all_per_pair(args, df)
     else:
         df = pd.read_pickle(FILE[args.model], "gzip")
         df = adjust_data(args, df)
         # plot_dist(args, df)
         plot_per_pair(args, df)
+
+    if args.save_file is not None:
+        plt.savefig(args.save_file)
+    plt.show()
+
 
 
 def get_all_data(args):
@@ -129,11 +134,13 @@ def plot_dists(args, df):
     # plt.xlim(-4, 4)
     # plt.xlabel('SBA Difference (augdiff)')
     # plt.show()
+    df["abs_score_diff"] = df["score_diff"].abs()
 
-    ax = sns.boxplot(data=df, x="model", y="score_diff", showfliers=False,
-            palette=sns.color_palette('bright')[:3])
+    plt.figure(figsize=(8,4))
+    ax = sns.barplot(data=df, x="model", y="abs_score_diff",
+            palette=sns.color_palette('bright')[:4])
 
-    plt.ylabel('Augmentation Regret')
+    plt.ylabel('Augmentation Impacr')
     plt.show()
 
 
@@ -152,7 +159,6 @@ def plot_score_diff(args, df):
             # common_norm=False)
 
     # plt.title(f"SBA Difference Distributions")
-    plt.show()
 
     # fig, ax = plt.subplots(figsize=(8, 8))
 
@@ -165,7 +171,6 @@ def plot_score_diff(args, df):
     # plt.ylabel(data_type_label)
     # plt.xlabel(f"{args.model} Pairs")
     # plt.title(f"SBA {args.model} Pairs vs {data_type_label}")
-    # plt.show()
 
 
 def plot_dist(args, df):
@@ -173,7 +178,6 @@ def plot_dist(args, df):
     plt.ylim(0, 3)
     plt.xlim(-9, 9)
     plt.title(f"SBA {args.model} Distribution")
-    plt.show()
 
 
 def plot_per_pair(args, df):
@@ -205,8 +209,6 @@ def plot_all_per_pair(args, df):
     create_scores_plot(args, df, "OP", axes2[0], "b)")
     create_scores_plot(args, df, "OBL", axes2[1], "c)", show_y_label=False)
 
-    plt.show()
-
 
 def create_scores_plot(ars, df, model, ax, title, show_y_label=True):
     df = pd.read_pickle(FILE[model], "gzip")
@@ -221,8 +223,8 @@ def create_scores_plot(ars, df, model, ax, title, show_y_label=True):
     ax.scatter(orig_labels, orig_scores, color="black",  marker='x', zorder=2)
 
     if show_y_label:
-        ax.set_ylabel("SBA Difference (augdiff)")
-    ax.set_xlabel(f"{model} Pairs")
+        ax.set_ylabel("Augmentation Difference")
+    ax.set_xlabel(f"{model} Policy Pairs")
     ax.set_xticklabels([])
     ax.set_ylim(-8, 8)
     if model == "SAD":
@@ -237,6 +239,7 @@ def create_scores_plot(ars, df, model, ax, title, show_y_label=True):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--model", type=str, default="None")
+    parser.add_argument("--save_file", type=str, default="None")
     args = parser.parse_args()
     extract_sba_diff_data(args)
 
